@@ -1,0 +1,269 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
+@import "ag-grid-community/styles/ag-grid.css";
+@import "ag-grid-community/styles/ag-theme-quartz.css";
+@import "react-day-picker/style.css";
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #050507;
+  --foreground: #f7f7f8;
+  --muted: #a4a7ae;
+  --panel: rgba(18, 19, 23, 0.78);
+  --panel-strong: rgba(27, 29, 35, 0.92);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #e8ff5f;
+  --accent-foreground: #09090b;
+  --accent-blue: #72ddff;
+  --accent-coral: #ff6b5f;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  --glass-top: rgba(255, 255, 255, 0.075);
+  --glass-bottom: rgba(255, 255, 255, 0.035);
+  --body-gradient:
+    radial-gradient(circle at 12% 10%, rgba(232, 255, 95, 0.08), transparent 30%),
+    radial-gradient(circle at 80% 8%, rgba(114, 221, 255, 0.08), transparent 28%),
+    linear-gradient(180deg, #09090c 0%, #050507 44%, #07080a 100%);
+  --ag-bg: rgba(8, 9, 12, 0.72);
+  --ag-header: rgba(255, 255, 255, 0.055);
+  --ag-row-hover: rgba(232, 255, 95, 0.055);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --background: #eef1f6;
+  --foreground: #0c0f14;
+  --muted: #4b5563;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --surface: rgba(12, 15, 20, 0.06);
+  --surface-hover: rgba(12, 15, 20, 0.1);
+  --border: rgba(12, 15, 20, 0.14);
+  --accent: #c8e600;
+  --accent-foreground: #101218;
+  --accent-blue: #0e8ec8;
+  --accent-coral: #e24b42;
+  --shadow: 0 20px 60px rgba(15, 18, 24, 0.1);
+  --glass-top: rgba(255, 255, 255, 0.95);
+  --glass-bottom: rgba(255, 255, 255, 0.82);
+  --body-gradient:
+    radial-gradient(circle at 12% 10%, rgba(200, 230, 0, 0.14), transparent 32%),
+    radial-gradient(circle at 82% 8%, rgba(14, 142, 200, 0.1), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f3f5f8 48%, #e9edf3 100%);
+  --ag-bg: rgba(255, 255, 255, 0.95);
+  --ag-header: rgba(15, 18, 24, 0.04);
+  --ag-row-hover: rgba(200, 230, 0, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--body-gradient);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+  transition: background 0.35s ease, color 0.25s ease;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-radius: 999px;
+}
+
+.glass {
+  background: linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.oss-hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.oss-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+/* Theme-aware surfaces — prefer these over zinc/white/black utilities */
+.oss-surface {
+  background: var(--surface);
+}
+.oss-surface-hover:hover {
+  background: var(--surface-hover);
+}
+.oss-border {
+  border-color: var(--border);
+}
+.oss-panel {
+  background: var(--panel-strong);
+}
+.oss-inset {
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 14px;
+}
+
+.react-resizable-handle::after {
+  border-color: color-mix(in srgb, var(--accent) 75%, transparent) !important;
+}
+
+.oss-schedule-grid.ag-theme-quartz {
+  --ag-background-color: var(--ag-bg);
+  --ag-foreground-color: var(--foreground);
+  --ag-border-color: var(--border);
+  --ag-header-background-color: var(--ag-header);
+  --ag-header-foreground-color: var(--muted);
+  --ag-row-hover-color: var(--ag-row-hover);
+  --ag-odd-row-background-color: var(--surface);
+  --ag-selected-row-background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  --ag-font-family: var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  --ag-font-size: 13px;
+  --ag-grid-size: 6px;
+  --ag-row-height: 104px;
+  --ag-header-height: 50px;
+  --ag-wrapper-border-radius: 14px;
+  --ag-cell-horizontal-padding: 8px;
+}
+
+.oss-schedule-grid .ag-root-wrapper {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px);
+}
+
+.oss-schedule-grid .ag-header-cell-label {
+  justify-content: center;
+}
+
+.oss-schedule-grid .ag-cell {
+  display: flex;
+  align-items: stretch;
+  line-height: normal;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.oss-schedule-grid .ag-cell-value,
+.oss-schedule-grid .ag-cell-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.oss-schedule-grid .schedule-day-header .ag-header-cell-label {
+  justify-content: center;
+  font-weight: 700;
+}
+
+.oss-schedule-grid .ag-cell-focus:not(.ag-cell-range-selected):focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.oss-rankings-grid.ag-theme-quartz,
+.oss-members-grid.ag-theme-quartz,
+.oss-students-grid.ag-theme-quartz {
+  --ag-background-color: var(--ag-bg);
+  --ag-foreground-color: var(--foreground);
+  --ag-border-color: var(--border);
+  --ag-header-background-color: var(--ag-header);
+  --ag-header-foreground-color: var(--muted);
+  --ag-row-hover-color: var(--ag-row-hover);
+  --ag-odd-row-background-color: var(--surface);
+  --ag-selected-row-background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  --ag-font-family: var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  --ag-font-size: 13px;
+  --ag-grid-size: 6px;
+  --ag-row-height: 72px;
+  --ag-header-height: 46px;
+  --ag-wrapper-border-radius: 0;
+  --ag-cell-horizontal-padding: 12px;
+}
+
+.oss-rankings-grid .ag-root-wrapper,
+.oss-members-grid .ag-root-wrapper,
+.oss-students-grid .ag-root-wrapper {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.oss-rankings-grid .ag-header-cell-label,
+.oss-members-grid .ag-header-cell-label,
+.oss-students-grid .ag-header-cell-label {
+  font-weight: 600;
+}
+
+.oss-rankings-grid .ag-cell,
+.oss-members-grid .ag-cell,
+.oss-students-grid .ag-cell {
+  display: flex;
+  align-items: center;
+  line-height: normal;
+}
+
+.oss-rankings-grid .ag-cell-value,
+.oss-rankings-grid .ag-cell-wrapper,
+.oss-members-grid .ag-cell-value,
+.oss-members-grid .ag-cell-wrapper,
+.oss-students-grid .ag-cell-value,
+.oss-students-grid .ag-cell-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.oss-rankings-grid .ag-row,
+.oss-members-grid .ag-row,
+.oss-students-grid .ag-row {
+  cursor: pointer;
+}
+
+.oss-rankings-grid .ag-row-hover,
+.oss-members-grid .ag-row-hover,
+.oss-students-grid .ag-row-hover {
+  background-color: var(--ag-row-hover);
+}
