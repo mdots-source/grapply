@@ -85,20 +85,27 @@ export function AdminOverview() {
                 <AreaChart data={attendanceTrend}>
                   <defs>
                     <linearGradient id="dashStudents" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="5%" stopColor="#e8ff5f" stopOpacity={0.65} />
-                      <stop offset="95%" stopColor="#e8ff5f" stopOpacity={0.02} />
+                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.65} />
+                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.02} />
                     </linearGradient>
                     <linearGradient id="dashSparring" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="5%" stopColor="#72ddff" stopOpacity={0.5} />
-                      <stop offset="95%" stopColor="#72ddff" stopOpacity={0.02} />
+                      <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.5} />
+                      <stop offset="95%" stopColor="var(--accent-blue)" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="day" stroke="#71717a" tickLine={false} axisLine={false} />
-                  <YAxis stroke="#71717a" tickLine={false} axisLine={false} width={32} />
-                  <Tooltip contentStyle={{ background: "#111217", border: "1px solid rgba(255,255,255,.12)", borderRadius: 12 }} />
-                  <Area type="monotone" dataKey="students" stroke="#e8ff5f" fill="url(#dashStudents)" strokeWidth={2.5} />
-                  <Area type="monotone" dataKey="sparring" stroke="#72ddff" fill="url(#dashSparring)" strokeWidth={2} />
+                  <CartesianGrid stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="day" stroke="var(--muted)" tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--muted)" tickLine={false} axisLine={false} width={32} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--panel-strong)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      color: "var(--foreground)",
+                    }}
+                  />
+                  <Area type="monotone" dataKey="students" stroke="var(--accent)" fill="url(#dashStudents)" strokeWidth={2.5} />
+                  <Area type="monotone" dataKey="sparring" stroke="var(--accent-blue)" fill="url(#dashSparring)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -149,10 +156,17 @@ export function AdminOverview() {
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={beltDistribution} layout="vertical" margin={{ left: 4, right: 12 }}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.06)" horizontal={false} />
-                  <XAxis type="number" stroke="#71717a" tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="belt" stroke="#71717a" tickLine={false} axisLine={false} width={56} tickFormatter={(b) => beltStyles[b as keyof typeof beltStyles]?.label ?? b} />
-                  <Tooltip contentStyle={{ background: "#111217", border: "1px solid rgba(255,255,255,.12)", borderRadius: 12 }} />
+                  <CartesianGrid stroke="var(--border)" horizontal={false} />
+                  <XAxis type="number" stroke="var(--muted)" tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="belt" stroke="var(--muted)" tickLine={false} axisLine={false} width={56} tickFormatter={(b) => beltStyles[b as keyof typeof beltStyles]?.label ?? b} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--panel-strong)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      color: "var(--foreground)",
+                    }}
+                  />
                   <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={14}>
                     {beltDistribution.map((entry) => (
                       <Cell key={entry.belt} fill={beltStyles[entry.belt].hex} fillOpacity={0.85} />

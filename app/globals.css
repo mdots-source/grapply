@@ -1,8 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "react-grid-layout/css/styles.css";
-@import "react-resizable/css/styles.css";
 @import "ag-grid-community/styles/ag-grid.css";
 @import "ag-grid-community/styles/ag-theme-quartz.css";
 @import "react-day-picker/style.css";
@@ -204,8 +202,7 @@ select {
 }
 
 .oss-rankings-grid.ag-theme-quartz,
-.oss-members-grid.ag-theme-quartz,
-.oss-students-grid.ag-theme-quartz {
+.oss-members-grid.ag-theme-quartz {
   --ag-background-color: var(--ag-bg);
   --ag-foreground-color: var(--foreground);
   --ag-border-color: var(--border);
@@ -224,8 +221,7 @@ select {
 }
 
 .oss-rankings-grid .ag-root-wrapper,
-.oss-members-grid .ag-root-wrapper,
-.oss-students-grid .ag-root-wrapper {
+.oss-members-grid .ag-root-wrapper {
   border: none;
   border-radius: 0;
   background: transparent;
@@ -233,14 +229,12 @@ select {
 }
 
 .oss-rankings-grid .ag-header-cell-label,
-.oss-members-grid .ag-header-cell-label,
-.oss-students-grid .ag-header-cell-label {
+.oss-members-grid .ag-header-cell-label {
   font-weight: 600;
 }
 
 .oss-rankings-grid .ag-cell,
-.oss-members-grid .ag-cell,
-.oss-students-grid .ag-cell {
+.oss-members-grid .ag-cell {
   display: flex;
   align-items: center;
   line-height: normal;
@@ -249,21 +243,17 @@ select {
 .oss-rankings-grid .ag-cell-value,
 .oss-rankings-grid .ag-cell-wrapper,
 .oss-members-grid .ag-cell-value,
-.oss-members-grid .ag-cell-wrapper,
-.oss-students-grid .ag-cell-value,
-.oss-students-grid .ag-cell-wrapper {
+.oss-members-grid .ag-cell-wrapper {
   width: 100%;
   height: 100%;
 }
 
 .oss-rankings-grid .ag-row,
-.oss-members-grid .ag-row,
-.oss-students-grid .ag-row {
+.oss-members-grid .ag-row {
   cursor: pointer;
 }
 
 .oss-rankings-grid .ag-row-hover,
-.oss-members-grid .ag-row-hover,
-.oss-students-grid .ag-row-hover {
+.oss-members-grid .ag-row-hover {
   background-color: var(--ag-row-hover);
 }

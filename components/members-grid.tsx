@@ -3,8 +3,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import {
-  AllCommunityModule,
-  ModuleRegistry,
   type ColDef,
   type ICellRendererParams,
   type RowClickedEvent,
@@ -17,9 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AgGridHost } from "@/components/ag-grid-host";
 import { compareMemberHierarchy, students as seedMembers, type Student } from "@/data/academy";
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { countCompetitionTeam } from "@/lib/members";
 
 type RosterFilter = "all" | "active" | "promotion" | "inactive";
 type DrawerMode = "view" | "add";
@@ -72,7 +70,8 @@ export function MembersGrid() {
     const promotion = members.filter((m) => matchesFilter(m, "promotion")).length;
     const avgHours = Math.round(members.reduce((sum, m) => sum + m.totalHours, 0) / members.length);
     const matHours = members.reduce((sum, m) => sum + m.totalHours, 0);
-    return { active, promotion, avgHours, matHours };
+    const competitionTeam = countCompetitionTeam(members);
+    return { active, promotion, avgHours, matHours, competitionTeam };
   }, [members]);
 
   const columnDefs = useMemo<ColDef<Student>[]>(
@@ -123,7 +122,7 @@ export function MembersGrid() {
           {[
             [members.length.toString(), "Total members"],
             [summary.active.toString(), "Active this month"],
-            ["42", "Competition team"],
+            [summary.competitionTeam.toString(), "Competition team"],
             [summary.promotion.toString(), "Promotion watch"],
           ].map(([value, label]) => (
             <Card key={label} className="p-4">
@@ -158,6 +157,7 @@ export function MembersGrid() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                aria-label="Search members by name, belt, or role"
                 placeholder="Search members by name, belt, or role"
                 className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none ring-[var(--accent)]/40 placeholder:text-[var(--muted)] focus:border-[var(--accent)]/40 focus:ring-2 md:max-w-md"
               />
@@ -170,7 +170,7 @@ export function MembersGrid() {
               <Metric label="Avg hours / member" value={summary.avgHours.toString()} />
             </div>
 
-            <div className="oss-members-grid ag-theme-quartz h-[520px] w-full">
+            <AgGridHost className="oss-members-grid ag-theme-quartz h-[520px] w-full">
               <AgGridReact<Student>
                 rowData={rowData}
                 columnDefs={columnDefs}
@@ -189,7 +189,7 @@ export function MembersGrid() {
                 rowClass="cursor-pointer"
                 overlayNoRowsTemplate='<span class="text-[var(--muted)]">No members match this filter.</span>'
               />
-            </div>
+            </AgGridHost>
           </Card>
         </TabsContent>
       </Tabs>

@@ -16,14 +16,20 @@ export function Drawer({ open, onOpenChange, children, className }: DrawerProps)
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50" role="presentation">
       <button
         type="button"
         aria-label="Close drawer"
         className="absolute inset-0 bg-[color-mix(in_srgb,var(--background)_55%,transparent)] backdrop-blur-[2px]"
         onClick={() => onOpenChange(false)}
       />
-      <Sheet className={cn("relative z-10 flex h-full flex-col overflow-y-auto", className)}>{children}</Sheet>
+      <Sheet
+        role="dialog"
+        aria-modal="true"
+        className={cn("relative z-10 flex h-full flex-col overflow-y-auto", className)}
+      >
+        {children}
+      </Sheet>
     </div>
   );
 }

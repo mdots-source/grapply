@@ -1,24 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  type ColDef,
-  type ICellRendererParams,
-  type RowClickedEvent,
-} from "ag-grid-community";
+import { type ColDef, type ICellRendererParams } from "ag-grid-community";
 import { Trophy } from "lucide-react";
 import { BeltPill } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AgGridHost } from "@/components/ag-grid-host";
 import { beltStyles, students, type Belt, type Student } from "@/data/academy";
-
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 type RankedStudent = Student & { rank: number };
 
@@ -115,11 +108,6 @@ export function RankingsGrid() {
     [],
   );
 
-  const onRowClicked = useCallback((event: RowClickedEvent<RankedStudent>) => {
-    if (!event.data) return;
-    window.location.href = `/members/${event.data.id}`;
-  }, []);
-
   const beltTabs: { id: BeltFilter; label: string }[] = [
     { id: "all", label: "All belts" },
     { id: "white", label: beltStyles.white.label },
@@ -161,12 +149,13 @@ export function RankingsGrid() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                aria-label="Search athletes by name or role"
                 placeholder="Search athletes by name or role"
                 className="h-10 w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/30"
               />
             </div>
 
-            <div className="oss-rankings-grid ag-theme-quartz h-[560px] w-full">
+            <AgGridHost className="oss-rankings-grid ag-theme-quartz h-[560px] w-full">
               <AgGridReact<RankedStudent>
                 rowData={ranked}
                 columnDefs={columnDefs}
@@ -180,11 +169,10 @@ export function RankingsGrid() {
                 rowHeight={72}
                 headerHeight={46}
                 suppressCellFocus
-                onRowClicked={onRowClicked}
                 rowClass="cursor-pointer"
                 overlayNoRowsTemplate='<span class="text-[var(--muted)]">No athletes match this filter.</span>'
               />
-            </div>
+            </AgGridHost>
           </Card>
         </TabsContent>
       </Tabs>

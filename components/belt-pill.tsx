@@ -7,7 +7,7 @@ export function BeltPill({ belt, stripes = 0, className }: { belt: Belt; stripes
       {beltStyles[belt].label}
       <span className="flex gap-0.5">
         {Array.from({ length: Math.max(stripes, 0) }).map((_, index) => (
-          <span key={index} className="h-2.5 w-0.5 rounded-full bg-current opacity-70" />
+          <span key={index} aria-hidden className="h-2.5 w-0.5 rounded-full bg-current opacity-70" />
         ))}
       </span>
     </span>

@@ -2,20 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  type ColDef,
-  type ICellRendererParams,
-} from "ag-grid-community";
+import { type ColDef, type ICellRendererParams } from "ag-grid-community";
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { AgGridHost } from "@/components/ag-grid-host";
 
 type SessionBlock = {
   time: string;
@@ -180,6 +174,15 @@ export function ScheduleGrid() {
     }));
 
     return [
+      {
+        field: "time",
+        headerName: "Time",
+        pinned: "left",
+        width: 92,
+        sortable: false,
+        filter: false,
+        cellClass: "font-mono text-xs text-[var(--muted)]",
+      },
       ...dayColumns,
     ];
   }, [weekStart]);
@@ -238,7 +241,7 @@ export function ScheduleGrid() {
           <div className="flex flex-col justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 lg:min-w-[330px] lg:border-l lg:border-t-0">
             <div className="grid grid-cols-3 gap-2">
               <Button
-                variant="secondary"
+                variant="surface"
                 className="px-3"
                 onClick={() => {
                   const next = addDays(weekStart, -7);
@@ -252,6 +255,7 @@ export function ScheduleGrid() {
               <Button
                 variant="ghost"
                 className="px-3"
+                aria-label="Go to current week"
                 onClick={() => {
                   const today = startOfWeek(new Date());
                   setWeekStart(today);
@@ -261,7 +265,7 @@ export function ScheduleGrid() {
                 <RotateCcw size={16} /> Today
               </Button>
               <Button
-                variant="secondary"
+                variant="surface"
                 className="px-3"
                 onClick={() => {
                   const next = addDays(weekStart, 7);
@@ -302,7 +306,7 @@ export function ScheduleGrid() {
             <p className="text-xs text-[var(--muted)]">Horizontal scroll keeps the full week readable.</p>
           </div>
         </div>
-        <div className="oss-schedule-grid ag-theme-quartz h-[690px] w-full">
+        <AgGridHost className="oss-schedule-grid ag-theme-quartz h-[690px] w-full">
           <AgGridReact<ScheduleRow>
             rowData={rows}
             columnDefs={columnDefs}
@@ -313,7 +317,7 @@ export function ScheduleGrid() {
             rowHeight={104}
             headerHeight={50}
           />
-        </div>
+        </AgGridHost>
       </div>
     </div>
   );

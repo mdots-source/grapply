@@ -5,7 +5,7 @@ import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { students } from "@/data/academy";
+import { resolveStudentsByIds } from "@/lib/members";
 import { trainingCamps } from "@/data/training-camps";
 
 const tasks = [
@@ -106,7 +106,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function CampCard({ camp }: { camp: (typeof trainingCamps)[number] }) {
-  const roster = camp.registered_students.map((id) => students.find((student) => student.id === id)).filter(Boolean);
+  const roster = resolveStudentsByIds(camp.registered_students);
   const spotsLeft = camp.spotsTotal - camp.registered_students.length;
 
   return (
@@ -162,7 +162,7 @@ function CampCard({ camp }: { camp: (typeof trainingCamps)[number] }) {
           <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">Travel roster</p>
           <div className="flex -space-x-3">
             {roster.map((student) => (
-              <StudentAvatar key={student!.id} student={student!} className="size-10 border-2 border-[var(--background)]" />
+              <StudentAvatar key={student.id} student={student} className="size-10 border-2 border-[var(--background)]" />
             ))}
           </div>
         </div>

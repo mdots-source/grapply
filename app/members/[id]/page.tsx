@@ -52,8 +52,8 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>Attendance Rhythm</CardTitle>
-                <CardKicker>Last seven academy days</CardKicker>
+                <CardTitle>Academy attendance</CardTitle>
+                <CardKicker>Last seven academy days (reference trend)</CardKicker>
               </div>
               <Badge>{member.status}</Badge>
             </CardHeader>

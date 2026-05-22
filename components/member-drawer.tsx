@@ -104,7 +104,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
             onSubmit={(event) => {
               event.preventDefault();
               if (!form.name.trim() || !onAddMember) return;
-              const id = `st-${Date.now()}`;
+              const id = `st-${crypto.randomUUID().slice(0, 8)}`;
               onAddMember({
                 id,
                 name: form.name.trim(),
