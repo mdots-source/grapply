@@ -67,7 +67,7 @@ export const promotions = [
   {
     id: "p1",
     student: "Noah Keller",
-    detail: "Received 4th stripe on Blue Belt",
+    detail: "Received 4th stripe on Black Belt",
     awardedBy: "Sofia Almeida",
     when: "2 hours ago",
     type: "stripe" as const,

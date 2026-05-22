@@ -5,7 +5,7 @@ import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { students } from "@/data/academy";
+import { resolveStudentsByIds } from "@/lib/members";
 import { competitions } from "@/data/competitions";
 
 const tasks = [
@@ -100,7 +100,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function CompetitionCard({ event }: { event: (typeof competitions)[number] }) {
-  const roster = event.registered_students.map((id) => students.find((student) => student.id === id)).filter(Boolean);
+  const roster = resolveStudentsByIds(event.registered_students);
 
   return (
     <Card className="flex min-h-[330px] flex-col p-5">
@@ -146,7 +146,7 @@ function CompetitionCard({ event }: { event: (typeof competitions)[number] }) {
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">Roster</p>
         <div className="flex -space-x-3">
           {roster.map((student) => (
-            <StudentAvatar key={student!.id} student={student!} className="size-10 border-2 border-[var(--background)]" />
+            <StudentAvatar key={student.id} student={student} className="size-10 border-2 border-[var(--background)]" />
           ))}
         </div>
       </div>

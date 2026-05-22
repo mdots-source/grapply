@@ -8,6 +8,7 @@ import { BeltPill } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { beltStyles, currentSession, tvCheckedInAthletes, type TvCheckedInAthlete } from "@/data/academy";
+import { getAppUrl } from "@/lib/app-url";
 
 const VISIBLE_COUNT = 6;
 const ROTATION_MS = 4200;
@@ -81,7 +82,7 @@ export function TvScreen() {
 
             <div className="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               {visibleAthletes.map((athlete, slot) => (
-                <AthleteCard key={`tv-slot-${slot}`} athlete={athlete} slot={slot} />
+                <AthleteCard key={athlete.id} athlete={athlete} slot={slot} />
               ))}
             </div>
           </section>
@@ -148,7 +149,13 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
           <div className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
             <div className="flex items-start gap-4">
               <div className="rounded-xl bg-white p-2">
-                <QRCodeSVG value={currentSession.checkInUrl} size={88} bgColor="#ffffff" fgColor="#050507" level="M" />
+                <QRCodeSVG
+                  value={getAppUrl(`/login?session=${currentSession.id}`)}
+                  size={88}
+                  bgColor="#ffffff"
+                  fgColor="#050507"
+                  level="M"
+                />
               </div>
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Check in</p>

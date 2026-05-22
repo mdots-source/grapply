@@ -63,6 +63,7 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
                 key={item.href}
                 href={item.href}
                 active={active}
+                aria-current={active ? "page" : undefined}
               >
                 {active && <motion.span layoutId="active-nav" className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[var(--accent)]" />}
                 <Icon size={18} />
@@ -109,7 +110,12 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
 
             <div className="mt-4 flex items-center gap-2 overflow-x-auto lg:hidden">
               {nav.map((item) => (
-                <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)) ? "page" : undefined}
+                  className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
+                >
                   {item.label}
                 </Link>
               ))}
