@@ -24,10 +24,10 @@ importers:
         specifier: 10.4.22
         version: 10.4.22(postcss@8.5.6)
       class-variance-authority:
-        specifier: latest
+        specifier: 0.7.1
         version: 0.7.1
       clsx:
-        specifier: latest
+        specifier: 2.1.1
         version: 2.1.1
       framer-motion:
         specifier: latest
@@ -45,25 +45,19 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(react@19.2.6)
       react:
-        specifier: latest
+        specifier: 19.2.6
         version: 19.2.6
       react-day-picker:
         specifier: ^9.14.0
         version: 9.14.0(react@19.2.6)
       react-dom:
-        specifier: latest
+        specifier: 19.2.6
         version: 19.2.6(react@19.2.6)
-      react-grid-layout:
-        specifier: latest
-        version: 2.2.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      react-resizable:
-        specifier: 3.2.0
-        version: 3.2.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       recharts:
-        specifier: latest
+        specifier: 3.8.1
         version: 3.8.1(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-is@16.13.1)(react@19.2.6)(redux@5.0.1)
       tailwind-merge:
-        specifier: latest
+        specifier: 3.6.0
         version: 3.6.0
       tailwindcss:
         specifier: 3.4.18
@@ -84,9 +78,6 @@ importers:
       '@types/react-dom':
         specifier: latest
         version: 19.2.3(@types/react@19.2.15)
-      '@types/react-grid-layout':
-        specifier: latest
-        version: 2.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       eslint:
         specifier: latest
         version: 10.4.0(jiti@1.21.7)
