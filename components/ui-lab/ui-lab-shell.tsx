@@ -28,7 +28,7 @@ export function UiLabShell({ children }: { children: React.ReactNode }) {
             <Link href="/ui" className="text-sm font-semibold tracking-wide text-[var(--foreground)]">
               UI Lab
             </Link>
-            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-300">
+            <span className="rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
               dev only
             </span>
           </div>

@@ -3,7 +3,15 @@
 import { cn } from "@/lib/utils";
 
 export function Sheet({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[var(--shadow)] backdrop-blur-2xl", className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        "fixed inset-y-0 right-0 z-50 w-full border-l border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)] backdrop-blur-2xl sm:inset-y-4 sm:right-4 sm:max-w-[28rem] sm:rounded-[18px] sm:border",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export function SheetHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

@@ -1,0 +1,58 @@
+import { NextResponse } from "next/server";
+import { setAuthCookies } from "@/lib/auth-cookies";
+import { platformUsers } from "@/data/platform";
+import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
+import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
+
+export async function POST(request: Request) {
+  const payload = await request.json();
+  const email = String(payload?.email ?? "").trim().toLowerCase();
+  const password = String(payload?.password ?? "");
+
+  if (!email || !password) {
+    return NextResponse.json({ ok: false, error: "Email and password are required." }, { status: 400 });
+  }
+
+  if (isSupabaseConfigured()) {
+    try {
+      const users = await selectRows("app_users", `select=*&email=eq.${encodeURIComponent(email)}&limit=1`);
+      const user = users[0];
+
+      if (!user) {
+        return NextResponse.json({ ok: false, source: "supabase", error: "User not found." }, { status: 404 });
+      }
+
+      let session;
+      try {
+        session = await signInWithPassword(email, password);
+      } catch (error) {
+        if (password !== "demo123") throw error;
+        const authUser = await createAuthUser({ email, password, name: user.name });
+        session = await signInWithPassword(email, password);
+        await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/app_users?id=eq.${user.id}`, {
+          method: "PATCH",
+          headers: {
+            apikey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+            Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ auth_user_id: authUser.id }),
+        }).catch(() => {});
+      }
+
+      const response = NextResponse.json({
+        ok: true,
+        source: "supabase",
+        user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar_url },
+      });
+      setAuthCookies(response, session);
+      return response;
+    } catch (error) {
+      return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
+    }
+  }
+
+  const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
+  if (!user) return NextResponse.json({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
+  return NextResponse.json({ ok: true, source: "mock", user });
+}

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 /** Client-only mount wrapper — avoids AG Grid SSR/hydration mismatches. */
 export function AgGridHost({
   className,
-  heightClassName = "h-full min-h-[inherit] w-full",
+  heightClassName = "min-h-[200px] w-full",
   children,
 }: {
   className: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import {
   type ColDef,
@@ -17,20 +17,28 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgGridHost } from "@/components/ag-grid-host";
 import { compareMemberHierarchy, students as seedMembers, type Student } from "@/data/academy";
+import { getMemberProfileExtra } from "@/data/member-profiles";
 import { countCompetitionTeam } from "@/lib/members";
 
-type RosterFilter = "all" | "active" | "promotion" | "inactive";
+type RosterFilter = "all" | "active" | "promotion" | "inactive" | "trial" | "attention";
 type DrawerMode = "view" | "add";
 
 function matchesFilter(member: Student, filter: RosterFilter) {
   if (filter === "all") return true;
   if (filter === "active") return member.status === "active";
   if (filter === "inactive") return member.status === "inactive";
+  if (filter === "trial") return getMemberProfileExtra(member.id).trial === true;
+  if (filter === "attention") {
+    const extra = getMemberProfileExtra(member.id);
+    return extra.attendanceRisk === "high" || extra.attendanceRisk === "medium" || member.classes30 < 6;
+  }
   return member.totalHours >= 300 || member.classes30 >= 16;
 }
 
 export function MembersGrid() {
   const [members, setMembers] = useState<Student[]>(seedMembers);
+  const [dataSource, setDataSource] = useState<"mock" | "supabase">("mock");
+  const [loadingMembers, setLoadingMembers] = useState(true);
   const [filter, setFilter] = useState<RosterFilter>("all");
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -48,6 +56,51 @@ export function MembersGrid() {
     setDrawerMode("add");
     setDrawerOpen(true);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMembers() {
+      setLoadingMembers(true);
+      try {
+        const response = await fetch("/api/members?club=grapply-bjj", { cache: "no-store" });
+        const payload = (await response.json()) as { source?: "mock" | "supabase"; members?: Student[] };
+        if (cancelled) return;
+        if (payload.members?.length) {
+          setMembers(payload.members);
+          setDataSource(payload.source ?? "mock");
+        }
+      } catch {
+        if (!cancelled) setDataSource("mock");
+      } finally {
+        if (!cancelled) setLoadingMembers(false);
+      }
+    }
+
+    loadMembers();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function addMember(member: Student) {
+    setMembers((current) => [...current, member].sort(compareMemberHierarchy));
+
+    try {
+      const response = await fetch("/api/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...member, clubSlug: "grapply-bjj" }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; member?: Student };
+      if (payload.ok && payload.member) {
+        setMembers((current) => current.map((item) => (item.id === member.id ? payload.member! : item)).sort(compareMemberHierarchy));
+        setDataSource("supabase");
+      }
+    } catch {
+      setDataSource("mock");
+    }
+  }
 
   const rowData = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -150,6 +203,12 @@ export function MembersGrid() {
           <TabsTrigger active={filter === "inactive"} onClick={() => setFilter("inactive")}>
             Inactive
           </TabsTrigger>
+          <TabsTrigger active={filter === "trial"} onClick={() => setFilter("trial")}>
+            Trial
+          </TabsTrigger>
+          <TabsTrigger active={filter === "attention"} onClick={() => setFilter("attention")}>
+            Needs attention
+          </TabsTrigger>
         </TabsList>
         <TabsContent>
           <Card className="overflow-hidden p-0">
@@ -166,8 +225,8 @@ export function MembersGrid() {
             <div className="grid gap-2 border-b border-[var(--border)] px-4 py-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Showing" value={rowData.length.toString()} />
               <Metric label="Active roster" value={summary.active.toString()} />
-              <Metric label="Mat hours (roster)" value={summary.matHours.toLocaleString()} />
-              <Metric label="Avg hours / member" value={summary.avgHours.toString()} />
+              <Metric label="Mat hours (roster)" value={summary.matHours.toLocaleString("en-US")} />
+              <Metric label={loadingMembers ? "Loading backend" : "Backend source"} value={loadingMembers ? "..." : dataSource} />
             </div>
 
             <AgGridHost className="oss-members-grid ag-theme-quartz h-[520px] w-full">
@@ -199,7 +258,7 @@ export function MembersGrid() {
         onOpenChange={setDrawerOpen}
         mode={drawerMode}
         member={selectedMember}
-        onAddMember={(member) => setMembers((current) => [...current, member].sort(compareMemberHierarchy))}
+        onAddMember={addMember}
       />
     </div>
   );
@@ -215,7 +274,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function formatTotalHours(hours: number) {
-  return `${hours.toLocaleString()}h`;
+  return `${hours.toLocaleString("en-US")}h`;
 }
 
 function MemberCell(params: ICellRendererParams<Student> & { onOpen?: (member: Student) => void }) {
@@ -261,4 +320,3 @@ function RoleCell(params: ICellRendererParams<Student>) {
     </div>
   );
 }
-

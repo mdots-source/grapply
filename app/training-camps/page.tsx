@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { resolveStudentsByIds } from "@/lib/members";
-import { trainingCamps } from "@/data/training-camps";
+import { getTrainingCampsData } from "@/lib/backend-data";
+import type { TrainingCamp } from "@/data/training-camps";
 
 const tasks = [
   { label: "Travel confirmed", done: 11, total: 16 },
@@ -14,7 +15,8 @@ const tasks = [
   { label: "Gear checklist", done: 14, total: 16 },
 ];
 
-export default function TrainingCampsPage() {
+export default async function TrainingCampsPage() {
+  const trainingCamps = await getTrainingCampsData();
   const totalTravelers = new Set(trainingCamps.flatMap((camp) => camp.registered_students)).size;
   const nextCamp = trainingCamps[0];
 
@@ -105,7 +107,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CampCard({ camp }: { camp: (typeof trainingCamps)[number] }) {
+function CampCard({ camp }: { camp: TrainingCamp }) {
   const roster = resolveStudentsByIds(camp.registered_students);
   const spotsLeft = camp.spotsTotal - camp.registered_students.length;
 

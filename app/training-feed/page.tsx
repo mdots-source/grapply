@@ -1,39 +1,39 @@
-import { MessageCircle, Radio, Zap } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
+import { TrainingPostCard } from "@/components/oss/training-post-card";
+import { CreateTrainingPostForm } from "@/components/training-feed/create-training-post-form";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { feed } from "@/data/academy";
+import { getTrainingPostsData } from "@/lib/backend-data";
 
-export default function TrainingFeedPage() {
+export default async function TrainingFeedPage() {
+  const trainingPosts = await getTrainingPostsData();
+  const pinned = trainingPosts.filter((p) => p.pinned);
+  const rest = trainingPosts.filter((p) => !p.pinned);
+
   return (
-    <AppShell title="Training Feed" subtitle="A social activity timeline for class recaps, sparring highlights, promotion signals, and community momentum.">
+    <AppShell
+      title="Training Feed"
+      subtitle="Academy memory — class recaps, promotions, competition moments, and the energy on the mats."
+    >
       <PageTransition>
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <Badge variant="accent">{trainingPosts.length} posts</Badge>
+          <Badge>Timeline</Badge>
+          <Badge variant="muted">Reactions & comments (demo)</Badge>
+        </div>
         <div className="mx-auto max-w-3xl space-y-5">
-          {feed.map((post) => (
-            <Card key={post.id} className="p-0">
-              <div className="border-b border-[var(--border)] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <Badge><Radio size={14} /> {post.author}</Badge>
-                    <h2 className="mt-4 text-2xl font-semibold">{post.title}</h2>
-                  </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--accent)] px-3 py-2 text-center text-[var(--accent-foreground)]">
-                    <p className="text-xl font-black">{post.heat}</p>
-                    <p className="text-[10px] font-bold uppercase">heat</p>
-                  </div>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{post.text}</p>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-[var(--muted)]">
-                <span>{post.meta}</span>
-                <div className="flex gap-2">
-                  <Badge><Zap size={14} /> Boost</Badge>
-                  <Badge><MessageCircle size={14} /> Discuss</Badge>
-                </div>
-              </div>
-            </Card>
+          <CreateTrainingPostForm />
+          {pinned.map((post, i) => (
+            <TrainingPostCard key={post.id} post={post} index={i} />
           ))}
+          <div className="border-t border-[var(--border)] pt-2">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Recent</p>
+            {rest.map((post, i) => (
+              <div key={post.id} className="mb-5">
+                <TrainingPostCard post={post} index={i + pinned.length} />
+              </div>
+            ))}
+          </div>
         </div>
       </PageTransition>
     </AppShell>

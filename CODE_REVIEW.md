@@ -1,4 +1,4 @@
-# Code review — OSS OS (первый релиз вёрстки)
+# Code review — Grapply (первый релиз вёрстки)
 
 Дата: 2026-05-21  
 Ветка исправлений: `fix/code-review-v1`
@@ -72,6 +72,6 @@ node node_modules/next/dist/bin/next build --webpack  # OK
 
 ## Ссылки после merge
 
-- Production: https://bjj-lemon.vercel.app
+- Production: https://grapply.vercel.app
 - GitHub: https://github.com/sonetta17/bjj
-- UI Lab: https://bjj-lemon.vercel.app/ui
+- UI Lab: https://grapply.vercel.app/ui

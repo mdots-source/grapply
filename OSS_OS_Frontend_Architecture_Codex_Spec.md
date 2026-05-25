@@ -1,4 +1,4 @@
-# OSS OS — Frontend Architecture & Codex Specification
+# Grapply — Frontend Architecture & Codex Specification
 
 ## Project Goal
 
@@ -102,7 +102,21 @@ Do NOT build:
 ### Authentication
 - login page
 - register page
+- mock Strava sign-in/register CTA
+- user account → club memberships
+- empty state when a user is not invited to any club
 - dark premium UI
+
+### Platform / Backend Contract
+- users
+- clubs
+- club memberships
+- role-based access: owner, admin, coach, member
+- club-scoped BJJ classes
+- mock API routes for clubs and admin roles
+- Strava OAuth V3 route handlers with env-based credentials
+- Supabase/Postgres schema with RLS policies
+- server routes read from Supabase when env keys are configured and fall back to mock data locally
 
 ---
 
@@ -111,6 +125,7 @@ Do NOT build:
 Theme:
 - dark mode only
 - black / graphite backgrounds
+- violet primary accent with BJJ blue, green, and coral support colors
 - premium contrast
 - smooth animations
 

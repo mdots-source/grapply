@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { CreateClassForm } from "@/components/schedule/create-class-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -277,9 +278,7 @@ export function ScheduleGrid() {
                 <ChevronRight size={16} />
               </Button>
             </div>
-            <Button variant="primary" className="w-full justify-center">
-              <CalendarPlus size={16} /> Add class
-            </Button>
+            <CreateClassForm />
           </div>
         </div>
       </Card>

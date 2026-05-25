@@ -15,46 +15,67 @@ html[data-theme="dark"] {
   --surface: rgba(255, 255, 255, 0.06);
   --surface-hover: rgba(255, 255, 255, 0.1);
   --border: rgba(255, 255, 255, 0.1);
-  --accent: #e8ff5f;
-  --accent-foreground: #09090b;
-  --accent-blue: #72ddff;
-  --accent-coral: #ff6b5f;
+  --accent: #a78bfa;
+  --accent-foreground: #111018;
+  --accent-blue: #38bdf8;
+  --accent-coral: #fb7185;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
   --glass-top: rgba(255, 255, 255, 0.075);
   --glass-bottom: rgba(255, 255, 255, 0.035);
   --body-gradient:
-    radial-gradient(circle at 12% 10%, rgba(232, 255, 95, 0.08), transparent 30%),
-    radial-gradient(circle at 80% 8%, rgba(114, 221, 255, 0.08), transparent 28%),
+    radial-gradient(circle at 12% 10%, rgba(167, 139, 250, 0.12), transparent 30%),
+    radial-gradient(circle at 80% 8%, rgba(56, 189, 248, 0.08), transparent 28%),
     linear-gradient(180deg, #09090c 0%, #050507 44%, #07080a 100%);
   --ag-bg: rgba(8, 9, 12, 0.72);
   --ag-header: rgba(255, 255, 255, 0.055);
-  --ag-row-hover: rgba(232, 255, 95, 0.055);
+  --ag-row-hover: rgba(167, 139, 250, 0.07);
+  --status-live: #34d399;
+  --status-success: #34d399;
+  --status-warning: #fb7185;
+  --status-danger: #fb7185;
+  --elevated: rgba(22, 24, 30, 0.95);
+  --glow-accent: 0 0 48px rgba(167, 139, 250, 0.16);
 }
 
 html[data-theme="light"] {
   color-scheme: light;
-  --background: #eef1f6;
-  --foreground: #0c0f14;
-  --muted: #4b5563;
-  --panel: #ffffff;
+  --background: #f6f4ff;
+  --foreground: #15121f;
+  --muted: #635f72;
+  --panel: rgba(255, 255, 255, 0.86);
   --panel-strong: #ffffff;
-  --surface: rgba(12, 15, 20, 0.06);
-  --surface-hover: rgba(12, 15, 20, 0.1);
-  --border: rgba(12, 15, 20, 0.14);
-  --accent: #c8e600;
-  --accent-foreground: #101218;
-  --accent-blue: #0e8ec8;
-  --accent-coral: #e24b42;
-  --shadow: 0 20px 60px rgba(15, 18, 24, 0.1);
-  --glass-top: rgba(255, 255, 255, 0.95);
-  --glass-bottom: rgba(255, 255, 255, 0.82);
+  --surface: rgba(124, 58, 237, 0.055);
+  --surface-hover: rgba(124, 58, 237, 0.09);
+  --border: rgba(53, 42, 82, 0.13);
+  --accent: #6d28d9;
+  --accent-foreground: #ffffff;
+  --accent-blue: #0369a1;
+  --accent-coral: #be123c;
+  --shadow: 0 18px 48px rgba(54, 43, 87, 0.12);
+  --glass-top: rgba(255, 255, 255, 0.9);
+  --glass-bottom: rgba(250, 248, 255, 0.78);
   --body-gradient:
-    radial-gradient(circle at 12% 10%, rgba(200, 230, 0, 0.14), transparent 32%),
-    radial-gradient(circle at 82% 8%, rgba(14, 142, 200, 0.1), transparent 30%),
-    linear-gradient(180deg, #ffffff 0%, #f3f5f8 48%, #e9edf3 100%);
-  --ag-bg: rgba(255, 255, 255, 0.95);
-  --ag-header: rgba(15, 18, 24, 0.04);
-  --ag-row-hover: rgba(200, 230, 0, 0.12);
+    radial-gradient(circle at 12% 6%, rgba(124, 58, 237, 0.11), transparent 28%),
+    radial-gradient(circle at 88% 10%, rgba(14, 165, 233, 0.08), transparent 26%),
+    linear-gradient(180deg, #ffffff 0%, #f8f6ff 46%, #f0eef8 100%);
+  --ag-bg: rgba(255, 255, 255, 0.86);
+  --ag-header: rgba(124, 58, 237, 0.055);
+  --ag-row-hover: rgba(124, 58, 237, 0.075);
+  --status-live: #059669;
+  --status-success: #059669;
+  --status-warning: #e11d48;
+  --status-danger: #e11d48;
+  --elevated: #ffffff;
+  --glow-accent: 0 0 34px rgba(109, 40, 217, 0.13);
+}
+
+@keyframes oss-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 * {
@@ -121,6 +142,18 @@ select {
   color: var(--muted);
 }
 
+.sidebar-menu-active {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  box-shadow: inset 0 0 0 1px var(--nav-active-ring);
+}
+
+html[data-theme="dark"] .sidebar-menu-active {
+  background: var(--nav-active-bg-dark);
+  color: var(--nav-active-text-dark);
+  box-shadow: inset 0 0 0 1px var(--nav-active-ring-dark);
+}
+
 /* Theme-aware surfaces — prefer these over zinc/white/black utilities */
 .oss-surface {
   background: var(--surface);
@@ -146,6 +179,40 @@ select {
 
 .react-resizable-handle::after {
   border-color: color-mix(in srgb, var(--accent) 75%, transparent) !important;
+}
+
+.strava-button {
+  border: 1px solid color-mix(in srgb, #fc4c02 72%, #ffffff 18%);
+  background: linear-gradient(180deg, #ff6a2a 0%, #fc4c02 58%, #e34402 100%);
+  color: #ffffff;
+  box-shadow:
+    0 14px 34px color-mix(in srgb, #fc4c02 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.strava-button:hover {
+  background: linear-gradient(180deg, #ff7a3d 0%, #fc4c02 54%, #d63d02 100%);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow:
+    0 18px 44px color-mix(in srgb, #fc4c02 38%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.strava-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, #fc4c02 32%, transparent),
+    0 18px 44px color-mix(in srgb, #fc4c02 34%, transparent);
+}
+
+.strava-button-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .oss-schedule-grid.ag-theme-quartz {

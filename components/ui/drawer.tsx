@@ -20,13 +20,13 @@ export function Drawer({ open, onOpenChange, children, className }: DrawerProps)
       <button
         type="button"
         aria-label="Close drawer"
-        className="absolute inset-0 bg-[color-mix(in_srgb,var(--background)_55%,transparent)] backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[color-mix(in_srgb,var(--background)_62%,transparent)] backdrop-blur-[3px]"
         onClick={() => onOpenChange(false)}
       />
       <Sheet
         role="dialog"
         aria-modal="true"
-        className={cn("relative z-10 flex h-full flex-col overflow-y-auto", className)}
+        className={cn("flex flex-col overflow-y-auto", className)}
       >
         {children}
       </Sheet>

@@ -33,8 +33,8 @@ export const beltDistribution: { belt: Belt; count: number }[] = [
 export const todayClasses = [
   { time: "06:30", name: "Dawn Patrol Gi", coach: "Sofia Almeida", room: "Mat A", capacity: 28, enrolled: 24, isNext: false },
   { time: "12:00", name: "Lunch No-Gi", coach: "Lina Okafor", room: "Mat B", capacity: 34, enrolled: 29, isNext: false },
-  { time: "17:30", name: "Kids Competition", coach: "Noah Keller", room: "Mat A", capacity: 22, enrolled: 19, isNext: true },
-  { time: "19:00", name: "Advanced Sparring", coach: "Sofia Almeida", room: "Main Mat", capacity: 46, enrolled: 41, isNext: false },
+  { time: "17:30", name: "Kids Competition", coach: "Noah Keller", room: "Mat A", capacity: 22, enrolled: 19, isNext: false },
+  { time: "19:00", name: "Advanced No-Gi", coach: "Sofia Almeida", room: "Main Mat", capacity: 46, enrolled: 41, isNext: true },
   { time: "20:30", name: "Open Mat", coach: "Lina Okafor", room: "Mat B", capacity: 30, enrolled: 18, isNext: false },
 ];
 

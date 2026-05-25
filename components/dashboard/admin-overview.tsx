@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
@@ -16,6 +15,8 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BeltPill } from "@/components/belt-pill";
+import { SectionHeader } from "@/components/oss/section-header";
+import { StatCard } from "@/components/oss/stat-card";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,14 +55,7 @@ export function AdminOverview() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat, index) => (
-          <motion.div
-            key={stat.key}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.04 }}
-          >
-            <StatCard {...stat} />
-          </motion.div>
+          <StatCard key={stat.key} label={stat.label} value={stat.value} icon={stat.icon} trend={stat.trend} tone={stat.tone} index={index} />
         ))}
       </div>
 
@@ -224,51 +218,5 @@ export function AdminOverview() {
         </Card>
       </div>
     </section>
-  );
-}
-
-function SectionHeader({ kicker, title, description }: { kicker: string; title: string; description: string }) {
-  return (
-    <div className="flex flex-col gap-1 border-b border-[var(--border)] pb-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{kicker}</p>
-      <h2 className="text-2xl font-semibold text-[var(--foreground)]">{title}</h2>
-      <p className="max-w-3xl text-sm text-[var(--muted)]">{description}</p>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  trend,
-  tone,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  trend: string;
-  tone: "accent" | "blue" | "coral" | "default";
-}) {
-  const iconTone = {
-    accent: "text-[var(--accent)] bg-[var(--accent)]/12 border-[var(--accent)]/25",
-    blue: "text-[var(--accent-blue)] bg-sky-400/10 border-sky-400/20",
-    coral: "text-[var(--accent-coral)] bg-rose-400/10 border-rose-400/20",
-    default: "text-[var(--muted)] bg-[var(--surface)] border-[var(--border)]",
-  }[tone];
-
-  return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className={`grid size-10 place-items-center rounded-xl border ${iconTone}`}>
-          <Icon size={18} />
-        </div>
-        <Badge variant="muted" className="text-[10px]">
-          {trend}
-        </Badge>
-      </div>
-      <p className="mt-4 text-2xl font-semibold text-[var(--foreground)]">{value}</p>
-      <p className="mt-1 text-xs text-[var(--muted)]">{label}</p>
-    </Card>
   );
 }

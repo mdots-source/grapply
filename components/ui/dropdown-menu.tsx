@@ -11,7 +11,7 @@ export function DropdownMenuTrigger({ className, ...props }: React.ButtonHTMLAtt
 }
 
 export function DropdownMenuContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("absolute right-0 top-full z-50 mt-2 min-w-44 rounded-lg border border-[var(--border)] bg-[#101116] p-1 shadow-2xl", className)} {...props} />;
+  return <div className={cn("absolute right-0 top-full z-50 mt-2 min-w-44 rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] p-1 shadow-[var(--shadow)]", className)} {...props} />;
 }
 
 export function DropdownMenuItem({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

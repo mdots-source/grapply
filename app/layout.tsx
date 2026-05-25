@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OSS OS",
+  title: "Grapply",
   description: "Premium academy operating system for Brazilian Jiu-Jitsu schools.",
 };
 

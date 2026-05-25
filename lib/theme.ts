@@ -1,6 +1,6 @@
 export type ThemeMode = "dark" | "light";
 
-export const THEME_STORAGE_KEY = "oss-os-theme";
+export const THEME_STORAGE_KEY = "grapply-theme";
 
 export function getStoredTheme(): ThemeMode {
   if (typeof window === "undefined") return "dark";

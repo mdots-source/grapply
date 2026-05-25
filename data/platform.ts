@@ -1,0 +1,297 @@
+import { schedule, students, type Student } from "@/data/academy";
+
+export type PlatformRole = "owner" | "admin" | "coach" | "member";
+export type ClubStatus = "active" | "pending" | "archived";
+export type StravaConnectionStatus = "connected" | "not_connected" | "syncing" | "error";
+
+export type PlatformUser = {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  stravaStatus: StravaConnectionStatus;
+  stravaAthleteId?: string;
+};
+
+export type Club = {
+  id: string;
+  slug: string;
+  name: string;
+  location: string;
+  status: ClubStatus;
+  memberCount: number;
+  primaryCoach: string;
+};
+
+export type ClubMembership = {
+  id: string;
+  userId: string;
+  clubId: string;
+  role: PlatformRole;
+  invitedBy?: string;
+  joinedAt: string;
+};
+
+export type RoleDefinition = {
+  role: PlatformRole;
+  label: string;
+  description: string;
+  permissions: string[];
+};
+
+export type ClubClass = {
+  id: string;
+  clubId: string;
+  name: string;
+  coach: string;
+  day: string;
+  time: string;
+  mat: string;
+  level: string;
+  checkedIn: number;
+};
+
+export const platformUsers: PlatformUser[] = [
+  {
+    id: "usr-sofia",
+    name: "Sofia Almeida",
+    email: "sofia@grapply.app",
+    avatar: "/avatars/sofia-almeida.png",
+    stravaStatus: "connected",
+    stravaAthleteId: "12345678",
+  },
+  {
+    id: "usr-maya",
+    name: "Maya Ribeiro",
+    email: "maya@grapply.app",
+    avatar: "/avatars/maya-ribeiro.png",
+    stravaStatus: "syncing",
+    stravaAthleteId: "33221100",
+  },
+  {
+    id: "usr-eli",
+    name: "Eli Morgan",
+    email: "eli@grapply.app",
+    avatar: "/avatars/eli-morgan.png",
+    stravaStatus: "not_connected",
+  },
+  {
+    id: "usr-empty",
+    name: "Nina Park",
+    email: "nina@grapply.app",
+    stravaStatus: "not_connected",
+  },
+  {
+    id: "usr-diego",
+    name: "Diego Alvarez",
+    email: "diego@grapply.app",
+    avatar: "/avatars/noah-keller.png",
+    stravaStatus: "connected",
+    stravaAthleteId: "44009112",
+  },
+  {
+    id: "usr-zoe",
+    name: "Zoe Chen",
+    email: "zoe@grapply.app",
+    avatar: "/avatars/eli-morgan.png",
+    stravaStatus: "connected",
+    stravaAthleteId: "55110223",
+  },
+  {
+    id: "usr-omar",
+    name: "Omar Haddad",
+    email: "omar@grapply.app",
+    avatar: "/avatars/sofia-almeida.png",
+    stravaStatus: "error",
+    stravaAthleteId: "77123490",
+  },
+  {
+    id: "usr-priya",
+    name: "Priya Nair",
+    email: "priya@grapply.app",
+    avatar: "/avatars/maya-ribeiro.png",
+    stravaStatus: "not_connected",
+  },
+  {
+    id: "usr-marcus",
+    name: "Marcus Reed",
+    email: "marcus@grapply.app",
+    avatar: "/avatars/noah-keller.png",
+    stravaStatus: "syncing",
+    stravaAthleteId: "88234501",
+  },
+  {
+    id: "usr-ana",
+    name: "Ana Costa",
+    email: "ana@grapply.app",
+    avatar: "/avatars/sofia-almeida.png",
+    stravaStatus: "connected",
+    stravaAthleteId: "99012345",
+  },
+];
+
+export const clubs: Club[] = [
+  {
+    id: "club-grapply",
+    slug: "grapply-bjj",
+    name: "Grapply Jiu-Jitsu Academy",
+    location: "San Diego, CA",
+    status: "active",
+    memberCount: 212,
+    primaryCoach: "Sofia Almeida",
+  },
+  {
+    id: "club-alpine",
+    slug: "alpine-grappling",
+    name: "Alpine Grappling Club",
+    location: "Zurich, CH",
+    status: "active",
+    memberCount: 86,
+    primaryCoach: "Noah Keller",
+  },
+  {
+    id: "club-harbor",
+    slug: "harbor-nogi",
+    name: "Harbor No-Gi Lab",
+    location: "Long Beach, CA",
+    status: "pending",
+    memberCount: 34,
+    primaryCoach: "Lina Okafor",
+  },
+];
+
+export const clubMemberships: ClubMembership[] = [
+  { id: "mem-001", userId: "usr-sofia", clubId: "club-grapply", role: "owner", joinedAt: "2025-01-08" },
+  { id: "mem-002", userId: "usr-sofia", clubId: "club-alpine", role: "coach", invitedBy: "Noah Keller", joinedAt: "2026-02-14" },
+  { id: "mem-003", userId: "usr-maya", clubId: "club-grapply", role: "admin", invitedBy: "Sofia Almeida", joinedAt: "2025-06-20" },
+  { id: "mem-004", userId: "usr-eli", clubId: "club-grapply", role: "member", invitedBy: "Maya Ribeiro", joinedAt: "2026-03-02" },
+  { id: "mem-005", userId: "usr-diego", clubId: "club-grapply", role: "coach", invitedBy: "Sofia Almeida", joinedAt: "2025-11-10" },
+  { id: "mem-006", userId: "usr-zoe", clubId: "club-grapply", role: "member", invitedBy: "Maya Ribeiro", joinedAt: "2026-01-18" },
+  { id: "mem-007", userId: "usr-omar", clubId: "club-alpine", role: "member", invitedBy: "Noah Keller", joinedAt: "2026-02-03" },
+  { id: "mem-008", userId: "usr-priya", clubId: "club-harbor", role: "member", invitedBy: "Lina Okafor", joinedAt: "2026-04-12" },
+  { id: "mem-009", userId: "usr-marcus", clubId: "club-grapply", role: "member", invitedBy: "Sofia Almeida", joinedAt: "2026-04-22" },
+  { id: "mem-010", userId: "usr-ana", clubId: "club-grapply", role: "admin", invitedBy: "Sofia Almeida", joinedAt: "2025-09-14" },
+  { id: "mem-011", userId: "usr-ana", clubId: "club-harbor", role: "coach", invitedBy: "Lina Okafor", joinedAt: "2026-05-01" },
+];
+
+export const roleDefinitions: RoleDefinition[] = [
+  {
+    role: "owner",
+    label: "Owner",
+    description: "Full control over club settings, billing, roles, integrations, and all academy operations.",
+    permissions: ["manage_club", "manage_roles", "manage_billing", "manage_integrations", "manage_classes", "view_members"],
+  },
+  {
+    role: "admin",
+    label: "Admin",
+    description: "Runs daily operations: members, schedules, classes, posts, and reports.",
+    permissions: ["manage_roles", "manage_classes", "manage_members", "publish_feed", "view_reports"],
+  },
+  {
+    role: "coach",
+    label: "Coach",
+    description: "Manages class check-ins, coach notes, attendance, and promotion recommendations.",
+    permissions: ["manage_classes", "coach_notes", "recommend_promotions", "view_members"],
+  },
+  {
+    role: "member",
+    label: "Member",
+    description: "Can view assigned club, schedule, profile, attendance, rankings, and connected activity.",
+    permissions: ["view_schedule", "view_profile", "connect_strava"],
+  },
+];
+
+export const clubClasses: ClubClass[] = [
+  ...schedule.map((item, index) => ({
+    id: `class-grapply-${index + 1}`,
+    clubId: "club-grapply",
+    name: item.name,
+    coach: item.coach,
+    day: ["Mon", "Tue", "Wed", "Thu"][index] ?? "Fri",
+    time: item.time,
+    mat: item.room,
+    level: item.belts.join(" / "),
+    checkedIn: [18, 22, 14, 31][index] ?? 10,
+  })),
+  {
+    id: "class-alpine-1",
+    clubId: "club-alpine",
+    name: "Gi Fundamentals",
+    coach: "Noah Keller",
+    day: "Tue",
+    time: "18:00",
+    mat: "Mat 1",
+    level: "white / blue",
+    checkedIn: 16,
+  },
+  {
+    id: "class-alpine-2",
+    clubId: "club-alpine",
+    name: "Takedown Lab",
+    coach: "Ana Costa",
+    day: "Thu",
+    time: "19:30",
+    mat: "Mat 2",
+    level: "blue / purple / brown",
+    checkedIn: 18,
+  },
+  {
+    id: "class-harbor-1",
+    clubId: "club-harbor",
+    name: "No-Gi Wrestling Entries",
+    coach: "Lina Okafor",
+    day: "Sat",
+    time: "10:30",
+    mat: "Main Mat",
+    level: "blue / purple / brown / black",
+    checkedIn: 12,
+  },
+  {
+    id: "class-harbor-2",
+    clubId: "club-harbor",
+    name: "Women Only Fundamentals",
+    coach: "Lina Okafor",
+    day: "Wed",
+    time: "18:30",
+    mat: "Main Mat",
+    level: "white / blue",
+    checkedIn: 19,
+  },
+  {
+    id: "class-grapply-open-mat",
+    clubId: "club-grapply",
+    name: "Sunday Open Mat",
+    coach: "Maya Ribeiro",
+    day: "Sun",
+    time: "11:00",
+    mat: "Main Mat",
+    level: "all belts",
+    checkedIn: 27,
+  },
+];
+
+export function getPlatformUser(userId = "usr-sofia") {
+  return platformUsers.find((user) => user.id === userId) ?? platformUsers[0];
+}
+
+export function getUserClubContext(userId = "usr-sofia") {
+  const user = getPlatformUser(userId);
+  const memberships = clubMemberships
+    .filter((membership) => membership.userId === user.id)
+    .map((membership) => ({
+      ...membership,
+      club: clubs.find((club) => club.id === membership.clubId)!,
+    }))
+    .filter((membership) => Boolean(membership.club));
+
+  return { user, memberships };
+}
+
+export function getClubRoster(clubId = "club-grapply"): Student[] {
+  if (clubId === "club-grapply") return students;
+  return students.slice(0, 4);
+}
+
+export function canManageRoles(role: PlatformRole) {
+  return role === "owner" || role === "admin";
+}

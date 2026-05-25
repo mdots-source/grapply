@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { resolveStudentsByIds } from "@/lib/members";
-import { competitions } from "@/data/competitions";
+import { getCompetitionsData } from "@/lib/backend-data";
+import type { Competition } from "@/data/competitions";
 
 const tasks = [
   { label: "Confirm divisions", done: 18, total: 24 },
@@ -14,7 +15,8 @@ const tasks = [
   { label: "Travel plans", done: 9, total: 24 },
 ];
 
-export default function CompetitionsPage() {
+export default async function CompetitionsPage() {
+  const competitions = await getCompetitionsData();
   const totalAthletes = new Set(competitions.flatMap((event) => event.registered_students)).size;
   const nextEvent = competitions[0];
 
@@ -99,7 +101,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompetitionCard({ event }: { event: (typeof competitions)[number] }) {
+function CompetitionCard({ event }: { event: Competition }) {
   const roster = resolveStudentsByIds(event.registered_students);
 
   return (

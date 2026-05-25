@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { Clock, MapPin, RadioTower, UserRound } from "lucide-react";
+import { Clock, Flame, MapPin, RadioTower, UserRound } from "lucide-react";
 import { BeltPill } from "@/components/belt-pill";
+import { LiveTicker } from "@/components/oss/live-ticker";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { beltStyles, currentSession, tvCheckedInAthletes, type TvCheckedInAthlete } from "@/data/academy";
+import { tvTickerItems } from "@/data/academy-meta";
 import { getAppUrl } from "@/lib/app-url";
 
 const VISIBLE_COUNT = 6;
@@ -52,7 +54,7 @@ export function TvScreen() {
     <main className="min-h-screen overflow-hidden bg-[#020203] text-zinc-50">
       <div className="relative min-h-screen p-4 md:p-6 lg:p-8">
         <motion.div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(232,255,95,0.14),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(167,139,250,0.18),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]"
           animate={{ opacity: [0.85, 1, 0.85] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -82,10 +84,14 @@ export function TvScreen() {
 
             <div className="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               {visibleAthletes.map((athlete, slot) => (
-                <AthleteCard key={athlete.id} athlete={athlete} slot={slot} />
+                <AthleteCard key={`${athlete.id}-${rotationIndex}`} athlete={athlete} slot={slot} />
               ))}
             </div>
           </section>
+
+          <div className="mt-4">
+            <LiveTicker items={tvTickerItems} />
+          </div>
         </div>
       </div>
     </main>
@@ -106,7 +112,7 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
             </Badge>
             <motion.div
               className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-4 py-1.5 font-mono text-lg font-bold text-[var(--accent)]"
-              animate={{ boxShadow: ["0 0 0 rgba(232,255,95,0)", "0 0 24px rgba(232,255,95,0.2)", "0 0 0 rgba(232,255,95,0)"] }}
+              animate={{ boxShadow: ["0 0 0 rgba(167,139,250,0)", "0 0 24px rgba(167,139,250,0.22)", "0 0 0 rgba(167,139,250,0)"] }}
               transition={{ duration: 2.5, repeat: Infinity }}
             >
               <span className="relative flex size-2.5">
@@ -145,24 +151,31 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-4 xl:w-[340px]">
-          <div className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-            <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-white p-2">
+        <div className="flex w-full flex-col gap-4 xl:w-[400px]">
+          <motion.div
+            className="relative rounded-2xl border border-[var(--accent)]/30 bg-black/50 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+            animate={{ boxShadow: ["0 0 0 rgba(167,139,250,0)", "0 0 40px rgba(167,139,250,0.18)", "0 0 0 rgba(167,139,250,0)"] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            <p className="text-center text-xs font-bold uppercase tracking-[0.24em] text-[var(--accent)]">Scan to check in</p>
+            <div className="relative mx-auto mt-4 w-fit">
+              <motion.span
+                className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-[var(--accent)]/40"
+                animate={{ scale: [1, 1.08, 1], opacity: [0.6, 0.2, 0.6] }}
+                transition={{ duration: 2.2, repeat: Infinity }}
+              />
+              <div className="rounded-2xl bg-white p-4">
                 <QRCodeSVG
                   value={getAppUrl(`/login?session=${currentSession.id}`)}
-                  size={88}
+                  size={148}
                   bgColor="#ffffff"
                   fgColor="#050507"
                   level="M"
                 />
               </div>
-              <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Check in</p>
-                <p className="mt-2 text-sm leading-6 text-zinc-400">Scan to join this session on the academy floor.</p>
-              </div>
             </div>
-          </div>
+            <p className="mt-4 text-center text-sm text-zinc-400">Join {currentSession.name} on the academy floor</p>
+          </motion.div>
           <div className="grid grid-cols-2 gap-3">
             <StatTile label="Checked in" value={checkedInCount.toString()} />
             <StatTile label="Session type" value={currentSession.trainingType} />
@@ -235,6 +248,12 @@ function AthleteCard({ athlete, slot }: { athlete: TvCheckedInAthlete; slot: num
             <p className="line-clamp-2 text-3xl font-black leading-[1.02] tracking-tight md:text-[2rem]">{athlete.name}</p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <BeltPill belt={athlete.belt} stripes={athlete.stripes} className="px-4 py-1.5 text-sm" />
+              {athlete.streak >= 3 && (
+                <Badge className="gap-1 border-[var(--accent-coral)]/30 bg-[var(--accent-coral)]/15 text-[var(--accent-coral)]">
+                  <Flame size={12} />
+                  {athlete.streak} streak
+                </Badge>
+              )}
             </div>
             <p className="mt-3 flex items-center gap-1.5 text-xs text-zinc-400">
               <UserRound size={13} />

@@ -1,7 +1,7 @@
 import { UiLabShell } from "@/components/ui-lab/ui-lab-shell";
 
 export const metadata = {
-  title: "UI Lab · OSS OS",
+  title: "UI Lab · Grapply",
   robots: { index: false, follow: false },
 };
 

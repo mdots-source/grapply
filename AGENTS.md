@@ -1,13 +1,13 @@
-# AGENTS.md — OSS OS (BJJ Academy Prototype)
+# AGENTS.md — Grapply (BJJ Academy Prototype)
 
 Instructions for AI coding agents working in this repository.
 
 ## Project summary
 
-**OSS OS** is a premium frontend prototype for a Brazilian Jiu-Jitsu academy operating system (“Forge Jiu-Jitsu Academy”). It is **mock-data only** — no real backend, auth, or API layer yet.
+**Grapply** is a premium frontend prototype for a Brazilian Jiu-Jitsu academy operating system (“Grapply Jiu-Jitsu Academy”). It is **mock-data only** — no real backend, auth, or API layer yet.
 
 - **Workspace:** `/Users/mishadots/Desktop/bjj`
-- **Package name:** `oss-os-frontend-prototype`
+- **Package name:** `grapply-frontend-prototype`
 - **Default dev URL:** http://localhost:3000
 
 ## Tech stack
@@ -63,10 +63,15 @@ components/
   settings/appearance-settings.tsx
 data/                   # Mock seeds (single source of truth)
   academy.ts            # Student type, students, schedule, TV session
+  platform.ts           # User accounts, clubs, memberships, roles, club classes
   competitions.ts, dashboard.ts, training-camps.ts
 lib/
   theme.ts              # ThemeMode, localStorage key, applyTheme
+  supabase/             # Typed Supabase/Postgres REST helpers
   utils.ts              # cn()
+supabase/
+  migrations/           # Postgres schema and RLS policies
+  seed.sql              # Demo users, clubs, roles, classes
 ```
 
 ## Routes
@@ -74,6 +79,8 @@ lib/
 | Path | Purpose |
 |------|---------|
 | `/` | Dashboard (admin command center) |
+| `/clubs` | User club portal: empty state, single club, or multiple club memberships |
+| `/admin` | Club admin panel for role templates, assigned users, and class operations |
 | `/members`, `/members/[id]` | Members table + profile |
 | `/students`, `/students/[id]` | **Redirects** to `/members` — keep for backwards compatibility |
 | `/schedule` | Weekly class grid + calendar picker |
@@ -82,7 +89,10 @@ lib/
 | `/tv` | Fullscreen TV display (no AppShell) |
 | `/settings` | Brand, appearance, coaches, TV toggles |
 | `/ui`, `/ui/[slug]` | **UI Lab (dev only)** — not in product nav; one primitive per route |
-| `/login`, `/register` | Auth shells (mock) |
+| `/login`, `/register` | Auth shells (mock) with Strava sign-in/register CTA |
+| `/api/clubs` | Mock backend contract for user → club memberships |
+| `/api/admin/roles` | Mock backend contract for role management |
+| `/api/strava/connect`, `/api/strava/callback` | Strava OAuth V3 flow; requires `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, optional `STRAVA_REDIRECT_URI` |
 
 Navigation is defined in `components/app-shell.tsx`. Profile link is **top-right**, not in the sidebar.
 
@@ -91,12 +101,13 @@ Navigation is defined in `components/app-shell.tsx`. Profile link is **top-right
 ### Theme
 
 - Modes: `dark` (default) and `light` via `data-theme` on `<html>`.
-- Storage key: `oss-os-theme` (`lib/theme.ts`).
+- Storage key: `grapply-theme` (`lib/theme.ts`).
 - Use semantic tokens — **never** hardcode `zinc-*` / `white/10` in new product UI:
 
   `--background`, `--foreground`, `--muted`, `--surface`, `--surface-hover`, `--border`, `--accent`, `--accent-foreground`, `--panel`, `--glass-top`, `--glass-bottom`
 
 - Glass panels: class `glass` + optional `oss-hover-lift`.
+- Brand accent is violet/purple by default. Do not reintroduce yellow/amber as a general brand or CTA color; reserve belt colors only for explicit BJJ belt semantics.
 - Theme toggle: **Settings → Appearance** only (`ThemeToggle`, `useTheme()` from `components/providers/theme-provider.tsx`). Never use `zinc-*` / `white/10` / `black/30` in product UI — use semantic tokens.
 
 ### Buttons
@@ -148,6 +159,25 @@ Before inventing new button styles or colors, check **UI Lab** at `/ui` (e.g. `/
 
 - Extend existing files under `data/` rather than inline arrays in pages.
 - Keep types exported next to seeds in the same file.
+- Platform/account data lives in `data/platform.ts`: users, clubs, memberships, roles, and club-scoped BJJ classes.
+- Supabase/Postgres schema lives in `supabase/migrations/0001_initial_schema.sql`; demo seed data lives in `supabase/seed.sql`.
+
+### Account / club model
+
+- A user account can belong to zero, one, or many clubs.
+- If a user has no memberships, `/clubs` shows an empty state rather than entering the academy workspace.
+- Club access is role-based: `owner`, `admin`, `coach`, `member`.
+- Admin role management is currently mock-data only in `/admin` and `/api/admin/roles`; production must enforce these permissions in the database/API layer.
+- API routes use Supabase/Postgres when `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured, and fall back to mock data when they are absent.
+- Strava OAuth routes persist connections to `strava_connections` when Supabase is configured.
+
+### Supabase / Postgres
+
+- Required env for backend data access: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+- Optional public browser key: `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` in client components.
+- Run `supabase/migrations/0001_initial_schema.sql`, then `supabase/seed.sql` in Supabase SQL editor or via the Supabase CLI.
+- RLS is enabled on app tables; authenticated users can only read their own account/club data unless their role allows management.
 
 ## AG Grid
 
@@ -196,6 +226,9 @@ Client components must use `"use client"` where hooks/grid APIs are used.
 - [x] Dashboard admin overview + academy updates
 - [x] TV screen (rotating cards, live clock)
 - [x] Light/dark theme + Settings appearance
+- [x] Mock login/register shells with Strava CTA
+- [x] User → clubs portal and role-management admin panel
+- [x] Strava OAuth route scaffolding
 - [x] UI Lab at `/ui` (dev-only, per-element routes)
 - [ ] Real backend / auth / persistence
 - [ ] i18n

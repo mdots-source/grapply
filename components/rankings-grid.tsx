@@ -1,25 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, Flame, Minus, Trophy } from "lucide-react";
+import { StatCard } from "@/components/oss/stat-card";
 import { BeltPill } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgGridHost } from "@/components/ag-grid-host";
-import { beltStyles, students, type Belt, type Student } from "@/data/academy";
+import { beltStyles, students as seedStudents, type Belt, type Student } from "@/data/academy";
+import { rankingHighlights, rankMovement } from "@/data/rankings-meta";
 
 type RankedStudent = Student & { rank: number };
 
 type BeltFilter = "all" | Belt;
 
 export function RankingsGrid() {
+  const [students, setStudents] = useState<Student[]>(seedStudents);
+  const [source, setSource] = useState<"mock" | "supabase">("mock");
   const [beltFilter, setBeltFilter] = useState<BeltFilter>("all");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch("/api/members", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload: { source?: "mock" | "supabase"; members?: Student[] }) => {
+        if (payload.members?.length) {
+          setStudents(payload.members);
+          setSource(payload.source ?? "mock");
+        }
+      })
+      .catch(() => setSource("mock"));
+  }, []);
 
   const ranked = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -49,10 +65,17 @@ export function RankingsGrid() {
       {
         field: "rank",
         headerName: "#",
-        width: 72,
+        width: 88,
         sortable: false,
         cellRenderer: RankCell,
         cellClass: "font-mono text-[var(--accent)]",
+      },
+      {
+        colId: "movement",
+        headerName: "Δ",
+        width: 72,
+        sortable: false,
+        cellRenderer: MovementCell,
       },
       {
         field: "name",
@@ -101,7 +124,7 @@ export function RankingsGrid() {
         field: "totalHours",
         headerName: "Mat hours",
         width: 120,
-        valueFormatter: (params) => `${(params.value ?? 0).toLocaleString()}h`,
+        valueFormatter: (params) => `${(params.value ?? 0).toLocaleString("en-US")}h`,
         cellClass: "font-mono text-[var(--muted)]",
       },
     ],
@@ -119,6 +142,20 @@ export function RankingsGrid() {
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {rankingHighlights.map((h, i) => (
+          <StatCard
+            key={h.id}
+            label={h.label}
+            value={h.name}
+            icon={Flame}
+            trend={`${h.value} · ${h.detail}`}
+            tone={i === 0 ? "accent" : "blue"}
+            index={i}
+          />
+        ))}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-4">
           <p className="text-xs text-[var(--muted)]">Leader</p>
@@ -131,7 +168,11 @@ export function RankingsGrid() {
         </Card>
         <Card className="p-4">
           <p className="text-xs text-[var(--muted)]">Points in view</p>
-          <p className="mt-2 text-2xl font-semibold">{summary.totalPoints.toLocaleString()}</p>
+          <p className="mt-2 text-2xl font-semibold">{summary.totalPoints.toLocaleString("en-US")}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-[var(--muted)]">Backend source</p>
+          <p className="mt-2 text-2xl font-semibold capitalize">{source}</p>
         </Card>
       </div>
 
@@ -231,6 +272,21 @@ function RoleCell(params: ICellRendererParams<RankedStudent>) {
       <Badge variant={student.role === "coach" ? "accent" : "default"} className="capitalize">
         {student.role}
       </Badge>
+    </div>
+  );
+}
+
+function MovementCell(params: ICellRendererParams<RankedStudent>) {
+  const student = params.data;
+  if (!student) return null;
+  const delta = rankMovement[student.id] ?? 0;
+  const Icon = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : Minus;
+  const color = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-[var(--muted)]";
+
+  return (
+    <div className={`flex h-full items-center gap-1 font-mono text-sm ${color}`}>
+      <Icon size={14} />
+      {delta > 0 ? `+${delta}` : delta}
     </div>
   );
 }

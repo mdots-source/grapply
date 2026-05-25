@@ -12,6 +12,8 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { PromotionCard } from "@/components/oss/promotion-card";
+import { SectionHeader } from "@/components/oss/section-header";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,13 +28,11 @@ export function AcademyUpdates() {
 
   return (
     <section className="space-y-5 pt-2">
-      <div className="flex flex-col gap-1 border-b border-[var(--border)] pb-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-blue)]">Community</p>
-        <h2 className="text-2xl font-semibold text-[var(--foreground)]">Academy Updates</h2>
-        <p className="max-w-3xl text-sm text-[var(--muted)]">
-          News, training recaps, competitions, promotions, and highlights that make the gym feel alive.
-        </p>
-      </div>
+      <SectionHeader
+        kicker="Community"
+        title="Academy Updates"
+        description="News, training recaps, competitions, promotions, and highlights that make the gym feel alive."
+      />
 
       <div className="grid gap-4 xl:grid-cols-12">
         <Card className="xl:col-span-7">
@@ -131,14 +131,14 @@ export function AcademyUpdates() {
           </CardHeader>
           <CardContent className="space-y-3">
             {promotions.map((item) => (
-              <div key={item.id} className="rounded-xl border border-[var(--border)] bg-gradient-to-r from-violet-500/10 to-transparent p-4">
-                <p className="text-sm leading-6 text-[var(--foreground)]">
-                  Congrats to <strong className="text-[var(--foreground)]">{item.student}</strong> — {item.detail.toLowerCase()}.
-                </p>
-                <p className="mt-2 text-xs text-[var(--muted)]">
-                  Awarded by {item.awardedBy} · {item.when}
-                </p>
-              </div>
+              <PromotionCard
+                key={item.id}
+                student={item.student}
+                detail={item.detail}
+                awardedBy={item.awardedBy}
+                when={item.when}
+                type={item.type}
+              />
             ))}
           </CardContent>
         </Card>
