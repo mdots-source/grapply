@@ -4,7 +4,7 @@ import { ScheduleGrid } from "@/components/schedule-grid";
 
 export default function SchedulePage() {
   return (
-    <AppShell title="Schedule" subtitle="Weekly academy planner with classes, coaches, rooms, levels, and capacity at a glance.">
+    <AppShell title="Schedule" subtitle="Weekly academy planner with classes, coaches, rooms, and training levels at a glance.">
       <PageTransition>
         <ScheduleGrid />
       </PageTransition>

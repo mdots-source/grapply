@@ -18,7 +18,7 @@ export function UiLabShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <Link
-              href="/"
+              href="/dashboard"
               className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--foreground)]"
             >
               <ArrowLeft size={14} />

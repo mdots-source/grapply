@@ -12,8 +12,11 @@ const publicPrefixes = [
   "/avatars",
 ];
 
+const publicPaths = ["/"];
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (publicPaths.includes(pathname)) return NextResponse.next();
   if (publicPrefixes.some((prefix) => pathname.startsWith(prefix))) return NextResponse.next();
 
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;

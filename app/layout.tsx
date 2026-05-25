@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Grapply",
-  description: "Premium academy operating system for Brazilian Jiu-Jitsu schools.",
+  description: "Premium academy platform for Brazilian Jiu-Jitsu schools.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

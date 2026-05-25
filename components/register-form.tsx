@@ -61,7 +61,7 @@ export function RegisterForm() {
         <Label htmlFor="owner">Owner email</Label>
         <div className="relative">
           <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-          <Input id="owner" className="pl-9" placeholder="owner@grapply.app" value={ownerEmail} onChange={(event) => setOwnerEmail(event.target.value)} type="email" required />
+          <Input id="owner" className="pl-9" placeholder="owner@academy.com" value={ownerEmail} onChange={(event) => setOwnerEmail(event.target.value)} type="email" required />
         </div>
       </div>
       <div className="space-y-2">

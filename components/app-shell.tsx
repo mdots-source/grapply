@@ -11,7 +11,6 @@ import {
   Medal,
   MonitorPlay,
   Mountain,
-  Radio,
   Settings,
   Shield,
   LogOut,
@@ -33,7 +32,7 @@ const profileHref = `/members/${profileMember.id}`;
 type Role = "owner" | "admin" | "coach" | "member";
 
 const nav = [
-  { href: "/", label: "Dashboard", icon: BarChart3, roles: ["owner", "admin", "coach"] as Role[] },
+  { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["owner", "admin", "coach"] as Role[] },
   { href: "/members", label: "Members", icon: Users, roles: ["owner", "admin", "coach"] as Role[] },
   { href: "/schedule", label: "Schedule", icon: CalendarDays, roles: ["owner", "admin", "coach", "member"] as Role[] },
   { href: "/competitions", label: "Competitions", icon: Medal, roles: ["owner", "admin", "coach", "member"] as Role[] },
@@ -41,7 +40,7 @@ const nav = [
   { href: "/training-feed", label: "Training Feed", icon: Flame, roles: ["owner", "admin", "coach", "member"] as Role[] },
   { href: "/rankings", label: "Rankings", icon: Trophy, roles: ["owner", "admin", "coach", "member"] as Role[] },
   { href: "/tv", label: "TV Screen", icon: MonitorPlay, roles: ["owner", "admin", "coach"] as Role[] },
-  { href: "/admin", label: "Admin", icon: UserCog, roles: ["owner", "admin"] as Role[] },
+  { href: "/admin", label: "Team", icon: UserCog, roles: ["owner", "admin"] as Role[] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["owner", "admin"] as Role[] },
 ];
 
@@ -75,22 +74,15 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
     <div className="min-h-screen text-[var(--foreground)]">
       <Sidebar>
         <SidebarHeader>
-        <Link href="/" className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--accent)]/25 hover:bg-[var(--surface-hover)]">
-          <div className="grid size-10 place-items-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
-            <Shield size={22} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-black tracking-[0.18em] text-[var(--foreground)]">Grapply</div>
-            <div className="truncate text-xs text-[var(--muted)]">{session?.activeClub?.name ?? academyMeta.name}</div>
-            <div className="mt-1 flex items-center gap-1.5 text-[10px] text-emerald-400">
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
-              </span>
-              Academy online
+          <Link href="/dashboard" className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--accent)]/25 hover:bg-[var(--surface-hover)]">
+            <div className="grid size-10 place-items-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
+              <Shield size={22} />
             </div>
-          </div>
-        </Link>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-black tracking-[0.18em] text-[var(--foreground)]">Grapply</div>
+              <div className="truncate text-xs text-[var(--muted)]">{session?.activeClub?.name ?? academyMeta.name}</div>
+            </div>
+          </Link>
         </SidebarHeader>
 
         <SidebarContent>
@@ -131,10 +123,7 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
 
         <SidebarFooter className="space-y-3 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
           <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/6 p-3">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
-              <Radio size={12} />
-              Live now
-            </div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">On the mats</div>
             <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{academyMeta.liveClass.name}</p>
             <p className="mt-1 text-xs text-[var(--muted)]">
               {academyMeta.liveClass.coach} · {academyMeta.liveClass.room}
@@ -146,8 +135,8 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
               <p className="text-[10px] text-[var(--muted)]">Checked in</p>
             </div>
             <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-2">
-              <p className="text-lg font-semibold tabular-nums">{academyMeta.academyPulse}%</p>
-              <p className="text-[10px] text-[var(--muted)]">Pulse</p>
+              <p className="text-lg font-semibold tabular-nums">{academyMeta.liveClass.time}</p>
+              <p className="text-[10px] text-[var(--muted)]">Class time</p>
             </div>
           </div>
           <Link

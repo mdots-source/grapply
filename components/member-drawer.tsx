@@ -106,7 +106,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
               <UserPlus size={18} />
             </div>
             <DrawerTitle>Add member</DrawerTitle>
-            <DrawerDescription>Create a new academy member for the roster prototype.</DrawerDescription>
+            <DrawerDescription>Add a new person to the academy roster.</DrawerDescription>
           </DrawerHeader>
 
           <form

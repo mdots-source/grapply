@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { Shield } from "lucide-react";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -23,10 +22,10 @@ export function AuthShell({ children, mode }: { children: React.ReactNode; mode:
         <section className="hidden lg:block">
           <Badge variant="accent">Grapply · {academyMeta.shortName}</Badge>
           <h1 className="mt-6 max-w-xl text-6xl font-black leading-[0.94]">
-            {mode === "login" ? "Run the room before the doors open." : "Launch an academy OS with a premium first impression."}
+            {mode === "login" ? "Run the room before the doors open." : "Bring your academy into one calm place."}
           </h1>
           <p className="mt-5 max-w-lg text-sm leading-6 text-[var(--muted)]">
-            {academyMeta.tagline}. San Diego competition culture — classes, athletes, rankings, and wall-screen energy in one layer.
+            {academyMeta.tagline}. Classes, athletes, rankings, and community moments in one focused workspace.
           </p>
           <Card className="mt-8 max-w-xl p-4">
             <div className="flex items-center justify-between gap-4">
@@ -41,11 +40,6 @@ export function AuthShell({ children, mode }: { children: React.ReactNode; mode:
               </div>
             </div>
           </Card>
-          <p className="mt-6 text-xs text-[var(--muted)]">
-            <Link href="/" className="text-[var(--accent)] hover:underline">
-              View demo dashboard →
-            </Link>
-          </p>
         </section>
         <motion.section
           className="mx-auto w-full max-w-md"

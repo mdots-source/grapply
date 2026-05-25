@@ -21,20 +21,18 @@ type BeltFilter = "all" | Belt;
 
 export function RankingsGrid() {
   const [students, setStudents] = useState<Student[]>(seedStudents);
-  const [source, setSource] = useState<"mock" | "supabase">("mock");
   const [beltFilter, setBeltFilter] = useState<BeltFilter>("all");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch("/api/members", { cache: "no-store" })
       .then((response) => response.json())
-      .then((payload: { source?: "mock" | "supabase"; members?: Student[] }) => {
+      .then((payload: { members?: Student[] }) => {
         if (payload.members?.length) {
           setStudents(payload.members);
-          setSource(payload.source ?? "mock");
         }
       })
-      .catch(() => setSource("mock"));
+      .catch(() => undefined);
   }, []);
 
   const ranked = useMemo(() => {
@@ -169,10 +167,6 @@ export function RankingsGrid() {
         <Card className="p-4">
           <p className="text-xs text-[var(--muted)]">Points in view</p>
           <p className="mt-2 text-2xl font-semibold">{summary.totalPoints.toLocaleString("en-US")}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--muted)]">Backend source</p>
-          <p className="mt-2 text-2xl font-semibold capitalize">{source}</p>
         </Card>
       </div>
 

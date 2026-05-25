@@ -16,8 +16,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
 
   return (
     <AppShell
-      title="Admin Panel"
-      subtitle="Role management, club access, and operating controls for the selected BJJ academy workspace."
+      title="Team Access"
+      subtitle="Team access, coaching roles, and class management for the academy."
     >
       <PageTransition>
         <div className="space-y-5">
@@ -48,7 +48,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <CardHeader>
               <div>
                 <CardTitle>Invite user</CardTitle>
-                <CardDescription>Create a Supabase-backed club invite with the right role.</CardDescription>
+                <CardDescription>Invite a coach, staff member, or trusted team lead.</CardDescription>
               </div>
             </CardHeader>
             <InviteUserForm />
@@ -58,7 +58,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <CardHeader>
               <div>
                 <CardTitle>Role management</CardTitle>
-                <CardDescription>Production backend should enforce these permissions on every club-scoped route and API call.</CardDescription>
+                <CardDescription>Choose the responsibilities each person has inside the academy.</CardDescription>
               </div>
               <UserCog size={20} className="text-[var(--accent)]" />
             </CardHeader>
@@ -87,7 +87,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
             <CardHeader>
               <div>
                 <CardTitle>Club users</CardTitle>
-                <CardDescription>Mock users with their club role and Strava connection state.</CardDescription>
+                <CardDescription>People with access to this academy.</CardDescription>
               </div>
             </CardHeader>
             <div className="space-y-2">
@@ -102,7 +102,9 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="accent" className="capitalize">{membership.role}</Badge>
-                      <Badge variant={user.stravaStatus === "connected" ? "success" : "muted"}>Strava {user.stravaStatus.replace("_", " ")}</Badge>
+                      <Badge variant={user.stravaStatus === "connected" ? "success" : "muted"}>
+                        {user.stravaStatus === "connected" ? "Training connected" : "Training not connected"}
+                      </Badge>
                     </div>
                   </div>
                 );
@@ -113,8 +115,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>Test BJJ classes</CardTitle>
-                <CardDescription>Club-scoped classes ready for a real classes table later.</CardDescription>
+                <CardTitle>Academy classes</CardTitle>
+                <CardDescription>Current classes available to members.</CardDescription>
               </div>
             </CardHeader>
             <div className="grid gap-3 lg:grid-cols-2">

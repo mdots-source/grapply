@@ -10,7 +10,7 @@ export default function UiInputPage() {
       </div>
 
       <Specimen title="Default" importPath="@/components/ui/input">
-        <Input className="max-w-sm" placeholder="Placeholder text" />
+        <Input className="max-w-sm" placeholder="Member name" />
       </Specimen>
 
       <Specimen title="With value" importPath="@/components/ui/input">
@@ -18,7 +18,7 @@ export default function UiInputPage() {
       </Specimen>
 
       <Specimen title="Disabled" importPath="@/components/ui/input · disabled">
-        <Input className="max-w-sm" placeholder="Disabled" disabled />
+        <Input className="max-w-sm" placeholder="Unavailable" disabled />
       </Specimen>
     </div>
   );

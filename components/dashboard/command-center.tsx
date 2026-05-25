@@ -8,6 +8,7 @@ import {
   MonitorPlay,
   Plus,
   Radio,
+  Clock,
   Trophy,
   UserPlus,
 } from "lucide-react";
@@ -41,7 +42,7 @@ export function CommandCenter() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="accent" className="gap-1.5">
                 <Radio size={12} />
-                Live now
+                On the mats
               </Badge>
               <Badge>{academyMeta.liveClass.trainingType}</Badge>
             </div>
@@ -64,9 +65,9 @@ export function CommandCenter() {
               </p>
             </Link>
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-              <p className="text-xs text-[var(--muted)]">Academy pulse</p>
+              <p className="text-xs text-[var(--muted)]">Class time</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--foreground)]">
-                {academyMeta.academyPulse}%
+                {academyMeta.liveClass.time}
               </p>
             </div>
             <div className="col-span-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:col-span-1">
@@ -88,8 +89,7 @@ export function CommandCenter() {
           value={academyMeta.liveClass.name}
           icon={Radio}
           tone="live"
-          live
-          trend="On Main Mat"
+          trend={academyMeta.liveClass.room}
           index={0}
         />
         <StatCard
@@ -103,7 +103,7 @@ export function CommandCenter() {
         <StatCard
           label="Weekly attendance"
           value={dashboardStats.weeklyAttendance}
-          icon={Trophy}
+          icon={Clock}
           tone="blue"
           trend={`+${dashboardStats.weeklyAttendanceChange}% vs last week`}
           index={2}

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   CalendarClock,
-  CircleDollarSign,
   TrendingDown,
   TrendingUp,
   UserCheck,
@@ -32,14 +32,13 @@ import {
 } from "@/data/dashboard";
 
 const statCards = [
-  { key: "active", label: "Active Students", value: dashboardStats.activeStudents, icon: Users, trend: "+4 this week", tone: "accent" },
-  { key: "checked", label: "Checked In Today", value: dashboardStats.checkedInToday, icon: UserCheck, trend: "78% of active", tone: "blue" },
-  { key: "weekly", label: "Weekly Attendance", value: dashboardStats.weeklyAttendance, icon: Activity, trend: `+${dashboardStats.weeklyAttendanceChange}% vs last week`, tone: "accent" },
-  { key: "inactive", label: "Inactive Students", value: dashboardStats.inactiveStudents, icon: UserX, trend: "6 need outreach", tone: "coral" },
-  { key: "new", label: "New This Month", value: dashboardStats.newStudentsThisMonth, icon: UserPlus, trend: "Onboarding pipeline", tone: "blue" },
-  { key: "trial", label: "Trial Students", value: dashboardStats.trialStudents, icon: TrendingUp, trend: "3 converting soon", tone: "default" },
-  { key: "revenue", label: "Revenue (MTD)", value: dashboardStats.revenueMtd, icon: CircleDollarSign, trend: dashboardStats.revenueChange, tone: "accent" },
-  { key: "attention", label: "Need Attention", value: studentsNeedingAttention.length, icon: AlertTriangle, trend: "Low attendance", tone: "coral" },
+  { key: "active", label: "Active members", value: dashboardStats.activeStudents, icon: Users, trend: "+4 this week", tone: "accent" },
+  { key: "checked", label: "Checked in today", value: dashboardStats.checkedInToday, icon: UserCheck, trend: "78% of active", tone: "blue" },
+  { key: "weekly", label: "Weekly attendance", value: dashboardStats.weeklyAttendance, icon: Activity, trend: `+${dashboardStats.weeklyAttendanceChange}% vs last week`, tone: "accent" },
+  { key: "inactive", label: "Needs outreach", value: dashboardStats.inactiveStudents, icon: UserX, trend: "Low attendance", tone: "coral" },
+  { key: "new", label: "New members", value: dashboardStats.newStudentsThisMonth, icon: UserPlus, trend: "This month", tone: "blue" },
+  { key: "trial", label: "Trial members", value: dashboardStats.trialStudents, icon: TrendingUp, trend: "3 close to joining", tone: "default" },
+  { key: "attention", label: "Coach follow-ups", value: studentsNeedingAttention.length, icon: AlertTriangle, trend: "Review today", tone: "coral" },
 ] as const;
 
 export function AdminOverview() {
@@ -49,8 +48,8 @@ export function AdminOverview() {
     <section className="space-y-5">
       <SectionHeader
         kicker="Coach & owner"
-        title="Admin Overview"
-        description="Operational signals for attendance, roster health, classes, and revenue."
+        title="Academy Overview"
+        description="Attendance, roster health, classes, and coach follow-ups for the week."
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -74,7 +73,7 @@ export function AdminOverview() {
             </Badge>
           </CardHeader>
           <CardContent>
-            <div className="h-[280px] w-full">
+            <ChartFrame className="h-[280px] min-h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={attendanceTrend}>
                   <defs>
@@ -102,7 +101,7 @@ export function AdminOverview() {
                   <Area type="monotone" dataKey="sparring" stroke="var(--accent-blue)" fill="url(#dashSparring)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
+            </ChartFrame>
           </CardContent>
         </Card>
 
@@ -147,7 +146,7 @@ export function AdminOverview() {
             <CardDescription>Active roster breakdown by belt rank.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[220px]">
+            <ChartFrame className="h-[220px] min-h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={beltDistribution} layout="vertical" margin={{ left: 4, right: 12 }}>
                   <CartesianGrid stroke="var(--border)" horizontal={false} />
@@ -168,7 +167,7 @@ export function AdminOverview() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartFrame>
           </CardContent>
         </Card>
 
@@ -202,8 +201,8 @@ export function AdminOverview() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Latest admin activity</CardTitle>
-            <CardDescription>Recent coach and owner actions.</CardDescription>
+            <CardTitle className="text-base">Recent coach notes</CardTitle>
+            <CardDescription>Small moments worth keeping visible.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {coachActions.map((item) => (
@@ -218,5 +217,19 @@ export function AdminOverview() {
         </Card>
       </div>
     </section>
+  );
+}
+
+function ChartFrame({ children, className }: { children: React.ReactNode; className: string }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return (
+    <div className={`${className} min-w-0 w-full`}>
+      {mounted ? children : <div className="size-full rounded-xl bg-[var(--surface)]" />}
+    </div>
   );
 }

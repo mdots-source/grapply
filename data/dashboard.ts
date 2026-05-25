@@ -8,8 +8,6 @@ export const dashboardStats = {
   weeklyAttendanceChange: 12,
   newStudentsThisMonth: 14,
   trialStudents: 8,
-  revenueMtd: "$18,420",
-  revenueChange: "+6.4%",
 };
 
 export const attendanceTrend = [
@@ -76,7 +74,7 @@ export const promotions = [
     id: "p2",
     student: "Maya Ribeiro",
     detail: "Moved to #2 in academy rankings",
-    awardedBy: "System",
+    awardedBy: "Sofia Almeida",
     when: "Yesterday",
     type: "ranking" as const,
   },
