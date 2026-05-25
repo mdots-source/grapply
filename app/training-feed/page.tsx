@@ -19,7 +19,6 @@ export default async function TrainingFeedPage() {
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <Badge variant="accent">{trainingPosts.length} posts</Badge>
           <Badge>Timeline</Badge>
-          <Badge variant="muted">Reactions & comments (demo)</Badge>
         </div>
         <div className="mx-auto max-w-3xl space-y-5">
           <CreateTrainingPostForm />

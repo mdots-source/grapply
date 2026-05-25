@@ -4,7 +4,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 
 export default function SettingsPage() {
   return (
-    <AppShell title="Settings" subtitle="Academy identity, appearance, coaches, and presentation settings prepared for future backend integration.">
+    <AppShell title="Settings" subtitle="Academy identity, appearance, coaches, and presentation preferences.">
       <PageTransition>
         <SettingsTabs />
       </PageTransition>

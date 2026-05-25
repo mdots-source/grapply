@@ -20,7 +20,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
             Try again
           </Button>
           <Button variant="surface" asChild>
-            <Link href="/">Back to dashboard</Link>
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </div>
       </div>

@@ -8,7 +8,7 @@ export default function UiTabsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Tabs</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">Primitives split — not one combined demo.</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">Primitives shown one route at a time.</p>
       </div>
 
       <Specimen title="TabsList + TabsTrigger" importPath="@/components/ui/tabs">

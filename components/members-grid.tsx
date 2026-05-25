@@ -37,8 +37,6 @@ function matchesFilter(member: Student, filter: RosterFilter) {
 
 export function MembersGrid() {
   const [members, setMembers] = useState<Student[]>(seedMembers);
-  const [dataSource, setDataSource] = useState<"mock" | "supabase">("mock");
-  const [loadingMembers, setLoadingMembers] = useState(true);
   const [filter, setFilter] = useState<RosterFilter>("all");
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -61,19 +59,15 @@ export function MembersGrid() {
     let cancelled = false;
 
     async function loadMembers() {
-      setLoadingMembers(true);
       try {
         const response = await fetch("/api/members?club=grapply-bjj", { cache: "no-store" });
-        const payload = (await response.json()) as { source?: "mock" | "supabase"; members?: Student[] };
+        const payload = (await response.json()) as { members?: Student[] };
         if (cancelled) return;
         if (payload.members?.length) {
           setMembers(payload.members);
-          setDataSource(payload.source ?? "mock");
         }
       } catch {
-        if (!cancelled) setDataSource("mock");
-      } finally {
-        if (!cancelled) setLoadingMembers(false);
+        // Keep the seeded roster visible if the roster cannot refresh.
       }
     }
 
@@ -95,10 +89,9 @@ export function MembersGrid() {
       const payload = (await response.json()) as { ok?: boolean; member?: Student };
       if (payload.ok && payload.member) {
         setMembers((current) => current.map((item) => (item.id === member.id ? payload.member! : item)).sort(compareMemberHierarchy));
-        setDataSource("supabase");
       }
     } catch {
-      setDataSource("mock");
+      // The optimistic member stays in the roster so the coach can keep working.
     }
   }
 
@@ -226,7 +219,7 @@ export function MembersGrid() {
               <Metric label="Showing" value={rowData.length.toString()} />
               <Metric label="Active roster" value={summary.active.toString()} />
               <Metric label="Mat hours (roster)" value={summary.matHours.toLocaleString("en-US")} />
-              <Metric label={loadingMembers ? "Loading backend" : "Backend source"} value={loadingMembers ? "..." : dataSource} />
+              <Metric label="Promotion watch" value={summary.promotion.toString()} />
             </div>
 
             <AgGridHost className="oss-members-grid ag-theme-quartz h-[520px] w-full">

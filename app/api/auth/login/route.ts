@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setAuthCookies } from "@/lib/auth-cookies";
+import { setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
 import { platformUsers } from "@/data/platform";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
@@ -54,5 +54,7 @@ export async function POST(request: Request) {
 
   const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
   if (!user) return NextResponse.json({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
-  return NextResponse.json({ ok: true, source: "mock", user });
+  const response = NextResponse.json({ ok: true, source: "mock", user });
+  setMockAuthCookie(response, user.id);
+  return response;
 }

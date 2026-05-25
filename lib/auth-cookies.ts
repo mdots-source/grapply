@@ -27,6 +27,13 @@ export function setAuthCookies(
   });
 }
 
+export function setMockAuthCookie(response: NextResponse, userId: string) {
+  response.cookies.set(authCookieNames.accessToken, `mock:${userId}`, {
+    ...cookieOptions,
+    maxAge: 60 * 60 * 24 * 7,
+  });
+}
+
 export function clearAuthCookies(response: NextResponse) {
   response.cookies.delete(authCookieNames.accessToken);
   response.cookies.delete(authCookieNames.refreshToken);

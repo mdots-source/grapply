@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Palette, Upload, Users } from "lucide-react";
+import { Activity, Palette, Upload, Users } from "lucide-react";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
 import { StravaConnectButton } from "@/components/strava-connect-button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const tabKeys = ["brand", "appearance", "coaches", "tv", "integrations"] as const;
+const tabKeys = ["brand", "appearance", "coaches", "integrations", "tv"] as const;
 
 export function SettingsTabs() {
   const [tab, setTab] = useState<(typeof tabKeys)[number]>("appearance");
@@ -26,8 +26,8 @@ export function SettingsTabs() {
               ["brand", "Brand"],
               ["appearance", "Appearance"],
               ["coaches", "Coaches"],
-              ["tv", "TV Mode"],
               ["integrations", "Integrations"],
+              ["tv", "TV Mode"],
             ] as const
           ).map(([key, label]) => (
             <TabsTrigger key={key} active={tab === key} onClick={() => setTab(key)}>
@@ -86,7 +86,7 @@ export function SettingsTabs() {
           <CardHeader>
             <div>
               <CardTitle>Coaches</CardTitle>
-              <CardKicker>Mock coach management</CardKicker>
+              <CardKicker>Teaching team and mat leadership</CardKicker>
             </div>
             <Users size={18} className="text-[var(--accent)]" />
           </CardHeader>
@@ -96,6 +96,29 @@ export function SettingsTabs() {
               <Badge variant="accent">Coach</Badge>
             </div>
           ))}
+        </Card>
+      )}
+
+      {tab === "integrations" && (
+        <Card className="max-w-2xl oss-hover-lift">
+          <CardHeader>
+            <div>
+              <CardTitle>Integrations</CardTitle>
+              <CardKicker>Training data and connected services</CardKicker>
+            </div>
+            <Activity size={18} className="text-[var(--accent)]" />
+          </CardHeader>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[var(--foreground)]">Strava</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Connect athlete activity so coaches can see training volume beside mat attendance.
+                </p>
+              </div>
+              <StravaConnectButton href="/api/strava/connect?returnTo=/settings" />
+            </div>
+          </div>
         </Card>
       )}
 
@@ -118,43 +141,6 @@ export function SettingsTabs() {
         </Card>
       )}
 
-      {tab === "integrations" && (
-        <Card className="max-w-3xl oss-hover-lift">
-          <CardHeader>
-            <div>
-              <CardTitle>Integrations</CardTitle>
-              <CardKicker>Coming soon — connect your academy stack</CardKicker>
-            </div>
-          </CardHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { name: "Stripe", desc: "Memberships & billing" },
-              { name: "Google Calendar", desc: "Class sync" },
-              { name: "Strava", desc: "Athlete activity" },
-              { name: "Slack / Discord", desc: "Team comms" },
-              { name: "Apple Wallet", desc: "QR member pass" },
-              { name: "Supabase", desc: "Database & auth" },
-            ].map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-4 opacity-80"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{item.name}</p>
-                  <p className="text-xs text-[var(--muted)]">{item.desc}</p>
-                </div>
-                {item.name === "Strava" ? (
-                  <StravaConnectButton href="/api/strava/connect?returnTo=/settings" size="sm">
-                    Connect
-                  </StravaConnectButton>
-                ) : (
-                  <Badge variant="muted">Soon</Badge>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
     </>
   );
 }

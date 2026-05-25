@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function LoginForm() {
+export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("sofia@grapply.app");
   const [password, setPassword] = useState("demo123");
@@ -32,7 +32,9 @@ export function LoginForm() {
           if (!response.ok || !payload.ok || !payload.user?.id) {
             throw new Error(payload.error ?? "Login failed.");
           }
-          router.push(`/clubs?user=${encodeURIComponent(payload.user.id)}`);
+          const clubsUrl = new URL("/clubs", window.location.origin);
+          clubsUrl.searchParams.set("returnTo", returnTo);
+          router.push(`${clubsUrl.pathname}${clubsUrl.search}`);
         } catch (caught) {
           setError(caught instanceof Error ? caught.message : "Login failed.");
         } finally {
@@ -53,13 +55,13 @@ export function LoginForm() {
           <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
           <Input id="password" className="pl-9" placeholder="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
         </div>
+        <p className="text-xs text-[var(--muted)]">Demo account: sofia@grapply.app / demo123</p>
       </div>
       {error && <p className="rounded-lg border border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/10 p-3 text-xs text-[var(--foreground)]">{error}</p>}
       <Button type="submit" variant="primary" className="w-full" disabled={loading}>
         {loading && <Loader2 size={16} className="animate-spin" />}
         Sign in
       </Button>
-      <p className="text-center text-xs text-[var(--muted)]">Demo password: demo123</p>
     </form>
   );
 }

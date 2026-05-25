@@ -12,9 +12,9 @@ export default function RegisterPage() {
         <div className="mb-8 grid size-12 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
           <Sparkles size={23} />
         </div>
-        <h1 className="text-3xl font-semibold">Launch your academy OS.</h1>
+        <h1 className="text-3xl font-semibold">Create your academy workspace.</h1>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          Create the demo workspace and connect Strava for athlete conditioning signals.
+          Set up the academy profile and invite your coaching team when you are ready.
         </p>
         <StravaConnectButton href="/api/strava/connect?returnTo=/clubs" className="mt-7 w-full">
           Register with Strava

@@ -28,7 +28,7 @@ export function InviteUserForm() {
           const payload = (await response.json()) as { ok?: boolean; error?: string };
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Invite failed.");
           setEmail("");
-          setMessage("Invite saved in Supabase.");
+          setMessage("Invite saved.");
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "Invite failed.");
         } finally {

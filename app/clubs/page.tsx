@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, Building2, CheckCircle2, DoorOpen, Plus, Shield, Users } from "lucide-react";
+import { Building2, CheckCircle2, DoorOpen, Plus, Shield, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
 import { Badge } from "@/components/ui/badge";
@@ -8,12 +8,13 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { EmptyState } from "@/components/oss/empty-state";
 import { getCurrentSession } from "@/lib/auth-session";
 
-export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string }> }) {
+export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string; returnTo?: string }> }) {
   const params = await searchParams;
   const session = await getCurrentSession();
   const user = session?.user;
   const memberships = session?.memberships ?? [];
   const stravaStatus = params?.strava;
+  const workspaceReturnTo = params?.returnTo?.startsWith("/") ? params.returnTo : "/dashboard";
 
   if (!user) {
     return null;
@@ -22,7 +23,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
   return (
     <AppShell
       title="My Clubs"
-      subtitle="Your account can belong to one academy, several clubs, or none yet. Every workspace opens with the role assigned by that club."
+      subtitle="Choose the academy you want to work with today."
     >
       <PageTransition>
         <div className="space-y-5">
@@ -39,8 +40,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
           {stravaStatus && (
             <Card className="border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/8 p-4">
               <div className="flex items-center gap-3 text-sm text-[var(--foreground)]">
-                <Activity size={18} className="text-[var(--accent-coral)]" />
-                Strava status: {stravaStatus}
+                Training activity {stravaStatus === "connected" ? "connected" : "not connected yet"}
               </div>
             </Card>
           )}
@@ -49,7 +49,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
             <EmptyState
               icon={DoorOpen}
               title="You are not a member of any club yet."
-              description="When a coach or academy admin invites this account, the club workspace will appear here with your assigned role and access level."
+              description="When a coach or academy owner invites this account, the club workspace will appear here."
               className="min-h-[420px]"
             />
           ) : (
@@ -60,7 +60,6 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
                     <CardHeader className="mb-0">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={membership.club.status === "active" ? "success" : "muted"}>{membership.club.status}</Badge>
                           <Badge variant="accent" className="capitalize">{membership.role}</Badge>
                         </div>
                         <CardTitle className="mt-4 text-xl">{membership.club.name}</CardTitle>
@@ -80,10 +79,10 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
 
                   <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
                     <Button variant="primary" asChild>
-                      <Link href={`/api/workspace/select?club=${membership.club.slug}&returnTo=/`}>Enter workspace</Link>
+                      <Link href={`/api/workspace/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>Enter workspace</Link>
                     </Button>
                     <Button variant="surface" asChild>
-                      <Link href={`/api/workspace/select?club=${membership.club.slug}&returnTo=/admin`}>Admin roles</Link>
+                      <Link href={`/api/workspace/select?club=${membership.club.slug}&returnTo=/admin`}>Manage team</Link>
                     </Button>
                   </div>
                 </Card>
@@ -94,8 +93,8 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
           <Card className="p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-[var(--foreground)]">Club invite model</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">In production this becomes invite links, pending approvals, and domain-based membership rules.</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">Need access to another academy?</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">Ask the academy owner or head coach to invite your account.</p>
               </div>
               <Button variant="outline">
                 <Plus size={16} />

@@ -69,7 +69,7 @@ export function CreateTrainingPostForm() {
           });
           const payload = (await response.json()) as { ok?: boolean; error?: string };
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Post creation failed.");
-          setMessage("Post saved in Supabase. Refresh the feed to see it in the timeline.");
+          setMessage("Post saved. Refresh the feed to see it in the timeline.");
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "Post creation failed.");
         } finally {
@@ -80,7 +80,7 @@ export function CreateTrainingPostForm() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[var(--foreground)]">New training post</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">This writes to the active club feed.</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">Share a clear recap with the academy.</p>
         </div>
         <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
           Cancel
