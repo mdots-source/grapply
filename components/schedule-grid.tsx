@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
-import { CreateClassForm } from "@/components/schedule/create-class-form";
+import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -34,10 +34,11 @@ type ScheduleRow = {
 };
 
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+type DayKey = (typeof dayKeys)[number];
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-const rows: ScheduleRow[] = [
+const initialRows: ScheduleRow[] = [
   {
     time: "06:30",
     mon: [session("06:30", "Dawn Patrol Gi", "Sofia Almeida", "Mat A", 28, 82, "Experienced")],
@@ -104,6 +105,24 @@ function session(time: string, name: string, coach: string, room: string, capaci
   return { time, name, coach, room, capacity, fill, level };
 }
 
+function emptyRow(time: string): ScheduleRow {
+  return { time, mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] };
+}
+
+function dayKeyFromLabel(day: string): DayKey {
+  const normalized = day.trim().slice(0, 3).toLowerCase();
+  if (dayKeys.includes(normalized as DayKey)) return normalized as DayKey;
+  return "mon";
+}
+
+function compareTimes(a: string, b: string) {
+  return a.localeCompare(b, "en-US", { numeric: true });
+}
+
+function classToSessionBlock(value: ClassFormValue): SessionBlock {
+  return session(value.time, value.name, value.coach, value.mat, 28, 0, value.level);
+}
+
 function startOfWeek(date: Date) {
   const value = new Date(date);
   const day = value.getDay();
@@ -146,7 +165,8 @@ function levelTone(level: string) {
   return "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]";
 }
 
-export function ScheduleGrid() {
+export function ScheduleGrid({ initialCreateClass = false }: { initialCreateClass?: boolean }) {
+  const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>(initialRows);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => startOfWeek(new Date()));
@@ -156,10 +176,28 @@ export function ScheduleGrid() {
   const isCurrentWeek = weekOffset === 0;
 
   const weekSummary = useMemo(() => {
-    const allSessions = rows.flatMap((row) => dayKeys.flatMap((key) => row[key]));
+    const allSessions = scheduleRows.flatMap((row) => dayKeys.flatMap((key) => row[key]));
     const rooms = new Set(allSessions.map((block) => block.room)).size;
     return { classes: allSessions.length, rooms };
-  }, []);
+  }, [scheduleRows]);
+
+  const addClassToTimetable = (value: ClassFormValue) => {
+    const day = dayKeyFromLabel(value.day);
+    const block = classToSessionBlock(value);
+
+    setScheduleRows((current) => {
+      const rowExists = current.some((row) => row.time === value.time);
+      const rowsWithTime = rowExists ? current : [...current, emptyRow(value.time)].sort((a, b) => compareTimes(a.time, b.time));
+
+      return rowsWithTime.map((row) => {
+        if (row.time !== value.time) return row;
+        return {
+          ...row,
+          [day]: [...row[day], block],
+        };
+      });
+    });
+  };
 
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(() => {
     const dayColumns = dayKeys.map((key, index): ColDef<ScheduleRow> => ({
@@ -278,14 +316,14 @@ export function ScheduleGrid() {
                 <ChevronRight size={16} />
               </Button>
             </div>
-            <CreateClassForm />
+            <CreateClassForm initialOpen={initialCreateClass} onCreate={addClassToTimetable} />
           </div>
         </div>
       </Card>
 
       <div className="grid gap-2 md:grid-cols-7">
         {dayKeys.map((key, index) => {
-          const count = rows.reduce((sum, row) => sum + row[key].length, 0);
+          const count = scheduleRows.reduce((sum, row) => sum + row[key].length, 0);
           return (
             <div key={key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
               <p className="text-xs font-medium text-[var(--muted)]">{dayNames[index]}</p>
@@ -307,7 +345,7 @@ export function ScheduleGrid() {
         </div>
         <AgGridHost className="oss-schedule-grid ag-theme-quartz h-[690px] w-full">
           <AgGridReact<ScheduleRow>
-            rowData={rows}
+            rowData={scheduleRows}
             columnDefs={columnDefs}
             defaultColDef={{ resizable: true, suppressMovable: true }}
             theme="legacy"

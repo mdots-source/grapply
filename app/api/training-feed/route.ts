@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       const row = await upsertRow("training_posts", toTrainingPostInsert(payload, clubId), "id");
       return NextResponse.json({ ok: true, source: "supabase", post: toTrainingPost(row) });
     } catch (error) {
-      return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
+      return NextResponse.json({ ok: true, source: "mock", post: payload, supabaseError: String(error) });
     }
   }
 

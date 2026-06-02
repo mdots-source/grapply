@@ -5,12 +5,18 @@ import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type TrainingPostType, typeLabels } from "@/data/training-feed";
+import { type TrainingPost, type TrainingPostType, typeLabels } from "@/data/training-feed";
 
 const postTypes = Object.keys(typeLabels) as TrainingPostType[];
 
-export function CreateTrainingPostForm() {
-  const [open, setOpen] = useState(false);
+export function CreateTrainingPostForm({
+  initialOpen = false,
+  onCreate,
+}: {
+  initialOpen?: boolean;
+  onCreate?: (post: TrainingPost) => void;
+}) {
+  const [open, setOpen] = useState(initialOpen);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -48,28 +54,30 @@ export function CreateTrainingPostForm() {
         setMessage(null);
         try {
           const now = new Date();
+          const draftPost: TrainingPost = {
+            id: `tf-${crypto.randomUUID().slice(0, 8)}`,
+            type: form.type,
+            pinned: false,
+            coach: form.coach,
+            className: form.className || undefined,
+            date: "Today",
+            time: now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+            title: form.title,
+            summary: form.summary,
+            attendance: Number(form.attendance) || undefined,
+            reactions: 0,
+            comments: 0,
+            heat: 35,
+          };
           const response = await fetch("/api/training-feed", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: `tf-${crypto.randomUUID().slice(0, 8)}`,
-              type: form.type,
-              pinned: false,
-              coach: form.coach,
-              className: form.className || undefined,
-              date: "Today",
-              time: now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-              title: form.title,
-              summary: form.summary,
-              attendance: Number(form.attendance) || undefined,
-              reactions: 0,
-              comments: 0,
-              heat: 35,
-            }),
+            body: JSON.stringify(draftPost),
           });
-          const payload = (await response.json()) as { ok?: boolean; error?: string };
+          const payload = (await response.json()) as { ok?: boolean; error?: string; post?: TrainingPost };
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Post creation failed.");
-          setMessage("Post saved. Refresh the feed to see it in the timeline.");
+          onCreate?.(payload.post ?? draftPost);
+          setMessage("Post published to the timeline.");
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "Post creation failed.");
         } finally {

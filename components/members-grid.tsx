@@ -20,7 +20,7 @@ import { compareMemberHierarchy, students as seedMembers, type Student } from "@
 import { getMemberProfileExtra } from "@/data/member-profiles";
 import { countCompetitionTeam } from "@/lib/members";
 
-type RosterFilter = "all" | "active" | "promotion" | "inactive" | "trial" | "attention";
+export type RosterFilter = "all" | "active" | "promotion" | "inactive" | "trial" | "attention";
 type DrawerMode = "view" | "add";
 
 function matchesFilter(member: Student, filter: RosterFilter) {
@@ -35,12 +35,18 @@ function matchesFilter(member: Student, filter: RosterFilter) {
   return member.totalHours >= 300 || member.classes30 >= 16;
 }
 
-export function MembersGrid() {
+export function MembersGrid({
+  initialAdd = false,
+  initialFilter = "all",
+}: {
+  initialAdd?: boolean;
+  initialFilter?: RosterFilter;
+}) {
   const [members, setMembers] = useState<Student[]>(seedMembers);
-  const [filter, setFilter] = useState<RosterFilter>("all");
+  const [filter, setFilter] = useState<RosterFilter>(initialFilter);
   const [search, setSearch] = useState("");
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<DrawerMode>("view");
+  const [drawerOpen, setDrawerOpen] = useState(initialAdd);
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>(initialAdd ? "add" : "view");
   const [selectedMember, setSelectedMember] = useState<Student | null>(null);
 
   const openMemberDrawer = useCallback((member: Student) => {

@@ -1,14 +1,12 @@
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
-import { TrainingPostCard } from "@/components/oss/training-post-card";
-import { CreateTrainingPostForm } from "@/components/training-feed/create-training-post-form";
+import { TrainingFeedTimeline } from "@/components/training-feed/training-feed-timeline";
 import { Badge } from "@/components/ui/badge";
 import { getTrainingPostsData } from "@/lib/backend-data";
 
-export default async function TrainingFeedPage() {
+export default async function TrainingFeedPage({ searchParams }: { searchParams?: Promise<{ create?: string }> }) {
+  const params = await searchParams;
   const trainingPosts = await getTrainingPostsData();
-  const pinned = trainingPosts.filter((p) => p.pinned);
-  const rest = trainingPosts.filter((p) => !p.pinned);
 
   return (
     <AppShell
@@ -20,20 +18,7 @@ export default async function TrainingFeedPage() {
           <Badge variant="accent">{trainingPosts.length} posts</Badge>
           <Badge>Timeline</Badge>
         </div>
-        <div className="mx-auto max-w-3xl space-y-5">
-          <CreateTrainingPostForm />
-          {pinned.map((post, i) => (
-            <TrainingPostCard key={post.id} post={post} index={i} />
-          ))}
-          <div className="border-t border-[var(--border)] pt-2">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Recent</p>
-            {rest.map((post, i) => (
-              <div key={post.id} className="mb-5">
-                <TrainingPostCard post={post} index={i + pinned.length} />
-              </div>
-            ))}
-          </div>
-        </div>
+        <TrainingFeedTimeline initialPosts={trainingPosts} initialCreatePost={params?.create === "post"} />
       </PageTransition>
     </AppShell>
   );

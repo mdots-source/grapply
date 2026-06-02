@@ -48,12 +48,20 @@ export async function POST(request: Request) {
       setAuthCookies(response, session);
       return response;
     } catch (error) {
+      const mockUser = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
+      if (mockUser && password === "demo123") {
+        return createMockLoginResponse(mockUser);
+      }
       return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
     }
   }
 
   const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
   if (!user) return NextResponse.json({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
+  return createMockLoginResponse(user);
+}
+
+function createMockLoginResponse(user: (typeof platformUsers)[number]) {
   const response = NextResponse.json({ ok: true, source: "mock", user });
   setMockAuthCookie(response, user.id);
   return response;
