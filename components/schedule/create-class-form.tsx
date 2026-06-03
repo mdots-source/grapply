@@ -71,9 +71,16 @@ export function CreateClassForm({
 
   if (!open) {
     return (
-      <Button variant="primary" className="w-full justify-center" onClick={() => setOpen(true)}>
-        <CalendarPlus size={16} /> Add class
-      </Button>
+      <div className="space-y-2">
+        {message && (
+          <p className="rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]">
+            {message}
+          </p>
+        )}
+        <Button variant="primary" className="w-full justify-center" onClick={() => setOpen(true)}>
+          <CalendarPlus size={16} /> Add class
+        </Button>
+      </div>
     );
   }
 
@@ -94,6 +101,7 @@ export function CreateClassForm({
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Class creation failed.");
           onCreate?.({ ...form, ...payload.class });
           setMessage("Class saved and added to the timetable.");
+          setOpen(false);
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "Class creation failed.");
         } finally {

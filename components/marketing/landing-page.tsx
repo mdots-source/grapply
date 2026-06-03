@@ -2,12 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
   Award,
-  BarChart3,
   CalendarDays,
   Check,
   CreditCard,
@@ -30,8 +29,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { StudentAvatar } from "@/components/student-avatar";
 import { academyMeta } from "@/data/academy-meta";
-import { attendance, beltStyles, currentSession, schedule, students, tvCheckedInAthletes } from "@/data/academy";
-import { beltDistribution, promotions } from "@/data/dashboard";
+import { attendance, beltStyles, currentSession, recentActivity, schedule, students, tvCheckedInAthletes } from "@/data/academy";
+import { beltDistribution, communityHighlights, promotions } from "@/data/dashboard";
 import { competitions } from "@/data/competitions";
 import { trainingPosts, typeLabels } from "@/data/training-feed";
 import { cn } from "@/lib/utils";
@@ -79,6 +78,14 @@ const productScreens = [
   },
 ] as const;
 
+const beltOrbitItems = [
+  { belt: "white", transform: "translate(58px, -6px) rotate(0deg)" },
+  { belt: "blue", transform: "translate(-1.4245px, 56.7694px) rotate(18deg)" },
+  { belt: "purple", transform: "translate(-97.5755px, 32.7938px) rotate(36deg)" },
+  { belt: "brown", transform: "translate(-97.5755px, -44.7938px) rotate(54deg)" },
+  { belt: "black", transform: "translate(-1.4245px, -68.7694px) rotate(72deg)" },
+] as const satisfies { belt: keyof typeof beltStyles; transform: string }[];
+
 const features = [
   { icon: Users, title: "Member management", copy: "Profiles, belts, stripes, attendance, status, training hours, and focus areas." },
   { icon: CalendarDays, title: "Class schedule", copy: "Classes, rooms, coaches, levels, and daily flow in one clean operational surface." },
@@ -95,7 +102,7 @@ const pricingPlans = [
     name: "White Belt",
     price: "$100",
     suffix: "/mo",
-    accent: "#f4f4f5",
+    accent: beltStyles.white.hex,
     description: "For small academies that need the core operating layer.",
     cta: "Book demo",
     featured: false,
@@ -130,8 +137,12 @@ export function LandingPage() {
       <Hero />
       <OutcomeStrip />
       <ProductPreview />
+      <LiveAcademySection />
+      <TvShowcaseSection />
+      <ProgressionFeedSection />
       <FeatureSection />
       <ControlRoomSection />
+      <CompetitionSection />
       <PricingSection />
       <CredibilitySection />
       <FinalCta />
@@ -171,9 +182,9 @@ function Header() {
           <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--foreground)] sm:inline-flex">
             Login
           </Link>
-          <a href="#demo" className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
-            Book demo <ArrowRight size={16} />
-          </a>
+          <Link href="/dashboard" className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
+            Open live demo <ArrowRight size={16} />
+          </Link>
         </div>
       </div>
     </header>
@@ -197,9 +208,9 @@ function Hero() {
             Members, classes, rankings, roles, training activity, and live academy displays in one premium operating system.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <a href="#demo" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
-              Book demo <ArrowRight size={16} />
-            </a>
+            <Link href="/dashboard" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
+              Open live demo <ArrowRight size={16} />
+            </Link>
             <a href="#product" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
               View product preview <MonitorPlay size={16} />
             </a>
@@ -262,20 +273,16 @@ function HeroCommandScene() {
 }
 
 function BeltOrbit() {
-  const belts = ["white", "blue", "purple", "brown", "black"] as const;
   return (
     <div className="absolute left-1/2 top-24 size-44 -translate-x-1/2">
-      {belts.map((belt, index) => {
-        const angle = (index / belts.length) * Math.PI * 2;
-        const x = Math.cos(angle) * 86;
-        const y = Math.sin(angle) * 66;
+      {beltOrbitItems.map((item) => {
         return (
           <span
-            key={belt}
+            key={item.belt}
             className="absolute left-1/2 top-1/2 h-3 w-14 rounded-full border border-[var(--border)]"
             style={{
-              backgroundColor: beltStyles[belt].hex,
-              transform: `translate(${x - 28}px, ${y - 6}px) rotate(${index * 18}deg)`,
+              backgroundColor: beltStyles[item.belt].hex,
+              transform: item.transform,
             }}
           />
         );
@@ -304,54 +311,107 @@ function OutcomeStrip() {
 }
 
 function ProductPreview() {
-  const [activeId, setActiveId] = useState<(typeof productScreens)[number]["id"]>("members");
-  const active = useMemo(() => productScreens.find((screen) => screen.id === activeId) ?? productScreens[0], [activeId]);
-  const ActiveIcon = active.icon;
-
   return (
-    <section id="product" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <section id="product" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-12 sm:px-6 lg:px-8">
       <div className="grid gap-7 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
-        <div>
+        <div className="lg:sticky lg:top-24">
           <Kicker icon={Layers3}>Product preview</Kicker>
           <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">A product you can feel, not another admin table.</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-            Switch between the core academy surfaces: members, schedule, rankings, TV mode, and roles.
+            The MVP already has the surfaces an academy owner expects to touch: members, schedule, rankings, TV mode, and team roles.
           </p>
-          <div className="mt-6 grid gap-2">
+          <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
             {productScreens.map((screen) => {
               const Icon = screen.icon;
-              const activeScreen = screen.id === activeId;
               return (
-                <button
+                <a
                   key={screen.id}
-                  type="button"
-                  onClick={() => setActiveId(screen.id)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition",
-                    activeScreen ? "border-[color-mix(in_srgb,var(--accent)_38%,transparent)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--surface))] text-[var(--foreground)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]",
-                  )}
+                  href={`#preview-${screen.id}`}
+                  className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-left text-[var(--muted)] transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent)_34%,transparent)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
                 >
-                  <Icon size={18} className={activeScreen ? "text-[var(--accent)]" : ""} />
+                  <Icon size={18} />
                   <span className="text-sm font-semibold">{screen.label}</span>
-                </button>
+                </a>
               );
             })}
           </div>
         </div>
 
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">{active.label}</p>
-                <h3 className="mt-2 text-2xl font-semibold">{active.title}</h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{active.copy}</p>
+        <div className="space-y-4">
+          {productScreens.map((screen) => (
+            <ProductSurface key={screen.id} screen={screen} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductSurface({ screen }: { screen: (typeof productScreens)[number] }) {
+  const Icon = screen.icon;
+  return (
+    <motion.article
+      id={`preview-${screen.id}`}
+      whileHover={{ y: -4 }}
+      className="scroll-mt-24 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]"
+    >
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">{screen.label}</p>
+            <h3 className="mt-2 text-2xl font-semibold">{screen.title}</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{screen.copy}</p>
+          </div>
+          <div className="grid size-12 place-items-center rounded-lg bg-[var(--surface)] text-[var(--accent)]">
+            <Icon size={24} />
+          </div>
+        </div>
+        {screen.id === "schedule" && <SchedulePreview />}
+        {screen.id === "rankings" && <RankingsPreview />}
+        {screen.id === "tv" && <TvPanel compact />}
+        {screen.id === "roles" && <RolesPreview />}
+        {screen.id === "members" && <MembersPreview />}
+      </div>
+    </motion.article>
+  );
+}
+
+function LiveAcademySection() {
+  return (
+    <section className="border-y border-[var(--border)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]">
+      <div className="mx-auto grid max-w-7xl gap-7 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8">
+        <div>
+          <Kicker icon={Flame}>Attendance & community</Kicker>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Students show up when the academy feels alive.</h2>
+          <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+            Grapply makes attendance visible, streaks feel earned, and everyday training moments feel like part of the academy identity.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {communityHighlights.map((item) => (
+              <div key={item.label} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">{item.label}</p>
+                <p className="mt-2 text-2xl font-semibold">{item.value}</p>
+                <p className="mt-1 text-sm text-[var(--accent)]">{item.member}</p>
               </div>
-              <div className="grid size-12 place-items-center rounded-lg bg-[var(--surface)] text-[var(--accent)]">
-                <ActiveIcon size={24} />
-              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Weekly room energy</p>
+              <h3 className="mt-2 text-2xl font-semibold">312 visits this week</h3>
             </div>
-            <ProductPanel activeId={active.id} />
+            <Badge variant="success">+12%</Badge>
+          </div>
+          <AttendanceChart />
+          <div className="mt-5 grid gap-2">
+            {recentActivity.slice(0, 4).map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+                <span className="size-2 rounded-full bg-[var(--status-success)]" />
+                <p className="text-sm text-[var(--muted)]">{item}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -359,17 +419,81 @@ function ProductPreview() {
   );
 }
 
-function ProductPanel({ activeId }: { activeId: (typeof productScreens)[number]["id"] }) {
-  if (activeId === "schedule") return <SchedulePreview />;
-  if (activeId === "rankings") return <RankingsPreview />;
-  if (activeId === "tv") return <TvPanel compact />;
-  if (activeId === "roles") return <RolesPreview />;
-  return <MembersPreview />;
+function AttendanceChart() {
+  return (
+    <div className="mt-6 flex h-48 items-end gap-2 rounded-lg border border-[var(--border)] bg-[var(--background)] p-4">
+      {attendance.map((item) => (
+        <div key={item.day} className="flex h-full flex-1 flex-col justify-end gap-2">
+          <motion.div
+            initial={{ opacity: 0.55, scaleY: 0.72 }}
+            whileInView={{ opacity: 1, scaleY: 1 }}
+            viewport={{ once: true, margin: "-20%" }}
+            transition={{ duration: 0.7 }}
+            className="min-h-6 origin-bottom rounded-t-lg bg-[linear-gradient(180deg,var(--accent),color-mix(in_srgb,var(--accent-blue)_66%,var(--accent)))]"
+            style={{ height: `${(item.students / maxAttendance) * 100}%` }}
+          />
+          <p className="text-center text-[11px] font-semibold text-[var(--muted)]">{item.day}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TvShowcaseSection() {
+  return (
+    <section className="mx-auto grid max-w-7xl gap-7 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_0.82fr] lg:items-center lg:px-8">
+      <TvPanel />
+      <div>
+        <Kicker icon={Radio}>TV screen</Kicker>
+        <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">A mat-side display that makes the room feel connected.</h2>
+        <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+          Students check in, appear on screen, see teammates training, and feel the academy moving in real time. It is part operations, part culture engine.
+        </p>
+        <div className="mt-6 grid gap-3">
+          {["Live check-ins on the academy screen", "Session focus and coach context", "Athlete cards with belt color and training momentum"].map((item) => (
+            <div key={item} className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm">
+              <MonitorPlay size={16} className="text-[var(--accent)]" />
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProgressionFeedSection() {
+  return (
+    <section className="border-y border-[var(--border)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]">
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-12 sm:px-6 lg:grid-cols-[0.86fr_1.14fr] lg:px-8">
+        <div>
+          <Kicker icon={Award}>Progression & feed</Kicker>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Turn training into visible progression.</h2>
+          <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+            Promotions, stripes, activity posts, competition prep, and streaks become a shared academy timeline.
+          </p>
+          <div className="mt-6 space-y-3">
+            {promotions.map((promotion) => (
+              <div key={promotion.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+                <p className="text-sm font-semibold">{promotion.student}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">{promotion.detail}</p>
+                <p className="mt-2 text-xs text-[var(--accent)]">{promotion.awardedBy} · {promotion.when}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-4">
+          <BeltDistribution />
+          <TrainingFeed />
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function FeatureSection() {
   return (
-    <section id="features" className="border-y border-[var(--border)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]">
+    <section id="features" className="scroll-mt-24 border-y border-[var(--border)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <Kicker icon={Zap}>Features</Kicker>
@@ -464,9 +588,43 @@ function ControlRoomVisual() {
   );
 }
 
+function CompetitionSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="grid gap-7 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+        <div className="lg:sticky lg:top-24">
+          <Kicker icon={Medal}>Competitions & camps</Kicker>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Competition culture belongs inside the academy OS.</h2>
+          <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+            Rosters, deadlines, prep readiness, and team moments stay connected to the same athletes, rankings, and training feed.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {competitions.map((event) => (
+            <motion.article key={event.id} whileHover={{ y: -4 }} className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{event.type}</p>
+                  <h3 className="mt-2 text-xl font-semibold">{event.name}</h3>
+                </div>
+                <Badge variant={event.prep >= 70 ? "success" : "muted"}>{event.prep}% prep</Badge>
+              </div>
+              <p className="mt-3 text-sm text-[var(--muted)]">{event.date} · {event.city}</p>
+              <p className="mt-2 text-sm text-[var(--muted)]">{event.registered_students.length} registered athletes · {event.status}</p>
+              <div className="mt-4 h-2 rounded-full bg-[var(--surface)]">
+                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${event.prep}%` }} />
+              </div>
+            </motion.article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PricingSection() {
   return (
-    <section id="pricing" className="border-y border-[var(--border)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]">
+    <section id="pricing" className="scroll-mt-24 border-y border-[var(--border)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <Kicker icon={CreditCard}>Pricing</Kicker>
@@ -513,7 +671,7 @@ function CredibilitySection() {
       <div className="grid gap-5 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-5 sm:p-7 lg:grid-cols-[0.86fr_1.14fr] lg:items-center">
         <div>
           <Kicker icon={Sparkles}>MVP demo available now</Kicker>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">Built around real BJJ workflows, not fake generic testimonials.</h2>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">Built around real BJJ workflows, with no invented testimonials.</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
             Grapply is designed for academy owners, coaches, and teams who want a cleaner operating system for members, belts, classes, rankings, and mat-side displays.
           </p>
@@ -537,7 +695,7 @@ function CredibilitySection() {
 
 function FinalCta() {
   return (
-    <section id="demo" className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+    <section id="demo" className="mx-auto max-w-7xl scroll-mt-24 px-4 pb-12 sm:px-6 lg:px-8">
       <div className="grid gap-6 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)] sm:p-8 lg:grid-cols-[1fr_0.78fr] lg:items-center">
         <div>
           <Badge variant="accent" className="mb-4">
@@ -759,7 +917,7 @@ function TrainingFeed() {
   );
 }
 
-function Kicker({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+function Kicker({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
       <Icon size={14} />
@@ -770,7 +928,7 @@ function Kicker({ icon: Icon, children }: { icon: LucideIcon; children: React.Re
 
 function BeltLabel({ belt }: { belt: keyof typeof beltStyles }) {
   return (
-    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize" style={{ backgroundColor: beltStyles[belt].hex, color: belt === "white" ? "#09090b" : "#ffffff" }}>
+    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize" style={{ backgroundColor: beltStyles[belt].hex, color: belt === "white" ? beltStyles.black.hex : beltStyles.white.hex }}>
       {belt}
     </span>
   );

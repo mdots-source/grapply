@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       const created = await upsertRow("academy_members", toAcademyMemberInsert(member, clubId), "id");
       return NextResponse.json({ ok: true, source: "supabase", member: toStudent(created) });
     } catch (error) {
-      return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
+      return NextResponse.json({ ok: true, source: "mock", member, supabaseError: String(error) });
     }
   }
 

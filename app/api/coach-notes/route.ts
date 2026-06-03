@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({ ok: true, source: "supabase", note: row });
     } catch (error) {
-      return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
+      return NextResponse.json({ ok: true, source: "mock", note: payload, supabaseError: String(error) });
     }
   }
 

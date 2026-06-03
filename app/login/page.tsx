@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Shield } from "lucide-react";
+import { ArrowRight, Shield } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "@/components/login-form";
 import { StravaConnectButton } from "@/components/strava-connect-button";
@@ -37,6 +37,13 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
         <div className="mt-5 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm text-[var(--foreground)]">
           After sign in, choose an academy to {intentLabel}.
         </div>
+        <Link
+          href="/dashboard"
+          className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5"
+        >
+          Open demo workspace
+          <ArrowRight size={16} />
+        </Link>
         <StravaConnectButton href={`/api/strava/connect?returnTo=${encodeURIComponent(`/clubs?returnTo=${returnTo}`)}`} className="mt-7 w-full">
           Continue with Strava
         </StravaConnectButton>

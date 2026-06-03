@@ -37,6 +37,11 @@ export function CreateTrainingPostForm({
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">Create training post</p>
             <p className="mt-1 text-xs text-[var(--muted)]">Publish a recap, announcement, promotion, or open mat update.</p>
+            {message && (
+              <p className="mt-3 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]">
+                {message}
+              </p>
+            )}
           </div>
           <Button variant="primary" data-create-training-post onClick={() => setOpen(true)}>
             <Send size={16} />
@@ -80,6 +85,7 @@ export function CreateTrainingPostForm({
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Post creation failed.");
           onCreate?.(payload.post ?? draftPost);
           setMessage("Post published to the timeline.");
+          setOpen(false);
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "Post creation failed.");
         } finally {
