@@ -1,6 +1,6 @@
 # Telegram PR updates
 
-Grapply sends Telegram summaries when a pull request is merged into production (`main`) through the Vercel-hosted endpoint:
+Grapply sends Telegram summaries when production (`main`) changes through the Vercel-hosted endpoint:
 
 ```text
 POST /api/github/pr-summary
@@ -28,8 +28,8 @@ Webhook `635803207` is already active in `mdots-source/grapply`:
 Payload URL: https://grapply.vercel.app/api/github/pr-summary
 Content type: application/json
 Secret: same value as GITHUB_WEBHOOK_SECRET
-Events: Pull requests
+Events: Pushes
 Active: yes
 ```
 
-The endpoint only sends messages for pull requests that are merged into `main`. Opened PRs, ready-for-review PRs, draft PRs, and PRs closed without merge are ignored.
+The endpoint only sends messages for pushes to `main`. This covers both direct commits to `main` and PR merges that update production. Pull request open/review events are ignored.

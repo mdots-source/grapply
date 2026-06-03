@@ -3,28 +3,27 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type GitHubPullRequestPayload = {
-  action?: string;
-  pull_request?: {
-    number: number;
-    title: string;
-    body: string | null;
-    html_url: string;
-    draft: boolean;
-    merged: boolean;
-    user: {
-      login: string;
+type GitHubPushPayload = {
+  ref?: string;
+  before?: string;
+  after?: string;
+  compare?: string;
+  commits?: Array<{
+    id: string;
+    message: string;
+    url: string;
+    author?: {
+      name?: string;
+      username?: string;
     };
-    base: {
-      ref: string;
-    };
-    head: {
-      ref: string;
-    };
-    changed_files: number;
-    additions: number;
-    deletions: number;
-    commits: number;
+  }>;
+  head_commit?: {
+    id: string;
+    message: string;
+    url: string;
+  } | null;
+  pusher?: {
+    name?: string;
   };
   repository?: {
     full_name: string;
@@ -48,33 +47,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid signature" }, { status: 401 });
   }
 
-  if (event !== "pull_request") {
+  if (event !== "push") {
     return NextResponse.json({ ok: true, skipped: "Unsupported event" });
   }
 
   const payload = parsePayload(body);
-  const pullRequest = payload.pull_request;
 
-  if (!pullRequest || payload.action !== "closed") {
-    return NextResponse.json({ ok: true, skipped: "Not a merged pull request event" });
+  if (payload.ref !== "refs/heads/main") {
+    return NextResponse.json({ ok: true, skipped: "Push target is not main" });
   }
 
-  if (pullRequest.base.ref !== "main") {
-    return NextResponse.json({ ok: true, skipped: "Pull request target is not main" });
+  if (!payload.head_commit || payload.after === "0000000000000000000000000000000000000000") {
+    return NextResponse.json({ ok: true, skipped: "No production commit to report" });
   }
 
-  if (!pullRequest.merged) {
-    return NextResponse.json({ ok: true, skipped: "Pull request closed without merge" });
-  }
-
-  await sendTelegramMessage(formatPullRequestMessage(payload));
+  await sendTelegramMessage(formatPushMessage(payload));
 
   return NextResponse.json({ ok: true });
 }
 
 function parsePayload(body: string) {
   try {
-    return JSON.parse(body) as GitHubPullRequestPayload;
+    return JSON.parse(body) as GitHubPushPayload;
   } catch {
     throw new Error("Invalid GitHub webhook payload");
   }
@@ -94,34 +88,29 @@ function isValidGitHubSignature(body: string, signature: string | null) {
   return signatureBuffer.length === expectedBuffer.length && timingSafeEqual(signatureBuffer, expectedBuffer);
 }
 
-function formatPullRequestMessage(payload: GitHubPullRequestPayload) {
-  const pullRequest = payload.pull_request;
-
-  if (!pullRequest) {
-    throw new Error("Pull request payload is missing");
-  }
-
-  const summary = pullRequest.body?.trim() || "No PR description provided.";
-  const stats = [
-    `${pullRequest.changed_files} files changed`,
-    `+${pullRequest.additions}`,
-    `-${pullRequest.deletions}`,
-    `${pullRequest.commits} commits`,
-  ].join(" | ");
+function formatPushMessage(payload: GitHubPushPayload) {
+  const commits = payload.commits ?? [];
+  const commitLines = commits.slice(-8).map((commit) => {
+    const title = commit.message.split("\n")[0] || commit.id.slice(0, 7);
+    const author = commit.author?.username ?? commit.author?.name;
+    return `- ${truncate(title, 110)}${author ? ` (${author})` : ""}`;
+  });
+  const moreCommits = commits.length > commitLines.length
+    ? `\n...and ${commits.length - commitLines.length} more commits`
+    : "";
 
   return [
     "<b>Grapply production update</b>",
     "",
-    `<b>#${pullRequest.number}: ${escapeHtml(pullRequest.title)}</b>`,
-    `Author: ${escapeHtml(pullRequest.user.login)}`,
     `Repo: ${escapeHtml(payload.repository?.full_name ?? "unknown")}`,
-    `Branch: ${escapeHtml(pullRequest.head.ref)} -> ${escapeHtml(pullRequest.base.ref)}`,
-    `Stats: ${escapeHtml(stats)}`,
+    `Branch: main`,
+    `Pushed by: ${escapeHtml(payload.pusher?.name ?? "unknown")}`,
+    `Commits: ${commits.length}`,
     "",
     `<b>Summary</b>`,
-    escapeHtml(truncate(summary, 1200)),
+    escapeHtml(commitLines.length ? `${commitLines.join("\n")}${moreCommits}` : "- No commit details provided"),
     "",
-    `<a href="${escapeHtml(pullRequest.html_url)}">Open PR</a>`,
+    payload.compare ? `<a href="${escapeHtml(payload.compare)}">View changes</a>` : "",
   ].join("\n").slice(0, 3900);
 }
 
