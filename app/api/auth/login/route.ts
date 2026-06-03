@@ -3,12 +3,13 @@ import { setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
 import { platformUsers } from "@/data/platform";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
+import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   const isFormSubmit = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
   const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await request.json();
-  const returnTo = isFormSubmit && String(payload.returnTo ?? "").startsWith("/") ? String(payload.returnTo) : null;
+  const returnTo = isFormSubmit ? normalizeWorkspaceReturnTo(String(payload.returnTo ?? "")) : null;
   const email = String(payload?.email ?? "").trim().toLowerCase();
   const password = String(payload?.password ?? "");
 
@@ -76,6 +77,6 @@ function createMockLoginResponse(request: Request, user: (typeof platformUsers)[
 
 function clubsUrl(request: Request, returnTo: string) {
   const url = new URL("/clubs", request.url);
-  url.searchParams.set("returnTo", returnTo.startsWith("/") ? returnTo : "/schedule");
+  url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
   return url;
 }

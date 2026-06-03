@@ -6,11 +6,11 @@ import { LoginForm } from "@/components/login-form";
 import { StravaConnectButton } from "@/components/strava-connect-button";
 import { Card } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth-session";
-import { getWorkspaceIntentLabel } from "@/lib/workspace-intent";
+import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export default async function LoginPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string }> }) {
   const params = await searchParams;
-  const returnTo = params?.returnTo?.startsWith("/") ? params.returnTo : "/schedule";
+  const returnTo = normalizeWorkspaceReturnTo(params?.returnTo);
   const session = await getCurrentSession();
   if (session) {
     redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
@@ -35,7 +35,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
           Sign into the Grapply workspace, review the room, and keep athlete activity connected.
         </p>
         <div className="mt-5 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm text-[var(--foreground)]">
-          After sign in, choose a club to {intentLabel}.
+          After sign in, choose an academy to {intentLabel}.
         </div>
         <StravaConnectButton href={`/api/strava/connect?returnTo=${encodeURIComponent(`/clubs?returnTo=${returnTo}`)}`} className="mt-7 w-full">
           Continue with Strava

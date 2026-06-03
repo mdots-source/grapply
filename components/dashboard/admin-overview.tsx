@@ -183,7 +183,7 @@ export function AdminOverview({ stats = seedDashboardStats }: { stats?: Dashboar
             {studentsNeedingAttention.map((student) => (
               <Link
                 key={student.id}
-                href={`/members/${student.id}`}
+                href={`/members?member=${student.id}`}
                 className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 transition hover:border-[var(--accent-coral)]/30 hover:bg-[var(--surface)]"
               >
                 <div>
@@ -194,7 +194,7 @@ export function AdminOverview({ stats = seedDashboardStats }: { stats?: Dashboar
               </Link>
             ))}
             <Button variant="ghost" className="w-full" asChild>
-              <Link href="/members">View all members</Link>
+              <Link href="/members?filter=attention">Review attention list</Link>
             </Button>
           </CardContent>
         </Card>

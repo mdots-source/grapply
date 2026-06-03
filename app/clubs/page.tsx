@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CheckCircle2, DoorOpen, Plus, Shield, Users } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, DoorOpen, Plus, Shield, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/oss/empty-state";
 import { getCurrentSession } from "@/lib/auth-session";
-import { getWorkspaceIntentLabel } from "@/lib/workspace-intent";
+import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string; returnTo?: string }> }) {
   const params = await searchParams;
@@ -15,7 +15,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
   const user = session?.user;
   const memberships = session?.memberships ?? [];
   const stravaStatus = params?.strava;
-  const workspaceReturnTo = params?.returnTo?.startsWith("/") ? params.returnTo : "/schedule";
+  const workspaceReturnTo = normalizeWorkspaceReturnTo(params?.returnTo);
   const intentLabel = getWorkspaceIntentLabel(workspaceReturnTo);
   const inviteMailto = `mailto:?subject=${encodeURIComponent("Grapply club access request")}&body=${encodeURIComponent(
     `Hi,\n\nPlease invite ${user?.name ?? "me"} (${user?.email ?? "this account"}) to the right Grapply academy workspace.\n\nThanks!`,
@@ -27,22 +27,24 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
 
   return (
     <AppShell
-      title="My Clubs"
-      subtitle="Choose the academy you want to work with today."
+      title="Choose Academy"
+      subtitle="Pick the workspace you want to open. The product navigation appears after this step."
       mode="account"
       initialSession={session}
     >
       <PageTransition>
         <div className="space-y-5">
           <Card className="p-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Signed in as</p>
-                <h2 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{user.name}</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">{user.email}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Account ready</p>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  Signed in as <span className="font-semibold text-[var(--foreground)]">{user.name}</span> · {user.email}
+                </p>
               </div>
-              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm text-[var(--foreground)]">
-                Choose a club to {intentLabel}.
+              <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm font-semibold text-[var(--foreground)]">
+                Choose an academy to {intentLabel}.
+                <ArrowRight size={15} className="text-[var(--accent)]" />
               </div>
             </div>
           </Card>
@@ -68,7 +70,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
                 const canManageTeam = membership.role === "owner" || membership.role === "admin";
 
                 return (
-                  <Card key={membership.id} className="p-0">
+                  <Card key={membership.id} className="group p-0 transition hover:border-[var(--accent)]/30 hover:bg-[var(--surface-hover)]">
                     <div className="border-b border-[var(--border)] p-5">
                       <CardHeader className="mb-0">
                         <div>
@@ -92,7 +94,10 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
 
                     <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
                       <Button variant="primary" asChild>
-                        <Link href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>Enter workspace</Link>
+                        <Link href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>
+                          Open academy
+                          <ArrowRight size={16} />
+                        </Link>
                       </Button>
                       {canManageTeam && (
                         <Button variant="surface" asChild>

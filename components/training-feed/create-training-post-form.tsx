@@ -38,7 +38,7 @@ export function CreateTrainingPostForm({
             <p className="text-sm font-semibold text-[var(--foreground)]">Create training post</p>
             <p className="mt-1 text-xs text-[var(--muted)]">Publish a recap, announcement, promotion, or open mat update.</p>
           </div>
-          <Button variant="primary" onClick={() => setOpen(true)}>
+          <Button variant="primary" data-create-training-post onClick={() => setOpen(true)}>
             <Send size={16} />
             New post
           </Button>

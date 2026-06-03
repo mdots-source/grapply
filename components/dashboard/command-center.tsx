@@ -23,7 +23,7 @@ const quickActions = [
   { href: "/members?add=1", label: "Add member", icon: UserPlus, accent: "accent" as const },
   { href: "/schedule?create=class", label: "Create class", icon: CalendarPlus, accent: "blue" as const },
   { href: "/members?filter=promotion", label: "Award stripe", icon: Award, accent: "accent" as const },
-  { href: "/competitions", label: "Add competition", icon: Trophy, accent: "blue" as const },
+  { href: "/competitions#competition-prep", label: "Plan team", icon: Trophy, accent: "blue" as const },
   { href: "/tv", label: "Open TV screen", icon: MonitorPlay, accent: "accent" as const },
   { href: "/training-feed?create=post", label: "Training post", icon: Plus, accent: "coral" as const },
 ];

@@ -7,7 +7,7 @@ import {
   type ICellRendererParams,
   type RowClickedEvent,
 } from "ag-grid-community";
-import { Plus } from "lucide-react";
+import { AlertTriangle, Loader2, Plus, Search, UserPlus } from "lucide-react";
 import { MemberDrawer } from "@/components/member-drawer";
 import { BeltPill } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -47,6 +47,8 @@ export function MembersGrid({
 }) {
   const activeClub = useActiveClub();
   const [members, setMembers] = useState<Student[]>(seedMembers);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [filter, setFilter] = useState<RosterFilter>(initialFilter);
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(initialAdd);
@@ -69,17 +71,24 @@ export function MembersGrid({
     let cancelled = false;
 
     async function loadMembers() {
+      setLoadingMembers(true);
+      setMembersError(null);
+
       try {
         const params = new URLSearchParams();
         if (activeClub?.slug) params.set("club", activeClub.slug);
         const response = await fetch(`/api/members${params.size ? `?${params}` : ""}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Could not refresh members.");
         const payload = (await response.json()) as { members?: Student[] };
         if (cancelled) return;
-        if (payload.members?.length) {
+        if (Array.isArray(payload.members)) {
           setMembers(payload.members);
         }
-      } catch {
+      } catch (error) {
+        if (!cancelled) setMembersError(error instanceof Error ? error.message : "Could not refresh members.");
         // Keep the seeded roster visible if the roster cannot refresh.
+      } finally {
+        if (!cancelled) setLoadingMembers(false);
       }
     }
 
@@ -132,7 +141,7 @@ export function MembersGrid({
   const summary = useMemo(() => {
     const active = members.filter((m) => m.status === "active").length;
     const promotion = members.filter((m) => matchesFilter(m, "promotion")).length;
-    const avgHours = Math.round(members.reduce((sum, m) => sum + m.totalHours, 0) / members.length);
+    const avgHours = members.length ? Math.round(members.reduce((sum, m) => sum + m.totalHours, 0) / members.length) : 0;
     const matHours = members.reduce((sum, m) => sum + m.totalHours, 0);
     const competitionTeam = countCompetitionTeam(members);
     return { active, promotion, avgHours, matHours, competitionTeam };
@@ -231,6 +240,20 @@ export function MembersGrid({
                 placeholder="Search members by name, belt, or role"
                 className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none ring-[var(--accent)]/40 placeholder:text-[var(--muted)] focus:border-[var(--accent)]/40 focus:ring-2 md:max-w-md"
               />
+              <div className="flex items-center gap-2">
+                {loadingMembers && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent)]">
+                    <Loader2 size={13} className="animate-spin" />
+                    Syncing
+                  </span>
+                )}
+                {membersError && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent-coral)]">
+                    <AlertTriangle size={13} />
+                    Offline fallback
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-2 border-b border-[var(--border)] px-4 py-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -240,26 +263,37 @@ export function MembersGrid({
               <Metric label="Promotion watch" value={summary.promotion.toString()} />
             </div>
 
-            <AgGridHost className="oss-members-grid ag-theme-quartz h-[520px] w-full">
-              <AgGridReact<Student>
-                rowData={rowData}
-                columnDefs={columnDefs}
-                defaultColDef={{
-                  sortable: true,
-                  filter: true,
-                  resizable: true,
-                  suppressMovable: true,
+            {rowData.length > 0 ? (
+              <AgGridHost className="oss-members-grid ag-theme-quartz h-[520px] w-full">
+                <AgGridReact<Student>
+                  rowData={rowData}
+                  columnDefs={columnDefs}
+                  defaultColDef={{
+                    sortable: true,
+                    filter: true,
+                    resizable: true,
+                    suppressMovable: true,
+                  }}
+                  theme="legacy"
+                  animateRows
+                  rowHeight={72}
+                  headerHeight={46}
+                  suppressCellFocus
+                  onRowClicked={onRowClicked}
+                  rowClass="cursor-pointer"
+                />
+              </AgGridHost>
+            ) : (
+              <MembersEmptyState
+                hasMembers={members.length > 0}
+                canClear={Boolean(search || filter !== "all")}
+                onClear={() => {
+                  setSearch("");
+                  setFilter("all");
                 }}
-                theme="legacy"
-                animateRows
-                rowHeight={72}
-                headerHeight={46}
-                suppressCellFocus
-                onRowClicked={onRowClicked}
-                rowClass="cursor-pointer"
-                overlayNoRowsTemplate='<span class="text-[var(--muted)]">No members match this filter.</span>'
+                onAdd={openAddDrawer}
               />
-            </AgGridHost>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
@@ -271,6 +305,47 @@ export function MembersGrid({
         member={selectedMember}
         onAddMember={addMember}
       />
+    </div>
+  );
+}
+
+function MembersEmptyState({
+  hasMembers,
+  canClear,
+  onClear,
+  onAdd,
+}: {
+  hasMembers: boolean;
+  canClear: boolean;
+  onClear: () => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="grid min-h-[420px] place-items-center px-6 py-10">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--accent)]">
+          {hasMembers ? <Search size={26} strokeWidth={1.6} /> : <UserPlus size={26} strokeWidth={1.6} />}
+        </div>
+        <h3 className="mt-5 text-lg font-semibold text-[var(--foreground)]">
+          {hasMembers ? "No members match this view." : "No members in this academy yet."}
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          {hasMembers
+            ? "Clear the search or switch back to all members to keep working from the full roster."
+            : "Add the first member to start building the roster for this academy."}
+        </p>
+        <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+          {canClear && (
+            <Button variant="surface" onClick={onClear}>
+              Clear filters
+            </Button>
+          )}
+          <Button variant="primary" onClick={onAdd}>
+            <Plus size={16} />
+            Add member
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

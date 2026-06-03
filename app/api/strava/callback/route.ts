@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { exchangeStravaCode } from "@/lib/strava";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
+import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
-  const state = url.searchParams.get("state") ?? "/clubs";
-  const redirectBase = new URL(state.startsWith("/") ? state : "/clubs", request.url);
+  const state = url.searchParams.get("state");
+  const redirectBase = getSafeRedirectUrl(request, state);
 
   if (error) {
     redirectBase.searchParams.set("strava", "denied");
@@ -47,4 +48,16 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.redirect(redirectBase);
+}
+
+function getSafeRedirectUrl(request: Request, state: string | null) {
+  if (state?.startsWith("/clubs")) {
+    const url = new URL(state, request.url);
+    url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(url.searchParams.get("returnTo")));
+    return url;
+  }
+
+  const url = new URL("/clubs", request.url);
+  url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(state));
+  return url;
 }

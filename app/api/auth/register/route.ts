@@ -3,12 +3,13 @@ import { setActiveClubCookie, setAuthCookies, setMockAuthCookie } from "@/lib/au
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { insertRow, isSupabaseConfigured, upsertRow } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
+import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   const isFormSubmit = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
   const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await request.json();
-  const returnTo = String(payload?.returnTo ?? "/schedule").startsWith("/") ? String(payload.returnTo ?? "/schedule") : "/schedule";
+  const returnTo = normalizeWorkspaceReturnTo(String(payload?.returnTo ?? ""));
   const academyName = String(payload?.academyName ?? "").trim();
   const ownerEmail = String(payload?.ownerEmail ?? "").trim().toLowerCase();
   const ownerName = String(payload?.ownerName ?? ownerEmail.split("@")[0] ?? "Owner").trim();
@@ -90,6 +91,6 @@ export async function POST(request: Request) {
 
 function clubsUrl(request: Request, returnTo: string) {
   const url = new URL("/clubs", request.url);
-  url.searchParams.set("returnTo", returnTo.startsWith("/") ? returnTo : "/schedule");
+  url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
   return url;
 }

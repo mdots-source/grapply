@@ -117,9 +117,9 @@ export function AppShell({
               <div className="grid size-10 place-items-center rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]">
                 <Building2 size={20} />
               </div>
-              <p className="mt-4 text-sm font-semibold text-[var(--foreground)]">Choose your club</p>
+              <p className="mt-4 text-sm font-semibold text-[var(--foreground)]">Choose academy</p>
               <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
-                Pick the academy workspace you want to open. Navigation appears after the club is selected.
+                Pick the workspace you want to open. Navigation appears after the academy is selected.
               </p>
             </div>
           ) : visibleNav.map((item) => {

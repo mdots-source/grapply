@@ -6,11 +6,11 @@ import { RegisterForm } from "@/components/register-form";
 import { StravaConnectButton } from "@/components/strava-connect-button";
 import { Card } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth-session";
-import { getWorkspaceIntentLabel } from "@/lib/workspace-intent";
+import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export default async function RegisterPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string }> }) {
   const params = await searchParams;
-  const returnTo = params?.returnTo?.startsWith("/") ? params.returnTo : "/schedule";
+  const returnTo = normalizeWorkspaceReturnTo(params?.returnTo);
   const session = await getCurrentSession();
   if (session) {
     redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
@@ -29,7 +29,7 @@ export default async function RegisterPage({ searchParams }: { searchParams?: Pr
           Set up the academy profile and invite your coaching team when you are ready.
         </p>
         <div className="mt-5 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm text-[var(--foreground)]">
-          After setup, choose a club to {intentLabel}.
+          After setup, choose an academy to {intentLabel}.
         </div>
         <StravaConnectButton href={`/api/strava/connect?returnTo=${encodeURIComponent(`/clubs?returnTo=${returnTo}`)}`} className="mt-7 w-full">
           Register with Strava

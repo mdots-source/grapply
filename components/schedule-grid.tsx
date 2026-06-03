@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { AlertTriangle, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Loader2, RotateCcw } from "lucide-react";
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -220,6 +220,7 @@ export function ScheduleGrid({
     return { classes: allSessions.length, rooms };
   }, [scheduleRows]);
   const clubLabel = activeClub?.name ?? "Club workspace";
+  const hasClasses = weekSummary.classes > 0;
 
   const addClassToTimetable = (value: ClassFormValue) => {
     const day = dayKeyFromLabel(value.day);
@@ -419,19 +420,54 @@ export function ScheduleGrid({
               {classesError ?? "Horizontal scroll keeps the full week readable."}
             </p>
           </div>
+          <div className="hidden items-center gap-2 sm:flex">
+            {loadingClasses && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent)]">
+                <Loader2 size={13} className="animate-spin" />
+                Syncing
+              </span>
+            )}
+            {classesError && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent-coral)]">
+                <AlertTriangle size={13} />
+                Offline fallback
+              </span>
+            )}
+          </div>
         </div>
-        <AgGridHost className="oss-schedule-grid ag-theme-quartz h-[690px] w-full">
-          <AgGridReact<ScheduleRow>
-            rowData={scheduleRows}
-            columnDefs={columnDefs}
-            defaultColDef={{ resizable: true, suppressMovable: true }}
-            theme="legacy"
-            suppressCellFocus={false}
-            animateRows
-            rowHeight={104}
-            headerHeight={50}
-          />
-        </AgGridHost>
+        {hasClasses ? (
+          <AgGridHost className="oss-schedule-grid ag-theme-quartz h-[690px] w-full">
+            <AgGridReact<ScheduleRow>
+              rowData={scheduleRows}
+              columnDefs={columnDefs}
+              defaultColDef={{ resizable: true, suppressMovable: true }}
+              theme="legacy"
+              suppressCellFocus={false}
+              animateRows
+              rowHeight={104}
+              headerHeight={50}
+            />
+          </AgGridHost>
+        ) : (
+          <div className="grid min-h-[420px] place-items-center px-6 py-10">
+            <div className="max-w-sm text-center">
+              <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--accent)]">
+                <CalendarPlus size={26} strokeWidth={1.6} />
+              </div>
+              <h3 className="mt-5 text-lg font-semibold text-[var(--foreground)]">No classes scheduled this week.</h3>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                {canManageClasses
+                  ? "Create the first class for this academy week, then it will appear in the timetable."
+                  : "Academy staff has not published classes for this week yet."}
+              </p>
+              {canManageClasses && (
+                <div className="mt-6">
+                  <CreateClassForm initialOpen={false} onCreate={addClassToTimetable} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
