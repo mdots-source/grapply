@@ -133,6 +133,8 @@ export default async function AdminPage() {
                 membershipId: membership.id,
                 name: user.name,
                 email: user.email,
+                belt: user.belt,
+                stripes: user.stripes,
                 role: membership.role,
                 joinedAt: membership.joinedAt,
                 stravaStatus: user.stravaStatus,

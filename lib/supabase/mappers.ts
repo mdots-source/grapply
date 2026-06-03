@@ -1,6 +1,6 @@
 import type { Student } from "@/data/academy";
 import type { Competition } from "@/data/competitions";
-import type { Club, ClubClass, ClubMembership, PlatformUser } from "@/data/platform";
+import { getPlatformUserBeltRank, type Club, type ClubClass, type ClubMembership, type PlatformUser } from "@/data/platform";
 import type { TrainingCamp } from "@/data/training-camps";
 import type { TrainingPost, TrainingPostType } from "@/data/training-feed";
 import type { TableInsert, TableRow } from "@/lib/supabase/types";
@@ -48,11 +48,15 @@ export function toAcademyMemberInsert(member: Student, clubId: string): TableIns
 }
 
 export function toPlatformUser(row: TableRow<"app_users">): PlatformUser {
+  const beltRank = getPlatformUserBeltRank(row.email);
+
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     avatar: row.avatar_url ?? undefined,
+    belt: row.belt ?? beltRank.belt,
+    stripes: row.stripes ?? beltRank.stripes,
     stravaStatus: "not_connected",
   };
 }

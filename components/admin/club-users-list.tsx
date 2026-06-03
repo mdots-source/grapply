@@ -2,14 +2,18 @@
 
 import { useState } from "react";
 import { AlertTriangle, Trash2 } from "lucide-react";
+import { BeltPill } from "@/components/belt-pill";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { Belt } from "@/data/academy";
 import type { PlatformRole } from "@/data/platform";
 
 type ClubUser = {
   membershipId: string;
   name: string;
   email: string;
+  belt: Belt;
+  stripes: number;
   role: PlatformRole;
   joinedAt: string;
   stravaStatus: string;
@@ -63,6 +67,7 @@ export function ClubUsersList({ users }: { users: ClubUser[] }) {
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold text-[var(--foreground)]">{user.name}</p>
                 <Badge variant="accent">{roleLabel(user.role)}</Badge>
+                <BeltPill belt={user.belt} stripes={user.stripes} />
               </div>
               <p className="mt-1 truncate text-xs text-[var(--muted)]">{user.email}</p>
               <p className="mt-1 text-[11px] text-[var(--muted)]">Joined {user.joinedAt}</p>

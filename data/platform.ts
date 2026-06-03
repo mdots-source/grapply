@@ -1,4 +1,4 @@
-import { schedule, students, type Student } from "@/data/academy";
+import { schedule, students, type Belt, type Student } from "@/data/academy";
 
 export type PlatformRole = "owner" | "admin" | "coach" | "member";
 export type ClubStatus = "active" | "pending" | "archived";
@@ -9,6 +9,8 @@ export type PlatformUser = {
   name: string;
   email: string;
   avatar?: string;
+  belt: Belt;
+  stripes: number;
   stravaStatus: StravaConnectionStatus;
   stravaAthleteId?: string;
 };
@@ -57,6 +59,8 @@ export const platformUsers: PlatformUser[] = [
     name: "Sofia Almeida",
     email: "sofia@grapply.app",
     avatar: "/avatars/sofia-almeida.png",
+    belt: "black",
+    stripes: 3,
     stravaStatus: "connected",
     stravaAthleteId: "12345678",
   },
@@ -65,6 +69,8 @@ export const platformUsers: PlatformUser[] = [
     name: "Maya Ribeiro",
     email: "maya@grapply.app",
     avatar: "/avatars/maya-ribeiro.png",
+    belt: "purple",
+    stripes: 2,
     stravaStatus: "syncing",
     stravaAthleteId: "33221100",
   },
@@ -73,12 +79,16 @@ export const platformUsers: PlatformUser[] = [
     name: "Eli Morgan",
     email: "eli@grapply.app",
     avatar: "/avatars/eli-morgan.png",
+    belt: "white",
+    stripes: 3,
     stravaStatus: "not_connected",
   },
   {
     id: "usr-empty",
     name: "Nina Park",
     email: "nina@grapply.app",
+    belt: "white",
+    stripes: 0,
     stravaStatus: "not_connected",
   },
   {
@@ -86,6 +96,8 @@ export const platformUsers: PlatformUser[] = [
     name: "Diego Alvarez",
     email: "diego@grapply.app",
     avatar: "/avatars/noah-keller.png",
+    belt: "black",
+    stripes: 1,
     stravaStatus: "connected",
     stravaAthleteId: "44009112",
   },
@@ -94,6 +106,8 @@ export const platformUsers: PlatformUser[] = [
     name: "Zoe Chen",
     email: "zoe@grapply.app",
     avatar: "/avatars/eli-morgan.png",
+    belt: "blue",
+    stripes: 3,
     stravaStatus: "connected",
     stravaAthleteId: "55110223",
   },
@@ -102,6 +116,8 @@ export const platformUsers: PlatformUser[] = [
     name: "Omar Haddad",
     email: "omar@grapply.app",
     avatar: "/avatars/sofia-almeida.png",
+    belt: "purple",
+    stripes: 1,
     stravaStatus: "error",
     stravaAthleteId: "77123490",
   },
@@ -110,6 +126,8 @@ export const platformUsers: PlatformUser[] = [
     name: "Priya Nair",
     email: "priya@grapply.app",
     avatar: "/avatars/maya-ribeiro.png",
+    belt: "white",
+    stripes: 2,
     stravaStatus: "not_connected",
   },
   {
@@ -117,6 +135,8 @@ export const platformUsers: PlatformUser[] = [
     name: "Marcus Reed",
     email: "marcus@grapply.app",
     avatar: "/avatars/noah-keller.png",
+    belt: "blue",
+    stripes: 0,
     stravaStatus: "syncing",
     stravaAthleteId: "88234501",
   },
@@ -125,10 +145,17 @@ export const platformUsers: PlatformUser[] = [
     name: "Ana Costa",
     email: "ana@grapply.app",
     avatar: "/avatars/sofia-almeida.png",
+    belt: "purple",
+    stripes: 3,
     stravaStatus: "connected",
     stravaAthleteId: "99012345",
   },
 ];
+
+export function getPlatformUserBeltRank(email?: string | null): Pick<PlatformUser, "belt" | "stripes"> {
+  const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email?.toLowerCase());
+  return { belt: user?.belt ?? "white", stripes: user?.stripes ?? 0 };
+}
 
 export const clubs: Club[] = [
   {

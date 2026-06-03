@@ -52,9 +52,11 @@ const levelOptions = ["white / blue", "blue / purple / brown / black", "all belt
 export function CreateClassForm({
   initialOpen = false,
   onCreate,
+  validateClass,
 }: {
   initialOpen?: boolean;
   onCreate?: (value: ClassFormValue) => void;
+  validateClass?: (value: ClassFormValue) => string | null;
 }) {
   const activeClub = useActiveClub();
   const [open, setOpen] = useState(initialOpen);
@@ -92,6 +94,9 @@ export function CreateClassForm({
         setLoading(true);
         setMessage(null);
         try {
+          const validationError = validateClass?.(form);
+          if (validationError) throw new Error(validationError);
+
           const response = await fetch("/api/classes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

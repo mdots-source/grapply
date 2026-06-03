@@ -10,6 +10,8 @@ export type Database = {
           name: string;
           email: string;
           avatar_url: string | null;
+          belt: "white" | "blue" | "purple" | "brown" | "black" | null;
+          stripes: number | null;
           created_at: string;
         };
         Insert: {
@@ -18,6 +20,8 @@ export type Database = {
           name: string;
           email: string;
           avatar_url?: string | null;
+          belt?: "white" | "blue" | "purple" | "brown" | "black" | null;
+          stripes?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["app_users"]["Insert"]>;
       };

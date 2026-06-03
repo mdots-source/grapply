@@ -49,6 +49,8 @@ export async function POST(request: Request) {
           name: payload.name,
           email: payload.email,
           avatar_url: payload.avatar ?? payload.avatar_url ?? null,
+          belt: payload.belt ?? null,
+          stripes: payload.stripes ?? null,
         },
         "email",
       );

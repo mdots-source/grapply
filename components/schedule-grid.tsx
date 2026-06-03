@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { AlertTriangle, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Loader2, RotateCcw } from "lucide-react";
+import { AlertTriangle, CalendarDays, CalendarPlus, Loader2 } from "lucide-react";
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -46,7 +45,6 @@ type ApiClass = {
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 type DayKey = (typeof dayKeys)[number];
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const initialRows: ScheduleRow[] = [
   {
@@ -137,6 +135,10 @@ function classApiToSessionBlock(value: ApiClass): SessionBlock {
   return session(value.time, value.name, value.coach, value.mat, value.level);
 }
 
+function normalizeScheduleValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
 function classesToScheduleRows(classes?: ApiClass[]) {
   const rows = new Map<string, ScheduleRow>();
 
@@ -198,11 +200,6 @@ function isDateInWeek(date: Date, weekStart: Date) {
   return value.getTime() >= start && value.getTime() <= end.getTime();
 }
 
-function weekOffsetFrom(start: Date) {
-  const current = startOfWeek(new Date()).getTime();
-  return Math.round((start.getTime() - current) / (7 * 24 * 60 * 60 * 1000));
-}
-
 function levelTone(level: string) {
   const normalized = level.toLowerCase();
   if (normalized.includes("beginner") || normalized.includes("white")) return "border-sky-400/20 bg-sky-400/10 text-sky-200";
@@ -229,17 +226,12 @@ export function ScheduleGrid({
   const [calendarMonth, setCalendarMonth] = useState(() => startOfWeek(new Date()));
   const { activeClub, loading: loadingClub } = useActiveClubState();
 
-  const weekOffset = useMemo(() => weekOffsetFrom(weekStart), [weekStart]);
   const selectedDay = useMemo(() => addDays(weekStart, 3), [weekStart]);
-  const isCurrentWeek = weekOffset === 0;
 
-  const weekSummary = useMemo(() => {
+  const hasClasses = useMemo(() => {
     const allSessions = scheduleRows.flatMap((row) => dayKeys.flatMap((key) => row[key]));
-    const rooms = new Set(allSessions.map((block) => block.room)).size;
-    return { classes: allSessions.length, rooms };
+    return allSessions.length > 0;
   }, [scheduleRows]);
-  const clubLabel = activeClub?.name ?? "Club workspace";
-  const hasClasses = weekSummary.classes > 0;
 
   const addClassToTimetable = (value: ClassFormValue) => {
     const day = dayKeyFromLabel(value.day);
@@ -257,6 +249,17 @@ export function ScheduleGrid({
         };
       });
     });
+  };
+
+  const validateClassOverlap = (value: ClassFormValue) => {
+    const day = dayKeyFromLabel(value.day);
+    const requestedTime = normalizeScheduleValue(value.time);
+    const row = scheduleRows.find((item) => normalizeScheduleValue(item.time) === requestedTime);
+    const existingClass = row?.[day]?.[0];
+
+    if (!existingClass) return null;
+
+    return `${existingClass.name} already uses ${value.day} at ${value.time}. Pick another time before saving.`;
   };
 
   useEffect(() => {
@@ -316,19 +319,10 @@ export function ScheduleGrid({
 
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden p-0">
-        <div className="grid gap-0 lg:grid-cols-[1fr_auto]">
-          <div className="p-4 sm:p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="accent">Weekly planner</Badge>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--muted)]">
-                {loadingClub ? "Loading workspace" : loadingClasses ? `${clubLabel} · refreshing` : clubLabel}
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--muted)]">
-                {isCurrentWeek ? "Current week" : weekOffset > 0 ? `+${weekOffset} week` : `${weekOffset} week`}
-              </span>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+      <Card className="p-4 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-2xl font-semibold text-[var(--foreground)]">{formatRange(weekStart)}</h2>
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
@@ -363,75 +357,18 @@ export function ScheduleGrid({
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Metric label="Classes" value={weekSummary.classes.toString()} />
-              <Metric label="Rooms in use" value={weekSummary.rooms.toString()} />
-            </div>
           </div>
-          <div className="flex flex-col justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 lg:min-w-[330px] lg:border-l lg:border-t-0">
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                variant="surface"
-                className="px-3"
-                onClick={() => {
-                  const next = addDays(weekStart, -7);
-                  setWeekStart(next);
-                  setCalendarMonth(next);
-                }}
-                aria-label="Previous week"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-              <Button
-                variant="ghost"
-                className="px-3"
-                aria-label="Go to current week"
-                onClick={() => {
-                  const today = startOfWeek(new Date());
-                  setWeekStart(today);
-                  setCalendarMonth(today);
-                }}
-              >
-                <RotateCcw size={16} /> Today
-              </Button>
-              <Button
-                variant="surface"
-                className="px-3"
-                onClick={() => {
-                  const next = addDays(weekStart, 7);
-                  setWeekStart(next);
-                  setCalendarMonth(next);
-                }}
-                aria-label="Next week"
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+          <div className="w-full lg:max-w-[340px]">
             {canManageClasses ? (
-              <CreateClassForm initialOpen={initialCreateClass} onCreate={addClassToTimetable} />
+              <CreateClassForm initialOpen={initialCreateClass} onCreate={addClassToTimetable} validateClass={validateClassOverlap} />
             ) : (
               <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-3 text-xs leading-5 text-[var(--muted)]">
-                Class changes are managed by coaches and academy staff.
+                Class changes are managed by academy admins.
               </div>
             )}
           </div>
         </div>
       </Card>
-
-      <div className="grid gap-2 md:grid-cols-7">
-        {dayKeys.map((key, index) => {
-          const count = scheduleRows.reduce((sum, row) => sum + row[key].length, 0);
-          return (
-            <div key={key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-              <p className="text-xs font-medium text-[var(--muted)]">{dayNames[index]}</p>
-              <div className="mt-1 flex items-end justify-between">
-                <p className="text-lg font-semibold text-[var(--foreground)]">{addDays(weekStart, index).getDate()}</p>
-                <p className="text-xs text-[var(--accent)]">{count} classes</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
@@ -483,22 +420,13 @@ export function ScheduleGrid({
               </p>
               {canManageClasses && (
                 <div className="mt-6">
-                  <CreateClassForm initialOpen={false} onCreate={addClassToTimetable} />
+                  <CreateClassForm initialOpen={false} onCreate={addClassToTimetable} validateClass={validateClassOverlap} />
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-      <p className="text-[11px] text-[var(--muted)]">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">{value}</p>
     </div>
   );
 }

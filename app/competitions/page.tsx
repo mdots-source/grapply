@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, Clock, MapPin, Plane, ShieldCheck, Trophy, Users } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, MapPin, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CreateCompetitionForm } from "@/components/planning/create-competition-form";
 import { PageTransition } from "@/components/page-transition";
@@ -11,12 +11,6 @@ import { resolveStudentsByIds } from "@/lib/members";
 import { getCompetitionsData } from "@/lib/backend-data";
 import { requireWorkspaceRole } from "@/lib/workspace-access";
 import type { Competition } from "@/data/competitions";
-
-const tasks = [
-  { label: "Confirm divisions", done: 18, total: 24 },
-  { label: "Weight checks", done: 14, total: 24 },
-  { label: "Travel plans", done: 9, total: 24 },
-];
 
 export default async function CompetitionsPage() {
   const session = await requireWorkspaceRole(["owner", "admin", "coach"], "/competitions");
@@ -40,11 +34,11 @@ export default async function CompetitionsPage() {
           </Card>
         ) : (
         <div className="space-y-5">
-          <section className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
+          <section>
             <Card className="overflow-hidden p-0">
               <div className="border-b border-[var(--border)] p-5">
                 <Badge variant="accent">Next competition</Badge>
-                <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div className="mt-4">
                   <div>
                     <h2 className="text-3xl font-semibold text-[var(--foreground)]">{nextEvent.name}</h2>
                     <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
@@ -59,46 +53,12 @@ export default async function CompetitionsPage() {
                       </span>
                     </p>
                   </div>
-                  {canManagePlanning ? (
-                    <Button variant="primary" asChild>
-                      <Link href="#competition-prep">
-                        <Plane size={16} /> Plan team
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Badge variant="muted">Team plan managed by staff</Badge>
-                  )}
                 </div>
               </div>
               <div className="grid gap-3 p-5 sm:grid-cols-3">
                 <Metric label="Athletes tracking" value={totalAthletes.toString()} />
                 <Metric label="Upcoming events" value={competitions.length.toString()} />
                 <Metric label="Registration deadline" value={nextEvent.registration_deadline} />
-              </div>
-            </Card>
-
-            <Card id="competition-prep" className="scroll-mt-6 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Prep checklist</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">Registration, weigh-ins, and travel tasks for the team.</p>
-                </div>
-                <ShieldCheck className="text-[var(--accent)]" size={22} />
-              </div>
-              <div className="mt-5 space-y-4">
-                {tasks.map((task) => (
-                  <div key={task.label}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-[var(--muted)]">{task.label}</span>
-                      <span className="font-mono text-xs text-[var(--muted)]">
-                        {task.done}/{task.total}
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-hover)]">
-                      <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${(task.done / task.total) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
               </div>
             </Card>
           </section>

@@ -14,7 +14,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
   if (params?.create) returnToParams.set("create", params.create);
   const session = await requireWorkspaceRole(["owner", "admin", "coach"], `/schedule${returnToParams.size ? `?${returnToParams}` : ""}`);
   const deniedFrom = params?.access === "denied" && params.from?.startsWith("/") ? params.from : null;
-  const canManageClasses = session.activeRole !== "member";
+  const canManageClasses = session.activeRole === "owner" || session.activeRole === "admin";
 
   return (
     <AppShell title="Schedule" subtitle="Weekly academy planner with classes, coaches, rooms, and training levels at a glance." initialSession={session}>

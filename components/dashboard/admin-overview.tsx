@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, ClipboardList, ShieldCheck, UserPlus, Users } from "lucide-react";
-import { BeltPill } from "@/components/belt-pill";
-import { StudentAvatar } from "@/components/student-avatar";
+import { CalendarClock, ClipboardList, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { coachActions, dashboardStats as seedDashboardStats, studentsNeedingAttention, todayClasses } from "@/data/dashboard";
+import { dashboardStats as seedDashboardStats, todayClasses } from "@/data/dashboard";
 import type { DashboardMeta, DashboardStats } from "@/components/dashboard-grid";
 import type { PlatformRole } from "@/data/platform";
 
@@ -27,7 +25,7 @@ export function AdminOverview({
 
   return (
     <section className="space-y-5">
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <div>
         <Card className="p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -74,23 +72,9 @@ export function AdminOverview({
             )}
           </div>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle className="text-base">Role access</CardTitle>
-              <CardDescription>What this account can do in the selected club.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <AccessLine active label="View dashboard, members, schedule, camps, competitions, rankings" />
-            <AccessLine active={canManageMembers} label="Plan classes, manage rosters, create posts, update members" />
-            <AccessLine active={canManageClub} label="Invite trainers, remove staff, edit settings, manage organization" />
-          </CardContent>
-        </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+      <div>
         <Card>
           <CardHeader>
             <div>
@@ -120,66 +104,6 @@ export function AdminOverview({
             ))}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle className="text-base">{canManageMembers ? "Trainer tasks" : "Club updates"}</CardTitle>
-              <CardDescription>
-                {canManageMembers ? "Practical work for members and classes." : "Read-only member view."}
-              </CardDescription>
-            </div>
-            {canManageMembers && (
-              <Button variant="surface" size="sm" asChild>
-                <Link href="/members?add=1">
-                  <UserPlus size={15} />
-                  Add member
-                </Link>
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {canManageMembers ? (
-              <>
-                {studentsNeedingAttention.map((student) => (
-                  <Link
-                    key={student.id}
-                    href={`/members?member=${student.id}`}
-                    className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 transition hover:border-[var(--accent)]/30"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--foreground)]">{student.name}</p>
-                      <p className="text-xs text-[var(--muted)]">{student.reason}</p>
-                    </div>
-                    <BeltPill belt={student.belt} />
-                  </Link>
-                ))}
-                {coachActions.slice(0, 3).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3">
-                    <p className="text-sm leading-5 text-[var(--foreground)]">{item.action}</p>
-                    <p className="mt-2 text-xs text-[var(--muted)]">
-                      {item.coach} · {item.time}
-                    </p>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <>
-                {coachActions.slice(0, 3).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3">
-                    <p className="text-sm leading-5 text-[var(--foreground)]">{item.action}</p>
-                    <p className="mt-2 text-xs text-[var(--muted)]">{item.time}</p>
-                  </div>
-                ))}
-                <div className="flex -space-x-3 pt-2">
-                  {studentsNeedingAttention.map((student) => (
-                    <StudentAvatar key={student.id} student={{ name: student.name, belt: student.belt }} className="size-10 border-2 border-[var(--background)]" />
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </section>
   );
@@ -190,15 +114,6 @@ function SimpleMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
       <p className="text-[11px] text-[var(--muted)]">{label}</p>
       <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">{value}</p>
-    </div>
-  );
-}
-
-function AccessLine({ active, label }: { active: boolean; label: string }) {
-  return (
-    <div className="flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm">
-      <span className={active ? "mt-1 size-2 rounded-full bg-[var(--status-success)]" : "mt-1 size-2 rounded-full bg-[var(--muted)]"} />
-      <span className={active ? "text-[var(--foreground)]" : "text-[var(--muted)]"}>{label}</span>
     </div>
   );
 }

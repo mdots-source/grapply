@@ -1,18 +1,20 @@
-insert into public.app_users (id, name, email, avatar_url) values
-  ('00000000-0000-0000-0000-000000000101', 'Sofia Almeida', 'sofia@grapply.app', '/avatars/sofia-almeida.png'),
-  ('00000000-0000-0000-0000-000000000102', 'Maya Ribeiro', 'maya@grapply.app', '/avatars/maya-ribeiro.png'),
-  ('00000000-0000-0000-0000-000000000103', 'Eli Morgan', 'eli@grapply.app', '/avatars/eli-morgan.png'),
-  ('00000000-0000-0000-0000-000000000104', 'Nina Park', 'nina@grapply.app', null),
-  ('00000000-0000-0000-0000-000000000105', 'Diego Alvarez', 'diego@grapply.app', '/avatars/noah-keller.png'),
-  ('00000000-0000-0000-0000-000000000106', 'Zoe Chen', 'zoe@grapply.app', '/avatars/eli-morgan.png'),
-  ('00000000-0000-0000-0000-000000000107', 'Omar Haddad', 'omar@grapply.app', '/avatars/sofia-almeida.png'),
-  ('00000000-0000-0000-0000-000000000108', 'Priya Nair', 'priya@grapply.app', '/avatars/maya-ribeiro.png'),
-  ('00000000-0000-0000-0000-000000000109', 'Marcus Reed', 'marcus@grapply.app', '/avatars/noah-keller.png'),
-  ('00000000-0000-0000-0000-000000000110', 'Ana Costa', 'ana@grapply.app', '/avatars/sofia-almeida.png')
+insert into public.app_users (id, name, email, avatar_url, belt, stripes) values
+  ('00000000-0000-0000-0000-000000000101', 'Sofia Almeida', 'sofia@grapply.app', '/avatars/sofia-almeida.png', 'black', 3),
+  ('00000000-0000-0000-0000-000000000102', 'Maya Ribeiro', 'maya@grapply.app', '/avatars/maya-ribeiro.png', 'purple', 2),
+  ('00000000-0000-0000-0000-000000000103', 'Eli Morgan', 'eli@grapply.app', '/avatars/eli-morgan.png', 'white', 3),
+  ('00000000-0000-0000-0000-000000000104', 'Nina Park', 'nina@grapply.app', null, 'white', 0),
+  ('00000000-0000-0000-0000-000000000105', 'Diego Alvarez', 'diego@grapply.app', '/avatars/noah-keller.png', 'black', 1),
+  ('00000000-0000-0000-0000-000000000106', 'Zoe Chen', 'zoe@grapply.app', '/avatars/eli-morgan.png', 'blue', 3),
+  ('00000000-0000-0000-0000-000000000107', 'Omar Haddad', 'omar@grapply.app', '/avatars/sofia-almeida.png', 'purple', 1),
+  ('00000000-0000-0000-0000-000000000108', 'Priya Nair', 'priya@grapply.app', '/avatars/maya-ribeiro.png', 'white', 2),
+  ('00000000-0000-0000-0000-000000000109', 'Marcus Reed', 'marcus@grapply.app', '/avatars/noah-keller.png', 'blue', 0),
+  ('00000000-0000-0000-0000-000000000110', 'Ana Costa', 'ana@grapply.app', '/avatars/sofia-almeida.png', 'purple', 3)
 on conflict (id) do update set
   name = excluded.name,
   email = excluded.email,
-  avatar_url = excluded.avatar_url;
+  avatar_url = excluded.avatar_url,
+  belt = excluded.belt,
+  stripes = excluded.stripes;
 
 insert into public.clubs (id, slug, name, location, status, member_count, primary_coach) values
   ('00000000-0000-0000-0000-000000000201', 'grapply-bjj', 'Grapply Jiu-Jitsu Academy', 'San Diego, CA', 'active', 212, 'Sofia Almeida'),
