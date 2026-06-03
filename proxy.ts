@@ -14,15 +14,15 @@ const publicPrefixes = [
 
 const publicPaths = ["/"];
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
   if (publicPaths.includes(pathname)) return NextResponse.next();
   if (publicPrefixes.some((prefix) => pathname.startsWith(prefix))) return NextResponse.next();
 
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;
   if (!accessToken) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("returnTo", pathname);
+    loginUrl.searchParams.set("returnTo", `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }
 

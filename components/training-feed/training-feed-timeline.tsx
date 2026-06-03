@@ -8,9 +8,11 @@ import { type TrainingPost } from "@/data/training-feed";
 export function TrainingFeedTimeline({
   initialPosts,
   initialCreatePost = false,
+  canCreatePost = false,
 }: {
   initialPosts: TrainingPost[];
   initialCreatePost?: boolean;
+  canCreatePost?: boolean;
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const pinned = useMemo(() => posts.filter((post) => post.pinned), [posts]);
@@ -22,7 +24,16 @@ export function TrainingFeedTimeline({
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <CreateTrainingPostForm initialOpen={initialCreatePost} onCreate={addPost} />
+      {canCreatePost ? (
+        <CreateTrainingPostForm initialOpen={initialCreatePost} onCreate={addPost} />
+      ) : (
+        <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Academy updates</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            Coaches and academy staff publish recaps, announcements, and promotion updates here.
+          </p>
+        </div>
+      )}
       {pinned.map((post, index) => (
         <TrainingPostCard key={post.id} post={post} index={index} />
       ))}

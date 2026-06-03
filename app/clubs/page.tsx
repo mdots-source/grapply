@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/oss/empty-state";
 import { getCurrentSession } from "@/lib/auth-session";
+import { getWorkspaceIntentLabel } from "@/lib/workspace-intent";
 
 export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string; returnTo?: string }> }) {
   const params = await searchParams;
@@ -14,7 +15,11 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
   const user = session?.user;
   const memberships = session?.memberships ?? [];
   const stravaStatus = params?.strava;
-  const workspaceReturnTo = params?.returnTo?.startsWith("/") ? params.returnTo : "/dashboard";
+  const workspaceReturnTo = params?.returnTo?.startsWith("/") ? params.returnTo : "/schedule";
+  const intentLabel = getWorkspaceIntentLabel(workspaceReturnTo);
+  const inviteMailto = `mailto:?subject=${encodeURIComponent("Grapply club access request")}&body=${encodeURIComponent(
+    `Hi,\n\nPlease invite ${user?.name ?? "me"} (${user?.email ?? "this account"}) to the right Grapply academy workspace.\n\nThanks!`,
+  )}`;
 
   if (!user) {
     return null;
@@ -24,6 +29,8 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
     <AppShell
       title="My Clubs"
       subtitle="Choose the academy you want to work with today."
+      mode="account"
+      initialSession={session}
     >
       <PageTransition>
         <div className="space-y-5">
@@ -33,6 +40,9 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Signed in as</p>
                 <h2 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{user.name}</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">{user.email}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm text-[var(--foreground)]">
+                Choose a club to {intentLabel}.
               </div>
             </div>
           </Card>
@@ -54,39 +64,45 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
             />
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
-              {memberships.map((membership) => (
-                <Card key={membership.id} className="p-0">
-                  <div className="border-b border-[var(--border)] p-5">
-                    <CardHeader className="mb-0">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="accent" className="capitalize">{membership.role}</Badge>
+              {memberships.map((membership) => {
+                const canManageTeam = membership.role === "owner" || membership.role === "admin";
+
+                return (
+                  <Card key={membership.id} className="p-0">
+                    <div className="border-b border-[var(--border)] p-5">
+                      <CardHeader className="mb-0">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="accent" className="capitalize">{membership.role}</Badge>
+                          </div>
+                          <CardTitle className="mt-4 text-xl">{membership.club.name}</CardTitle>
+                          <CardDescription>{membership.club.location}</CardDescription>
                         </div>
-                        <CardTitle className="mt-4 text-xl">{membership.club.name}</CardTitle>
-                        <CardDescription>{membership.club.location}</CardDescription>
-                      </div>
-                      <div className="grid size-12 place-items-center rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/12 text-[var(--accent)]">
-                        <Building2 size={22} />
-                      </div>
-                    </CardHeader>
-                  </div>
+                        <div className="grid size-12 place-items-center rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/12 text-[var(--accent)]">
+                          <Building2 size={22} />
+                        </div>
+                      </CardHeader>
+                    </div>
 
-                  <div className="grid gap-3 p-5 sm:grid-cols-3">
-                    <ClubMetric icon={Users} label="Members" value={membership.club.memberCount.toString()} />
-                    <ClubMetric icon={Shield} label="Coach" value={membership.club.primaryCoach.split(" ")[0]} />
-                    <ClubMetric icon={CheckCircle2} label="Joined" value={membership.joinedAt} />
-                  </div>
+                    <div className="grid gap-3 p-5 sm:grid-cols-3">
+                      <ClubMetric icon={Users} label="Members" value={membership.club.memberCount.toString()} />
+                      <ClubMetric icon={Shield} label="Coach" value={membership.club.primaryCoach.split(" ")[0]} />
+                      <ClubMetric icon={CheckCircle2} label="Joined" value={membership.joinedAt} />
+                    </div>
 
-                  <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
-                    <Button variant="primary" asChild>
-                      <Link href={`/api/workspace/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>Enter workspace</Link>
-                    </Button>
-                    <Button variant="surface" asChild>
-                      <Link href={`/api/workspace/select?club=${membership.club.slug}&returnTo=/admin`}>Manage team</Link>
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                    <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
+                      <Button variant="primary" asChild>
+                        <Link href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>Enter workspace</Link>
+                      </Button>
+                      {canManageTeam && (
+                        <Button variant="surface" asChild>
+                          <Link href={`/clubs/select?club=${membership.club.slug}&returnTo=/admin`}>Manage team</Link>
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           )}
 
@@ -96,9 +112,11 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
                 <p className="text-sm font-semibold text-[var(--foreground)]">Need access to another academy?</p>
                 <p className="mt-1 text-xs text-[var(--muted)]">Ask the academy owner or head coach to invite your account.</p>
               </div>
-              <Button variant="outline">
-                <Plus size={16} />
-                Request invite
+              <Button variant="outline" asChild>
+                <Link href={inviteMailto}>
+                  <Plus size={16} />
+                  Request invite
+                </Link>
               </Button>
             </div>
           </Card>

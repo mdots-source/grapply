@@ -5,7 +5,10 @@ import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  const payload = await request.json();
+  const contentType = request.headers.get("content-type") ?? "";
+  const isFormSubmit = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
+  const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await request.json();
+  const returnTo = isFormSubmit && String(payload.returnTo ?? "").startsWith("/") ? String(payload.returnTo) : null;
   const email = String(payload?.email ?? "").trim().toLowerCase();
   const password = String(payload?.password ?? "");
 
@@ -40,17 +43,19 @@ export async function POST(request: Request) {
         }).catch(() => {});
       }
 
-      const response = NextResponse.json({
-        ok: true,
-        source: "supabase",
-        user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar_url },
-      });
+      const response = returnTo
+        ? NextResponse.redirect(clubsUrl(request, returnTo))
+        : NextResponse.json({
+            ok: true,
+            source: "supabase",
+            user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar_url },
+          });
       setAuthCookies(response, session);
       return response;
     } catch (error) {
       const mockUser = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
       if (mockUser && password === "demo123") {
-        return createMockLoginResponse(mockUser);
+        return createMockLoginResponse(request, mockUser, returnTo);
       }
       return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
     }
@@ -58,11 +63,19 @@ export async function POST(request: Request) {
 
   const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
   if (!user) return NextResponse.json({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
-  return createMockLoginResponse(user);
+  return createMockLoginResponse(request, user, returnTo);
 }
 
-function createMockLoginResponse(user: (typeof platformUsers)[number]) {
-  const response = NextResponse.json({ ok: true, source: "mock", user });
+function createMockLoginResponse(request: Request, user: (typeof platformUsers)[number], returnTo: string | null) {
+  const response = returnTo
+    ? NextResponse.redirect(clubsUrl(request, returnTo))
+    : NextResponse.json({ ok: true, source: "mock", user });
   setMockAuthCookie(response, user.id);
   return response;
+}
+
+function clubsUrl(request: Request, returnTo: string) {
+  const url = new URL("/clubs", request.url);
+  url.searchParams.set("returnTo", returnTo.startsWith("/") ? returnTo : "/schedule");
+  return url;
 }

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
+import { setActiveClubCookie, setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { insertRow, isSupabaseConfigured, upsertRow } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 
 export async function POST(request: Request) {
-  const payload = await request.json();
+  const contentType = request.headers.get("content-type") ?? "";
+  const isFormSubmit = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
+  const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await request.json();
+  const returnTo = String(payload?.returnTo ?? "/schedule").startsWith("/") ? String(payload.returnTo ?? "/schedule") : "/schedule";
   const academyName = String(payload?.academyName ?? "").trim();
   const ownerEmail = String(payload?.ownerEmail ?? "").trim().toLowerCase();
   const ownerName = String(payload?.ownerName ?? ownerEmail.split("@")[0] ?? "Owner").trim();
@@ -17,12 +20,18 @@ export async function POST(request: Request) {
   }
 
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({
-      ok: true,
-      source: "mock",
-      user: { id: "usr-empty", name: ownerName, email: ownerEmail },
-      club: { slug: slugify(academyName), name: academyName, location },
-    });
+    const club = { slug: slugify(academyName), name: academyName, location };
+    const response = isFormSubmit
+      ? NextResponse.redirect(clubsUrl(request, returnTo))
+      : NextResponse.json({
+          ok: true,
+          source: "mock",
+          user: { id: "usr-empty", name: ownerName, email: ownerEmail },
+          club,
+        });
+    setMockAuthCookie(response, "usr-empty");
+    setActiveClubCookie(response, club.slug);
+    return response;
   }
 
   try {
@@ -68,11 +77,19 @@ export async function POST(request: Request) {
     ]);
 
     const session = await signInWithPassword(ownerEmail, password);
-    const response = NextResponse.json({ ok: true, source: "supabase", user, club, membership });
+    const response = isFormSubmit
+      ? NextResponse.redirect(clubsUrl(request, returnTo))
+      : NextResponse.json({ ok: true, source: "supabase", user, club, membership });
     setAuthCookies(response, session);
     setActiveClubCookie(response, club.slug);
     return response;
   } catch (error) {
     return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
   }
+}
+
+function clubsUrl(request: Request, returnTo: string) {
+  const url = new URL("/clubs", request.url);
+  url.searchParams.set("returnTo", returnTo.startsWith("/") ? returnTo : "/schedule");
+  return url;
 }

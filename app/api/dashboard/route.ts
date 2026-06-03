@@ -7,17 +7,19 @@ import {
   promotions,
 } from "@/data/dashboard";
 import { academyMeta } from "@/data/academy-meta";
-import { getBackendClubId } from "@/lib/backend";
+import { clubClasses, clubs, getClubRoster } from "@/data/platform";
+import { getBackendClubId, getMockClubId, getRequestedClubSlug } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const clubSlug = await getRequestedClubSlug(searchParams.get("club"));
 
   if (isSupabaseConfigured()) {
     try {
-      const clubId = await getBackendClubId(searchParams.get("club"));
+      const clubId = await getBackendClubId(clubSlug);
       if (!clubId) {
-        return NextResponse.json({ source: "supabase", meta: academyMeta, stats: dashboardStats, events: [] });
+        return NextResponse.json({ source: "supabase", ...getMockDashboardPayload(clubSlug), events: [] });
       }
 
       const [members, classes, events, competitions, posts] = await Promise.all([
@@ -63,12 +65,7 @@ export async function GET(request: Request) {
     } catch (error) {
       return NextResponse.json({
         source: "mock",
-        meta: academyMeta,
-        stats: dashboardStats,
-        announcements,
-        coachActions,
-        promotions,
-        communityHighlights,
+        ...getMockDashboardPayload(clubSlug),
         supabaseError: String(error),
       });
     }
@@ -76,11 +73,48 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     source: "mock",
-    meta: academyMeta,
-    stats: dashboardStats,
+    ...getMockDashboardPayload(clubSlug),
+  });
+}
+
+function getMockDashboardPayload(clubSlug: string) {
+  const clubId = getMockClubId(clubSlug);
+  const club = clubs.find((item) => item.id === clubId) ?? clubs[0];
+  const roster = getClubRoster(clubId);
+  const classes = clubClasses.filter((item) => item.clubId === clubId);
+  const checkedInToday = classes.reduce((sum, item) => sum + item.checkedIn, 0);
+  const activeMembers = roster.filter((member) => member.status === "active");
+  const inactiveMembers = roster.length - activeMembers.length;
+  const liveClass = classes[0]
+    ? {
+        name: classes[0].name,
+        coach: classes[0].coach,
+        room: classes[0].mat,
+        time: classes[0].time,
+        trainingType: classes[0].level,
+      }
+    : academyMeta.liveClass;
+
+  return {
+    meta: {
+      ...academyMeta,
+      name: club.name,
+      city: club.location,
+      memberCount: club.memberCount,
+      checkedInToday,
+      liveClass,
+    },
+    stats: {
+      ...dashboardStats,
+      activeStudents: activeMembers.length,
+      inactiveStudents: inactiveMembers,
+      checkedInToday,
+      weeklyAttendance: Math.max(checkedInToday * 3, checkedInToday),
+      trialStudents: dashboardStats.trialStudents,
+    },
     announcements,
     coachActions,
     promotions,
     communityHighlights,
-  });
+  };
 }

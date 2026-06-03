@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CalendarDays, Clock, MapPin, Mountain, Plane, ShieldCheck, Tent, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { resolveStudentsByIds } from "@/lib/members";
 import { getTrainingCampsData } from "@/lib/backend-data";
+import { requireWorkspaceRole } from "@/lib/workspace-access";
 import type { TrainingCamp } from "@/data/training-camps";
 
 const tasks = [
@@ -16,16 +18,30 @@ const tasks = [
 ];
 
 export default async function TrainingCampsPage() {
+  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/training-camps");
   const trainingCamps = await getTrainingCampsData();
   const totalTravelers = new Set(trainingCamps.flatMap((camp) => camp.registered_students)).size;
   const nextCamp = trainingCamps[0];
+  const canManagePlanning = session.activeRole !== "member";
 
   return (
     <AppShell
       title="Training Camps"
       subtitle="Plan upcoming camps, travel windows, athlete interest, and academy trips worth attending."
+      initialSession={session}
     >
       <PageTransition>
+        {!nextCamp ? (
+          <Card className="flex min-h-[360px] flex-col items-center justify-center border-dashed p-8 text-center">
+            <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent-blue)]">
+              <Mountain size={26} />
+            </div>
+            <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">No training camps yet</h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+              Add camps for this club when coaches start planning travel, rooms, payments, and rosters.
+            </p>
+          </Card>
+        ) : (
         <div className="space-y-5">
           <section className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
             <Card className="overflow-hidden p-0">
@@ -46,9 +62,15 @@ export default async function TrainingCampsPage() {
                       </span>
                     </p>
                   </div>
-                  <Button variant="primary">
-                    <Plane size={16} /> Plan trip
-                  </Button>
+                  {canManagePlanning ? (
+                    <Button variant="primary" asChild>
+                      <Link href="#camp-prep">
+                        <Plane size={16} /> Plan trip
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Badge variant="muted">Trip plan managed by staff</Badge>
+                  )}
                 </div>
               </div>
               <div className="grid gap-3 p-5 sm:grid-cols-3">
@@ -58,7 +80,7 @@ export default async function TrainingCampsPage() {
               </div>
             </Card>
 
-            <Card className="p-5">
+            <Card id="camp-prep" className="scroll-mt-6 p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[var(--foreground)]">Travel checklist</p>
@@ -87,12 +109,13 @@ export default async function TrainingCampsPage() {
             </Card>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section id="camp-list" className="scroll-mt-6 grid gap-4 xl:grid-cols-2">
             {trainingCamps.map((camp) => (
               <CampCard key={camp.id} camp={camp} />
             ))}
           </section>
         </div>
+        )}
       </PageTransition>
     </AppShell>
   );
@@ -168,9 +191,16 @@ function CampCard({ camp }: { camp: TrainingCamp }) {
             ))}
           </div>
         </div>
-        <Button variant="outline" size="sm">
-          View details
-        </Button>
+        <details className="group">
+          <summary className="inline-flex h-8 cursor-pointer list-none items-center justify-center rounded-md border border-[var(--border)] bg-transparent px-3 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface)]">
+            View details
+          </summary>
+          <div className="mt-3 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-xs leading-5 text-[var(--muted)] sm:w-64">
+            <p className="font-semibold text-[var(--foreground)]">{camp.date} to {camp.endDate}</p>
+            <p className="mt-1">Hosted by {camp.host} with estimated cost {camp.estimatedCost}.</p>
+            <p className="mt-1">{spotsLeft} spots left before registration closes on {camp.registration_deadline}.</p>
+          </div>
+        </details>
       </div>
     </Card>
   );

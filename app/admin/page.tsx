@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { clubClasses, clubs, clubMemberships, platformUsers, roleDefinitions } from "@/data/platform";
+import { requireWorkspaceRole } from "@/lib/workspace-access";
 
-export default async function AdminPage({ searchParams }: { searchParams?: Promise<{ club?: string }> }) {
-  const params = await searchParams;
-  const club = clubs.find((item) => item.slug === params?.club) ?? clubs[0];
+export default async function AdminPage() {
+  const session = await requireWorkspaceRole(["owner", "admin"], "/admin");
+  const club = clubs.find((item) => item.slug === session.activeClub.slug) ?? session.activeClub;
   const memberships = clubMemberships.filter((membership) => membership.clubId === club.id);
   const classes = clubClasses.filter((item) => item.clubId === club.id);
 
@@ -18,6 +19,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
     <AppShell
       title="Team Access"
       subtitle="Team access, coaching roles, and class management for the academy."
+      initialSession={session}
     >
       <PageTransition>
         <div className="space-y-5">
@@ -29,11 +31,10 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
                 <p className="mt-1 text-sm text-[var(--muted)]">{club.location}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {clubs.map((item) => (
-                  <Button key={item.id} variant={item.id === club.id ? "primary" : "surface"} size="sm" asChild>
-                    <Link href={`/admin?club=${item.slug}`}>{item.name.split(" ")[0]}</Link>
-                  </Button>
-                ))}
+                <Badge variant="accent" className="capitalize">{session.activeRole}</Badge>
+                <Button variant="surface" size="sm" asChild>
+                  <Link href="/clubs?returnTo=/admin">Switch club</Link>
+                </Button>
               </div>
             </div>
           </Card>

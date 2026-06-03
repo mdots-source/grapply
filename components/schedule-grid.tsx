@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
@@ -11,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgGridHost } from "@/components/ag-grid-host";
+import { useActiveClubState } from "@/components/use-active-club";
 
 type SessionBlock = {
   time: string;
@@ -31,6 +32,17 @@ type ScheduleRow = {
   fri: SessionBlock[];
   sat: SessionBlock[];
   sun: SessionBlock[];
+};
+
+type ApiClass = {
+  id?: string;
+  name: string;
+  coach: string;
+  day: string;
+  time: string;
+  mat: string;
+  level: string;
+  checkedIn?: number;
 };
 
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
@@ -123,6 +135,24 @@ function classToSessionBlock(value: ClassFormValue): SessionBlock {
   return session(value.time, value.name, value.coach, value.mat, 28, 0, value.level);
 }
 
+function classApiToSessionBlock(value: ApiClass): SessionBlock {
+  return session(value.time, value.name, value.coach, value.mat, 28, 0, value.level);
+}
+
+function classesToRows(classes: ApiClass[]) {
+  const rows = new Map<string, ScheduleRow>();
+
+  for (const classItem of classes) {
+    const time = classItem.time;
+    const day = dayKeyFromLabel(classItem.day);
+    const row = rows.get(time) ?? emptyRow(time);
+    row[day] = [...row[day], classApiToSessionBlock(classItem)];
+    rows.set(time, row);
+  }
+
+  return Array.from(rows.values()).sort((a, b) => compareTimes(a.time, b.time));
+}
+
 function startOfWeek(date: Date) {
   const value = new Date(date);
   const day = value.getDay();
@@ -165,11 +195,20 @@ function levelTone(level: string) {
   return "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]";
 }
 
-export function ScheduleGrid({ initialCreateClass = false }: { initialCreateClass?: boolean }) {
+export function ScheduleGrid({
+  initialCreateClass = false,
+  canManageClasses = false,
+}: {
+  initialCreateClass?: boolean;
+  canManageClasses?: boolean;
+}) {
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>(initialRows);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [classesError, setClassesError] = useState<string | null>(null);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => startOfWeek(new Date()));
+  const { activeClub, loading: loadingClub } = useActiveClubState();
 
   const weekOffset = useMemo(() => weekOffsetFrom(weekStart), [weekStart]);
   const selectedDay = useMemo(() => addDays(weekStart, 3), [weekStart]);
@@ -180,6 +219,7 @@ export function ScheduleGrid({ initialCreateClass = false }: { initialCreateClas
     const rooms = new Set(allSessions.map((block) => block.room)).size;
     return { classes: allSessions.length, rooms };
   }, [scheduleRows]);
+  const clubLabel = activeClub?.name ?? "Club workspace";
 
   const addClassToTimetable = (value: ClassFormValue) => {
     const day = dayKeyFromLabel(value.day);
@@ -198,6 +238,32 @@ export function ScheduleGrid({ initialCreateClass = false }: { initialCreateClas
       });
     });
   };
+
+  useEffect(() => {
+    if (loadingClub) return;
+
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (activeClub?.slug) params.set("club", activeClub.slug);
+
+    setLoadingClasses(true);
+    setClassesError(null);
+
+    fetch(`/api/classes${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load classes."))))
+      .then((payload: { classes?: ApiClass[] }) => {
+        const rows = classesToRows(payload.classes ?? []);
+        setScheduleRows(rows);
+      })
+      .catch((error: Error) => {
+        if (error.name !== "AbortError") setClassesError(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingClasses(false);
+      });
+
+    return () => controller.abort();
+  }, [activeClub?.slug, loadingClub]);
 
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(() => {
     const dayColumns = dayKeys.map((key, index): ColDef<ScheduleRow> => ({
@@ -233,6 +299,9 @@ export function ScheduleGrid({ initialCreateClass = false }: { initialCreateClas
           <div className="p-4 sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="accent">Weekly planner</Badge>
+              <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--muted)]">
+                {loadingClub ? "Loading workspace" : loadingClasses ? `${clubLabel} · refreshing` : clubLabel}
+              </span>
               <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--muted)]">
                 {isCurrentWeek ? "Current week" : weekOffset > 0 ? `+${weekOffset} week` : `${weekOffset} week`}
               </span>
@@ -316,7 +385,13 @@ export function ScheduleGrid({ initialCreateClass = false }: { initialCreateClas
                 <ChevronRight size={16} />
               </Button>
             </div>
-            <CreateClassForm initialOpen={initialCreateClass} onCreate={addClassToTimetable} />
+            {canManageClasses ? (
+              <CreateClassForm initialOpen={initialCreateClass} onCreate={addClassToTimetable} />
+            ) : (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-3 text-xs leading-5 text-[var(--muted)]">
+                Class changes are managed by coaches and academy staff.
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -340,7 +415,9 @@ export function ScheduleGrid({ initialCreateClass = false }: { initialCreateClas
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">Class timetable</p>
-            <p className="text-xs text-[var(--muted)]">Horizontal scroll keeps the full week readable.</p>
+            <p className="text-xs text-[var(--muted)]">
+              {classesError ?? "Horizontal scroll keeps the full week readable."}
+            </p>
           </div>
         </div>
         <AgGridHost className="oss-schedule-grid ag-theme-quartz h-[690px] w-full">

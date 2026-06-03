@@ -1,11 +1,23 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { RegisterForm } from "@/components/register-form";
 import { StravaConnectButton } from "@/components/strava-connect-button";
 import { Card } from "@/components/ui/card";
+import { getCurrentSession } from "@/lib/auth-session";
+import { getWorkspaceIntentLabel } from "@/lib/workspace-intent";
 
-export default function RegisterPage() {
+export default async function RegisterPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string }> }) {
+  const params = await searchParams;
+  const returnTo = params?.returnTo?.startsWith("/") ? params.returnTo : "/schedule";
+  const session = await getCurrentSession();
+  if (session) {
+    redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
+  }
+
+  const intentLabel = getWorkspaceIntentLabel(returnTo);
+
   return (
     <AuthShell mode="register">
       <Card className="w-full">
@@ -16,7 +28,10 @@ export default function RegisterPage() {
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
           Set up the academy profile and invite your coaching team when you are ready.
         </p>
-        <StravaConnectButton href="/api/strava/connect?returnTo=/clubs" className="mt-7 w-full">
+        <div className="mt-5 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm text-[var(--foreground)]">
+          After setup, choose a club to {intentLabel}.
+        </div>
+        <StravaConnectButton href={`/api/strava/connect?returnTo=${encodeURIComponent(`/clubs?returnTo=${returnTo}`)}`} className="mt-7 w-full">
           Register with Strava
         </StravaConnectButton>
         <div className="my-5 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -24,8 +39,10 @@ export default function RegisterPage() {
           Academy details
           <span className="h-px flex-1 bg-[var(--border)]" />
         </div>
-        <RegisterForm />
-        <p className="mt-5 text-sm text-[var(--muted)]">Already invited? <Link href="/login" className="text-[var(--accent)]">Sign in</Link></p>
+        <RegisterForm returnTo={returnTo} />
+        <p className="mt-5 text-sm text-[var(--muted)]">
+          Already invited? <Link href={`/login?returnTo=${encodeURIComponent(returnTo)}`} className="text-[var(--accent)]">Sign in</Link>
+        </p>
       </Card>
     </AuthShell>
   );

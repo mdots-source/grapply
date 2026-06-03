@@ -5,6 +5,7 @@ import { CalendarPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActiveClub } from "@/components/use-active-club";
 import { cn } from "@/lib/utils";
 
 export type ClassFormValue = {
@@ -55,6 +56,7 @@ export function CreateClassForm({
   initialOpen?: boolean;
   onCreate?: (value: ClassFormValue) => void;
 }) {
+  const activeClub = useActiveClub();
   const [open, setOpen] = useState(initialOpen);
   const [form, setForm] = useState<ClassFormValue>({
     name: "No-Gi Fundamentals",
@@ -86,7 +88,7 @@ export function CreateClassForm({
           const response = await fetch("/api/classes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(form),
+            body: JSON.stringify({ ...form, ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}) }),
           });
           const payload = (await response.json()) as { ok?: boolean; error?: string; class?: Partial<ClassFormValue> };
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Class creation failed.");

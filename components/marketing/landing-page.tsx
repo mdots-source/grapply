@@ -114,7 +114,7 @@ function Hero() {
             <Link href="/register" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
               See your academy live <ArrowRight size={16} />
             </Link>
-            <Link href="/dashboard" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
+            <Link href="/login?returnTo=/clubs" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
               Open product demo <MonitorPlay size={16} />
             </Link>
           </div>
@@ -291,7 +291,7 @@ function FinalCta() {
             <Link href="/register" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
               Book a demo <ArrowRight size={16} />
             </Link>
-            <Link href="/dashboard" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
+            <Link href="/login?returnTo=/clubs" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
               Explore product
             </Link>
           </div>
@@ -313,7 +313,7 @@ function Footer() {
           <span>Grapply Jiu-Jitsu Academy OS</span>
         </div>
         <div className="flex flex-wrap gap-4">
-          <Link href="/dashboard" className="hover:text-[var(--foreground)]">Product</Link>
+          <Link href="/login?returnTo=/clubs" className="hover:text-[var(--foreground)]">Product</Link>
           <Link href="/tv" className="hover:text-[var(--foreground)]">TV</Link>
           <Link href="/login" className="hover:text-[var(--foreground)]">Login</Link>
         </div>

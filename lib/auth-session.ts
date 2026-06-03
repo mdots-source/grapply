@@ -27,8 +27,9 @@ export async function getCurrentSession() {
       })
       .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
 
-    const activeMembership =
-      normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? normalizedMemberships[0] ?? null;
+    const activeMembership = activeClubSlug
+      ? normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? null
+      : null;
 
     return {
       authUser: { id: user.id, email: user.email },
@@ -57,8 +58,9 @@ export async function getCurrentSession() {
     })
     .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
 
-  const activeMembership =
-    normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? normalizedMemberships[0] ?? null;
+  const activeMembership = activeClubSlug
+    ? normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? null
+    : null;
 
   return {
     authUser,

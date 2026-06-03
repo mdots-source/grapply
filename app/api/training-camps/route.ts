@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
-import { trainingCamps, type TrainingCamp } from "@/data/training-camps";
-import { getBackendClubId } from "@/lib/backend";
+import type { TrainingCamp } from "@/data/training-camps";
+import { getBackendClubId, getRequestedClubSlug } from "@/lib/backend";
+import { getMockTrainingCampsForClub } from "@/lib/mock-club-content";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 import { toTrainingCamp, toTrainingCampInsert } from "@/lib/supabase/mappers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const clubSlug = await getRequestedClubSlug(searchParams.get("club"));
 
   if (isSupabaseConfigured()) {
     try {
-      const clubId = await getBackendClubId(searchParams.get("club"));
+      const clubId = await getBackendClubId(clubSlug);
       if (!clubId) return NextResponse.json({ source: "supabase", camps: [] });
       const rows = await selectRows("training_camps", `select=*&club_id=eq.${clubId}&order=prep.desc`);
       return NextResponse.json({ source: "supabase", camps: rows.map(toTrainingCamp) });
     } catch (error) {
-      return NextResponse.json({ source: "mock", camps: trainingCamps, supabaseError: String(error) });
+      return NextResponse.json({ source: "mock", camps: getMockTrainingCampsForClub(clubSlug), supabaseError: String(error) });
     }
   }
 
-  return NextResponse.json({ source: "mock", camps: trainingCamps });
+  return NextResponse.json({ source: "mock", camps: getMockTrainingCampsForClub(clubSlug) });
 }
 
 export async function POST(request: Request) {

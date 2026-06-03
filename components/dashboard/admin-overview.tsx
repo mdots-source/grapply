@@ -26,23 +26,23 @@ import {
   attendanceTrend,
   beltDistribution,
   coachActions,
-  dashboardStats,
+  dashboardStats as seedDashboardStats,
   studentsNeedingAttention,
   todayClasses,
 } from "@/data/dashboard";
+import type { DashboardStats } from "@/components/dashboard-grid";
 
-const statCards = [
-  { key: "active", label: "Active members", value: dashboardStats.activeStudents, icon: Users, trend: "+4 this week", tone: "accent" },
-  { key: "checked", label: "Checked in today", value: dashboardStats.checkedInToday, icon: UserCheck, trend: "78% of active", tone: "blue" },
-  { key: "weekly", label: "Weekly attendance", value: dashboardStats.weeklyAttendance, icon: Activity, trend: `+${dashboardStats.weeklyAttendanceChange}% vs last week`, tone: "accent" },
-  { key: "inactive", label: "Needs outreach", value: dashboardStats.inactiveStudents, icon: UserX, trend: "Low attendance", tone: "coral" },
-  { key: "new", label: "New members", value: dashboardStats.newStudentsThisMonth, icon: UserPlus, trend: "This month", tone: "blue" },
-  { key: "trial", label: "Trial members", value: dashboardStats.trialStudents, icon: TrendingUp, trend: "3 close to joining", tone: "default" },
-  { key: "attention", label: "Coach follow-ups", value: studentsNeedingAttention.length, icon: AlertTriangle, trend: "Review today", tone: "coral" },
-] as const;
-
-export function AdminOverview() {
+export function AdminOverview({ stats = seedDashboardStats }: { stats?: DashboardStats }) {
   const nextClass = todayClasses.find((c) => c.isNext) ?? todayClasses[0];
+  const statCards = [
+    { key: "active", label: "Active members", value: stats.activeStudents, icon: Users, trend: "+4 this week", tone: "accent" },
+    { key: "checked", label: "Checked in today", value: stats.checkedInToday, icon: UserCheck, trend: `${Math.round((stats.checkedInToday / Math.max(stats.activeStudents, 1)) * 100)}% of active`, tone: "blue" },
+    { key: "weekly", label: "Weekly attendance", value: stats.weeklyAttendance, icon: Activity, trend: `+${stats.weeklyAttendanceChange}% vs last week`, tone: "accent" },
+    { key: "inactive", label: "Needs outreach", value: stats.inactiveStudents, icon: UserX, trend: "Low attendance", tone: "coral" },
+    { key: "new", label: "New members", value: stats.newStudentsThisMonth, icon: UserPlus, trend: "This month", tone: "blue" },
+    { key: "trial", label: "Trial members", value: stats.trialStudents, icon: TrendingUp, trend: "Close to joining", tone: "default" },
+    { key: "attention", label: "Coach follow-ups", value: studentsNeedingAttention.length, icon: AlertTriangle, trend: "Review today", tone: "coral" },
+  ] as const;
 
   return (
     <section className="space-y-5">
@@ -69,7 +69,7 @@ export function AdminOverview() {
               <CardDescription>Weekly check-ins and sparring volume across the academy.</CardDescription>
             </div>
             <Badge variant="accent">
-              <TrendingUp size={14} /> +{dashboardStats.weeklyAttendanceChange}%
+              <TrendingUp size={14} /> +{stats.weeklyAttendanceChange}%
             </Badge>
           </CardHeader>
           <CardContent>

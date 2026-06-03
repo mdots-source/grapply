@@ -5,6 +5,7 @@ import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActiveClub } from "@/components/use-active-club";
 import { type TrainingPost, type TrainingPostType, typeLabels } from "@/data/training-feed";
 
 const postTypes = Object.keys(typeLabels) as TrainingPostType[];
@@ -16,6 +17,7 @@ export function CreateTrainingPostForm({
   initialOpen?: boolean;
   onCreate?: (post: TrainingPost) => void;
 }) {
+  const activeClub = useActiveClub();
   const [open, setOpen] = useState(initialOpen);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export function CreateTrainingPostForm({
           const response = await fetch("/api/training-feed", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(draftPost),
+            body: JSON.stringify({ ...draftPost, ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}) }),
           });
           const payload = (await response.json()) as { ok?: boolean; error?: string; post?: TrainingPost };
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Post creation failed.");

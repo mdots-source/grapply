@@ -9,7 +9,7 @@ export const authCookieNames = {
 const cookieOptions = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  secure: process.env.VERCEL === "1" || process.env.COOKIE_SECURE === "true",
   path: "/",
 };
 

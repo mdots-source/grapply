@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
-import { competitions, type Competition } from "@/data/competitions";
-import { getBackendClubId } from "@/lib/backend";
+import type { Competition } from "@/data/competitions";
+import { getBackendClubId, getRequestedClubSlug } from "@/lib/backend";
+import { getMockCompetitionsForClub } from "@/lib/mock-club-content";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 import { toCompetition, toCompetitionInsert } from "@/lib/supabase/mappers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const clubSlug = await getRequestedClubSlug(searchParams.get("club"));
 
   if (isSupabaseConfigured()) {
     try {
-      const clubId = await getBackendClubId(searchParams.get("club"));
+      const clubId = await getBackendClubId(clubSlug);
       if (!clubId) return NextResponse.json({ source: "supabase", competitions: [] });
       const rows = await selectRows("competitions", `select=*&club_id=eq.${clubId}&order=prep.desc`);
       return NextResponse.json({ source: "supabase", competitions: rows.map(toCompetition) });
     } catch (error) {
-      return NextResponse.json({ source: "mock", competitions, supabaseError: String(error) });
+      return NextResponse.json({ source: "mock", competitions: getMockCompetitionsForClub(clubSlug), supabaseError: String(error) });
     }
   }
 
-  return NextResponse.json({ source: "mock", competitions });
+  return NextResponse.json({ source: "mock", competitions: getMockCompetitionsForClub(clubSlug) });
 }
 
 export async function POST(request: Request) {

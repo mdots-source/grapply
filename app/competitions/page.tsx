@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CalendarDays, Clock, MapPin, Plane, ShieldCheck, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { resolveStudentsByIds } from "@/lib/members";
 import { getCompetitionsData } from "@/lib/backend-data";
+import { requireWorkspaceRole } from "@/lib/workspace-access";
 import type { Competition } from "@/data/competitions";
 
 const tasks = [
@@ -16,13 +18,26 @@ const tasks = [
 ];
 
 export default async function CompetitionsPage() {
+  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/competitions");
   const competitions = await getCompetitionsData();
   const totalAthletes = new Set(competitions.flatMap((event) => event.registered_students)).size;
   const nextEvent = competitions[0];
+  const canManagePlanning = session.activeRole !== "member";
 
   return (
-    <AppShell title="Competitions" subtitle="Track tournaments, deadlines, athlete rosters, and team preparation in one place.">
+    <AppShell title="Competitions" subtitle="Track tournaments, deadlines, athlete rosters, and team preparation in one place." initialSession={session}>
       <PageTransition>
+        {!nextEvent ? (
+          <Card className="flex min-h-[360px] flex-col items-center justify-center border-dashed p-8 text-center">
+            <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent)]">
+              <Trophy size={26} />
+            </div>
+            <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">No competitions yet</h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+              Add tournaments for this club when the team starts tracking registrations, prep, and travel.
+            </p>
+          </Card>
+        ) : (
         <div className="space-y-5">
           <section className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
             <Card className="overflow-hidden p-0">
@@ -43,9 +58,15 @@ export default async function CompetitionsPage() {
                       </span>
                     </p>
                   </div>
-                  <Button variant="primary">
-                    <Plane size={16} /> Plan team
-                  </Button>
+                  {canManagePlanning ? (
+                    <Button variant="primary" asChild>
+                      <Link href="#competition-prep">
+                        <Plane size={16} /> Plan team
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Badge variant="muted">Team plan managed by staff</Badge>
+                  )}
                 </div>
               </div>
               <div className="grid gap-3 p-5 sm:grid-cols-3">
@@ -55,7 +76,7 @@ export default async function CompetitionsPage() {
               </div>
             </Card>
 
-            <Card className="p-5">
+            <Card id="competition-prep" className="scroll-mt-6 p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[var(--foreground)]">Prep checklist</p>
@@ -81,12 +102,13 @@ export default async function CompetitionsPage() {
             </Card>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-3">
+          <section id="competition-events" className="scroll-mt-6 grid gap-4 xl:grid-cols-3">
             {competitions.map((event) => (
               <CompetitionCard key={event.id} event={event} />
             ))}
           </section>
         </div>
+        )}
       </PageTransition>
     </AppShell>
   );

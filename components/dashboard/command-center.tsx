@@ -17,6 +17,7 @@ import { StatCard } from "@/components/oss/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { academyMeta } from "@/data/academy-meta";
 import { dashboardStats } from "@/data/dashboard";
+import type { DashboardMeta, DashboardStats } from "@/components/dashboard-grid";
 
 const quickActions = [
   { href: "/members?add=1", label: "Add member", icon: UserPlus, accent: "accent" as const },
@@ -27,7 +28,13 @@ const quickActions = [
   { href: "/training-feed?create=post", label: "Training post", icon: Plus, accent: "coral" as const },
 ];
 
-export function CommandCenter() {
+export function CommandCenter({
+  meta = academyMeta,
+  stats = dashboardStats,
+}: {
+  meta?: DashboardMeta;
+  stats?: DashboardStats;
+}) {
   return (
     <section className="space-y-5">
       <motion.div
@@ -44,14 +51,14 @@ export function CommandCenter() {
                 <Radio size={12} />
                 On the mats
               </Badge>
-              <Badge>{academyMeta.liveClass.trainingType}</Badge>
+              <Badge>{meta.liveClass.trainingType}</Badge>
             </div>
             <h2 className="mt-3 text-2xl font-semibold text-[var(--foreground)] md:text-3xl">
               Today on the mats
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">
-              <strong className="text-[var(--foreground)]">{academyMeta.liveClass.name}</strong> with{" "}
-              {academyMeta.liveClass.coach} · {academyMeta.liveClass.room} · {academyMeta.liveClass.time}
+              <strong className="text-[var(--foreground)]">{meta.liveClass.name}</strong> with{" "}
+              {meta.liveClass.coach} · {meta.liveClass.room} · {meta.liveClass.time}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
@@ -61,18 +68,18 @@ export function CommandCenter() {
             >
               <p className="text-xs text-[var(--muted)]">Checked in</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--accent)]">
-                {academyMeta.checkedInToday}
+                {meta.checkedInToday}
               </p>
             </Link>
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
               <p className="text-xs text-[var(--muted)]">Class time</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--foreground)]">
-                {academyMeta.liveClass.time}
+                {meta.liveClass.time}
               </p>
             </div>
             <div className="col-span-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:col-span-1">
               <p className="text-xs text-[var(--muted)]">Active roster</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{dashboardStats.activeStudents}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{stats.activeStudents}</p>
             </div>
           </div>
         </div>
@@ -86,26 +93,26 @@ export function CommandCenter() {
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
           label="Live class"
-          value={academyMeta.liveClass.name}
+          value={meta.liveClass.name}
           icon={Radio}
           tone="live"
-          trend={academyMeta.liveClass.room}
+          trend={meta.liveClass.room}
           index={0}
         />
         <StatCard
           label="Checked in today"
-          value={academyMeta.checkedInToday}
+          value={meta.checkedInToday}
           icon={UserPlus}
           tone="accent"
-          trend={`${Math.round((academyMeta.checkedInToday / dashboardStats.activeStudents) * 100)}% of active`}
+          trend={`${Math.round((meta.checkedInToday / Math.max(stats.activeStudents, 1)) * 100)}% of active`}
           index={1}
         />
         <StatCard
           label="Weekly attendance"
-          value={dashboardStats.weeklyAttendance}
+          value={stats.weeklyAttendance}
           icon={Clock}
           tone="blue"
-          trend={`+${dashboardStats.weeklyAttendanceChange}% vs last week`}
+          trend={`+${stats.weeklyAttendanceChange}% vs last week`}
           index={2}
         />
       </div>

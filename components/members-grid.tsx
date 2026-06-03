@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgGridHost } from "@/components/ag-grid-host";
+import { useActiveClub } from "@/components/use-active-club";
 import { compareMemberHierarchy, students as seedMembers, type Student } from "@/data/academy";
 import { getMemberProfileExtra } from "@/data/member-profiles";
 import { countCompetitionTeam } from "@/lib/members";
@@ -38,10 +39,13 @@ function matchesFilter(member: Student, filter: RosterFilter) {
 export function MembersGrid({
   initialAdd = false,
   initialFilter = "all",
+  initialMemberId,
 }: {
   initialAdd?: boolean;
   initialFilter?: RosterFilter;
+  initialMemberId?: string;
 }) {
+  const activeClub = useActiveClub();
   const [members, setMembers] = useState<Student[]>(seedMembers);
   const [filter, setFilter] = useState<RosterFilter>(initialFilter);
   const [search, setSearch] = useState("");
@@ -66,7 +70,9 @@ export function MembersGrid({
 
     async function loadMembers() {
       try {
-        const response = await fetch("/api/members?club=grapply-bjj", { cache: "no-store" });
+        const params = new URLSearchParams();
+        if (activeClub?.slug) params.set("club", activeClub.slug);
+        const response = await fetch(`/api/members${params.size ? `?${params}` : ""}`, { cache: "no-store" });
         const payload = (await response.json()) as { members?: Student[] };
         if (cancelled) return;
         if (payload.members?.length) {
@@ -81,7 +87,13 @@ export function MembersGrid({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeClub?.slug]);
+
+  useEffect(() => {
+    if (!initialMemberId || drawerOpen) return;
+    const member = members.find((candidate) => candidate.id === initialMemberId);
+    if (member) openMemberDrawer(member);
+  }, [drawerOpen, initialMemberId, members, openMemberDrawer]);
 
   async function addMember(member: Student) {
     setMembers((current) => [...current, member].sort(compareMemberHierarchy));
@@ -90,7 +102,7 @@ export function MembersGrid({
       const response = await fetch("/api/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...member, clubSlug: "grapply-bjj" }),
+        body: JSON.stringify({ ...member, ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}) }),
       });
       const payload = (await response.json()) as { ok?: boolean; member?: Student };
       if (payload.ok && payload.member) {

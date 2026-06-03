@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { compareMemberHierarchy, students, type Student } from "@/data/academy";
-import { clubs } from "@/data/platform";
-import { getBackendClubId } from "@/lib/backend";
+import { compareMemberHierarchy, type Student } from "@/data/academy";
+import { getClubRoster } from "@/data/platform";
+import { getBackendClubId, getMockClubId, getRequestedClubSlug } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 import { toAcademyMemberInsert, toStudent } from "@/lib/supabase/mappers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const clubSlug = searchParams.get("club") ?? "grapply-bjj";
+  const clubSlug = await getRequestedClubSlug(searchParams.get("club"));
 
   if (isSupabaseConfigured()) {
     try {
@@ -26,13 +26,13 @@ export async function GET(request: Request) {
     } catch (error) {
       return NextResponse.json({
         source: "mock",
-        members: students,
+        members: getMockMembers(clubSlug),
         supabaseError: String(error),
       });
     }
   }
 
-  return NextResponse.json({ source: "mock", members: students });
+  return NextResponse.json({ source: "mock", members: getMockMembers(clubSlug) });
 }
 
 export async function POST(request: Request) {
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
   if (isSupabaseConfigured()) {
     try {
-      const clubId = await getBackendClubId(payload.clubSlug ?? clubs[0].slug);
+      const clubId = await getBackendClubId(payload.clubSlug);
       if (!clubId) return NextResponse.json({ ok: false, error: "Club not found." }, { status: 404 });
 
       const created = await upsertRow("academy_members", toAcademyMemberInsert(member, clubId), "id");
@@ -73,4 +73,8 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, source: "mock", member });
+}
+
+function getMockMembers(clubSlug: string) {
+  return getClubRoster(getMockClubId(clubSlug)).sort(compareMemberHierarchy);
 }

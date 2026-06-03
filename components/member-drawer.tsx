@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActiveClub } from "@/components/use-active-club";
 import { beltStyles, type Belt, type MemberRole, type Student } from "@/data/academy";
 
 type DrawerMode = "view" | "add";
@@ -211,6 +212,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
 }
 
 function MemberActions({ member }: { member: Student }) {
+  const activeClub = useActiveClub();
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classId, setClassId] = useState("");
   const [note, setNote] = useState("Looked sharp in positional rounds.");
@@ -220,7 +222,9 @@ function MemberActions({ member }: { member: Student }) {
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/classes")
+    const params = new URLSearchParams();
+    if (activeClub?.slug) params.set("club", activeClub.slug);
+    fetch(`/api/classes${params.size ? `?${params}` : ""}`)
       .then((response) => response.json())
       .then((payload: { classes?: ClassOption[] }) => {
         if (!alive) return;
@@ -234,7 +238,7 @@ function MemberActions({ member }: { member: Student }) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [activeClub?.slug]);
 
   async function submitAction(action: "check-in" | "note" | "promotion") {
     setLoading(action);
@@ -258,6 +262,7 @@ function MemberActions({ member }: { member: Student }) {
   function getPayload(action: "check-in" | "note" | "promotion") {
     if (action === "check-in") {
       return {
+        ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}),
         classId,
         memberId: member.id,
         source: "manual",
@@ -267,6 +272,7 @@ function MemberActions({ member }: { member: Student }) {
 
     if (action === "note") {
       return {
+        ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}),
         memberId: member.id,
         coachName: "Current coach",
         body: note,
@@ -275,6 +281,7 @@ function MemberActions({ member }: { member: Student }) {
     }
 
     return {
+      ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}),
       memberId: member.id,
       type: promotionType,
       awardedByName: "Current coach",

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { clubClasses } from "@/data/platform";
-import { getBackendClubId } from "@/lib/backend";
+import { getBackendClubId, getMockClubId, getRequestedClubSlug } from "@/lib/backend";
 import { isSupabaseConfigured, insertRow, selectRows } from "@/lib/supabase/server";
 import { toClubClass } from "@/lib/supabase/mappers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const clubSlug = searchParams.get("club") ?? "grapply-bjj";
+  const clubSlug = await getRequestedClubSlug(searchParams.get("club"));
 
   if (isSupabaseConfigured()) {
     try {
@@ -16,11 +16,11 @@ export async function GET(request: Request) {
       const rows = await selectRows("club_classes", `select=*&club_id=eq.${clubId}&order=day.asc,time.asc`);
       return NextResponse.json({ source: "supabase", classes: rows.map(toClubClass) });
     } catch (error) {
-      return NextResponse.json({ source: "mock", classes: clubClasses, supabaseError: String(error) });
+      return NextResponse.json({ source: "mock", classes: getMockClasses(clubSlug), supabaseError: String(error) });
     }
   }
 
-  return NextResponse.json({ source: "mock", classes: clubClasses });
+  return NextResponse.json({ source: "mock", classes: getMockClasses(clubSlug) });
 }
 
 export async function POST(request: Request) {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
   if (isSupabaseConfigured()) {
     try {
-      const clubId = await getBackendClubId(payload.clubSlug ?? "grapply-bjj");
+      const clubId = await getBackendClubId(payload.clubSlug);
       if (!clubId) return NextResponse.json({ ok: false, error: "Club not found." }, { status: 404 });
 
       const created = await insertRow("club_classes", {
@@ -53,4 +53,10 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, source: "mock", class: payload });
+}
+
+function getMockClasses(clubSlug?: string | null) {
+  if (!clubSlug) return clubClasses;
+  const clubId = getMockClubId(clubSlug);
+  return clubClasses.filter((item) => item.clubId === clubId);
 }

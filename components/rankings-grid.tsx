@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgGridHost } from "@/components/ag-grid-host";
+import { useActiveClub } from "@/components/use-active-club";
 import { beltStyles, students as seedStudents, type Belt, type Student } from "@/data/academy";
 import { rankingHighlights, rankMovement } from "@/data/rankings-meta";
 
@@ -20,12 +21,15 @@ type RankedStudent = Student & { rank: number };
 type BeltFilter = "all" | Belt;
 
 export function RankingsGrid() {
+  const activeClub = useActiveClub();
   const [students, setStudents] = useState<Student[]>(seedStudents);
   const [beltFilter, setBeltFilter] = useState<BeltFilter>("all");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("/api/members", { cache: "no-store" })
+    const params = new URLSearchParams();
+    if (activeClub?.slug) params.set("club", activeClub.slug);
+    fetch(`/api/members${params.size ? `?${params}` : ""}`, { cache: "no-store" })
       .then((response) => response.json())
       .then((payload: { members?: Student[] }) => {
         if (payload.members?.length) {
@@ -33,7 +37,7 @@ export function RankingsGrid() {
         }
       })
       .catch(() => undefined);
-  }, []);
+  }, [activeClub?.slug]);
 
   const ranked = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -50,7 +54,7 @@ export function RankingsGrid() {
     return [...filtered]
       .sort((a, b) => b.points - a.points)
       .map((student, index) => ({ ...student, rank: index + 1 }));
-  }, [beltFilter, search]);
+  }, [beltFilter, search, students]);
 
   const summary = useMemo(() => {
     const top = ranked[0];

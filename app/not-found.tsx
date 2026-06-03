@@ -9,7 +9,7 @@ export default function NotFound() {
         <h1 className="mt-3 text-4xl font-semibold">404</h1>
         <p className="mt-2 text-sm text-[var(--muted)]">This page is not part of the academy workspace.</p>
         <Button variant="primary" className="mt-6" asChild>
-          <Link href="/dashboard">Back to dashboard</Link>
+          <Link href="/schedule">Back to schedule</Link>
         </Button>
       </div>
     </main>

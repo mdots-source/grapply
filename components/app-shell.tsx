@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -14,22 +15,25 @@ import {
   Settings,
   Shield,
   LogOut,
+  Building2,
   Trophy,
   UserCog,
   Users,
 } from "lucide-react";
-import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuButton } from "@/components/ui/sidebar";
-import { students } from "@/data/academy";
+import { ActiveClubProvider } from "@/components/use-active-club";
 import { academyMeta } from "@/data/academy-meta";
 import { getNavBeltAccent } from "@/lib/nav-belt";
-import { cn } from "@/lib/utils";
-
-const profileMember = students.find((member) => member.id === "st-003") ?? students[0];
-const profileHref = `/members/${profileMember.id}`;
+import { cn, initials } from "@/lib/utils";
 
 type Role = "owner" | "admin" | "coach" | "member";
+export type ShellSession = {
+  user?: { name: string; email: string; avatar?: string };
+  activeClub?: { name: string; slug: string } | null;
+  activeRole?: Role | null;
+  memberships?: Array<{ club: { name: string; slug: string }; role: Role }>;
+};
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["owner", "admin", "coach"] as Role[] },
@@ -44,15 +48,36 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings, roles: ["owner", "admin"] as Role[] },
 ];
 
-export function AppShell({ children, title, subtitle }: { children: React.ReactNode; title: string; subtitle: string }) {
+export function AppShell({
+  children,
+  title,
+  subtitle,
+  mode = "workspace",
+  initialSession = null,
+}: {
+  children: React.ReactNode;
+  title: string;
+  subtitle: string;
+  mode?: "workspace" | "account";
+  initialSession?: ShellSession | null;
+}) {
   const pathname = usePathname();
-  const [session, setSession] = useState<{
-    user?: { name: string; email: string };
-    activeClub?: { name: string; slug: string };
-    activeRole?: Role;
-  } | null>(null);
-  const role = session?.activeRole ?? "owner";
-  const visibleNav = useMemo(() => nav.filter((item) => item.roles.includes(role)), [role]);
+  const searchParams = useSearchParams();
+  const isAccountMode = mode === "account";
+  const [session, setSession] = useState<ShellSession | null | undefined>(initialSession);
+  const role = session?.activeRole;
+  const displayRole = role ?? "member";
+  const visibleNav = useMemo(
+    () => (isAccountMode ? [] : nav.filter((item) => (role ? item.roles.includes(role) : item.roles.includes("member") || pathname.startsWith(item.href)))),
+    [isAccountMode, pathname, role],
+  );
+  const currentPath = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
+  const switchReturnTo = pathname.startsWith("/clubs") ? searchParams.get("returnTo") ?? "/schedule" : currentPath;
+  const switchClubHref = `/clubs?returnTo=${encodeURIComponent(switchReturnTo)}`;
+  const workspaceHomeHref = role && role !== "member" ? "/dashboard" : "/schedule";
+  const shellHomeHref = isAccountMode ? "/clubs" : workspaceHomeHref;
+  const profileLabel = session?.user?.name ?? "Profile";
+  const profileDetail = session?.user?.email ?? "Account";
 
   useEffect(() => {
     fetch("/api/auth/session", { cache: "no-store" })
@@ -71,10 +96,11 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
     }) as React.CSSProperties;
 
   return (
-    <div className="min-h-screen text-[var(--foreground)]">
+    <ActiveClubProvider activeClub={session?.activeClub ?? null}>
+      <div className="min-h-screen text-[var(--foreground)]">
       <Sidebar>
         <SidebarHeader>
-          <Link href="/dashboard" className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--accent)]/25 hover:bg-[var(--surface-hover)]">
+          <Link href={shellHomeHref} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--accent)]/25 hover:bg-[var(--surface-hover)]">
             <div className="grid size-10 place-items-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
               <Shield size={22} />
             </div>
@@ -86,7 +112,17 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
         </SidebarHeader>
 
         <SidebarContent>
-          {visibleNav.map((item) => {
+          {isAccountMode ? (
+            <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
+              <div className="grid size-10 place-items-center rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]">
+                <Building2 size={20} />
+              </div>
+              <p className="mt-4 text-sm font-semibold text-[var(--foreground)]">Choose your club</p>
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                Pick the academy workspace you want to open. Navigation appears after the club is selected.
+              </p>
+            </div>
+          ) : visibleNav.map((item) => {
             const Icon = item.icon;
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const belt = getNavBeltAccent(item.href);
@@ -122,29 +158,55 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
         </SidebarContent>
 
         <SidebarFooter className="space-y-3 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
-          <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/6 p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">On the mats</div>
-            <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{academyMeta.liveClass.name}</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              {academyMeta.liveClass.coach} · {academyMeta.liveClass.room}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-2">
-              <p className="text-lg font-semibold tabular-nums text-[var(--accent)]">{academyMeta.checkedInToday}</p>
-              <p className="text-[10px] text-[var(--muted)]">Checked in</p>
+          {!isAccountMode && (
+            <>
+              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/6 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">On the mats</div>
+                <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{academyMeta.liveClass.name}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {academyMeta.liveClass.coach} · {academyMeta.liveClass.room}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-2">
+                  <p className="text-lg font-semibold tabular-nums text-[var(--accent)]">{academyMeta.checkedInToday}</p>
+                  <p className="text-[10px] text-[var(--muted)]">Checked in</p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-2">
+                  <p className="text-lg font-semibold tabular-nums">{academyMeta.liveClass.time}</p>
+                  <p className="text-[10px] text-[var(--muted)]">Class time</p>
+                </div>
+              </div>
+            </>
+          )}
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3">
+            <div className="flex items-start gap-2">
+              <Building2 size={15} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-[var(--foreground)]">
+                  {isAccountMode ? session?.user?.name ?? "Account" : session?.activeClub?.name ?? "Choose club"}
+                </p>
+                <p className="mt-1 text-[11px] text-[var(--muted)]">
+                  {isAccountMode ? (
+                    session?.user?.email ?? "Choose a workspace"
+                  ) : (
+                    <>
+                      <span className="capitalize text-[var(--accent)]">{displayRole}</span>
+                      {session?.memberships?.length ? ` · ${session.memberships.length} workspace${session.memberships.length === 1 ? "" : "s"}` : ""}
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-2">
-              <p className="text-lg font-semibold tabular-nums">{academyMeta.liveClass.time}</p>
-              <p className="text-[10px] text-[var(--muted)]">Class time</p>
-            </div>
+            {!isAccountMode && (
+              <Link
+                href={switchClubHref}
+                className="mt-3 block rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-center text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)]/30 hover:text-[var(--foreground)]"
+              >
+                Switch club
+              </Link>
+            )}
           </div>
-          <Link
-            href="/clubs"
-            className="block rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs text-[var(--muted)] transition hover:border-[var(--accent)]/30 hover:text-[var(--foreground)]"
-          >
-            Switch club · <span className="capitalize text-[var(--accent)]">{role}</span>
-          </Link>
           <Link
             href="/api/auth/logout"
             className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent-coral)]/30 hover:text-[var(--foreground)]"
@@ -159,16 +221,22 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <header className="relative mb-7 border-b border-[var(--border)] pb-6">
             <Link
-              href={profileHref}
+              href="/clubs"
               className={cn(
                 "absolute right-0 top-0 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 transition hover:border-[var(--accent)]/35 hover:bg-[var(--surface-hover)]",
-                pathname.startsWith(profileHref) && "border-[var(--accent)]/40 bg-[var(--accent)]/10",
+                pathname.startsWith("/clubs") && "border-[var(--accent)]/40 bg-[var(--accent)]/10",
               )}
             >
-              <StudentAvatar student={profileMember} size="sm" />
+              <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] text-xs font-black text-[var(--foreground)]">
+                {session?.user?.avatar ? (
+                  <Image src={session.user.avatar} alt={`${profileLabel} avatar`} fill sizes="36px" className="object-cover" />
+                ) : (
+                  initials(profileLabel)
+                )}
+              </span>
               <span className="hidden text-right sm:block">
-                <span className="block text-xs font-semibold text-[var(--foreground)]">Profile</span>
-                <span className="block text-[11px] text-[var(--muted)]">{profileMember.name.split(" ")[0]}</span>
+                <span className="block max-w-32 truncate text-xs font-semibold text-[var(--foreground)]">{profileLabel}</span>
+                <span className="block max-w-32 truncate text-[11px] text-[var(--muted)]">{profileDetail}</span>
               </span>
             </Link>
 
@@ -179,13 +247,24 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
               transition={{ duration: 0.45 }}
             >
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">
-                {session?.activeClub?.name ?? "Grapply Jiu-Jitsu Academy"}
+                {isAccountMode ? "Account portal" : session?.activeClub?.name ?? "Grapply Jiu-Jitsu Academy"}
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-[var(--foreground)] md:text-4xl">{title}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{subtitle}</p>
+              {!isAccountMode && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Badge variant="accent" className="capitalize">{displayRole}</Badge>
+                  <Link
+                    href={switchClubHref}
+                    className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)]/30 hover:text-[var(--foreground)]"
+                  >
+                    Switch club
+                  </Link>
+                </div>
+              )}
             </motion.div>
 
-            <div className="mt-4 flex items-center gap-2 overflow-x-auto lg:hidden">
+            {!isAccountMode && <div className="mt-4 flex items-center gap-2 overflow-x-auto lg:hidden">
               {visibleNav.map((item) => {
                 const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                 const belt = getNavBeltAccent(item.href);
@@ -213,11 +292,12 @@ export function AppShell({ children, title, subtitle }: { children: React.ReactN
                   </Link>
                 );
               })}
-            </div>
+            </div>}
           </header>
           {children}
         </div>
       </main>
-    </div>
+      </div>
+    </ActiveClubProvider>
   );
 }

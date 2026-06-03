@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({ ok: true, source: "supabase", invite: row });
     } catch (error) {
-      return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
+      return NextResponse.json({ ok: true, source: "mock", invite: payload, supabaseError: String(error) });
     }
   }
 
@@ -75,7 +75,7 @@ export async function PATCH(request: Request) {
 
       return NextResponse.json({ ok: true, source: "supabase", invite: row });
     } catch (error) {
-      return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
+      return NextResponse.json({ ok: true, source: "mock", invite: payload, supabaseError: String(error) });
     }
   }
 

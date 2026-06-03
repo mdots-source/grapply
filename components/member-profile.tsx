@@ -13,9 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardKicker, CardTitle } from "@/components/ui/card";
 import { beltStyles, attendance, type Student } from "@/data/academy";
 import { getMemberProfileExtra } from "@/data/member-profiles";
+import type { PlatformRole } from "@/data/platform";
 
-export function MemberProfile({ member }: { member: Student }) {
+export function MemberProfile({ member, viewerRole }: { member: Student; viewerRole: PlatformRole | null }) {
   const extra = getMemberProfileExtra(member.id);
+  const canManageProgress = viewerRole === "owner" || viewerRole === "admin" || viewerRole === "coach";
+  const canViewCoachNotes = canManageProgress;
 
   return (
     <div className="space-y-6">
@@ -38,15 +41,25 @@ export function MemberProfile({ member }: { member: Student }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" size="sm" className="gap-1.5">
-              <Award size={14} /> Award stripe
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <TrendingUp size={14} /> Promote belt
-            </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5">
-              <MessageSquarePlus size={14} /> Add note
-            </Button>
+            {canManageProgress && (
+              <>
+                <Button variant="primary" size="sm" className="gap-1.5" asChild>
+                  <Link href={`/members?member=${member.id}&filter=promotion`}>
+                    <Award size={14} /> Award stripe
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                  <Link href={`/members?member=${member.id}&filter=promotion`}>
+                    <TrendingUp size={14} /> Promote belt
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" className="gap-1.5" asChild>
+                  <Link href={`/members?member=${member.id}`}>
+                    <MessageSquarePlus size={14} /> Add note
+                  </Link>
+                </Button>
+              </>
+            )}
             <Button variant="ghost" size="sm" className="gap-1.5" asChild>
               <Link href="/competitions">
                 <Medal size={14} /> Register comp
@@ -140,18 +153,33 @@ export function MemberProfile({ member }: { member: Student }) {
 
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <SectionHeader kicker="Coach" title="Notes & focus" description="Private coach observations." />
-          <div className="mt-4 space-y-3">
-            {extra.coachNotes.map((note) => (
-              <div key={note.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                <div className="flex items-center justify-between text-xs text-[var(--muted)]">
-                  <span>{note.coach}</span>
-                  <span>{note.date}</span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{note.body}</p>
+          {canViewCoachNotes ? (
+            <>
+              <SectionHeader kicker="Coach" title="Notes & focus" description="Private coach observations." />
+              <div className="mt-4 space-y-3">
+                {extra.coachNotes.map((note) => (
+                  <div key={note.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                    <div className="flex items-center justify-between text-xs text-[var(--muted)]">
+                      <span>{note.coach}</span>
+                      <span>{note.date}</span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{note.body}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <>
+              <SectionHeader kicker="Training" title="Focus" description="Member-visible training context." />
+              <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Current focus</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{member.focus}</p>
+                <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                  Private coach notes are only visible to coaches and academy staff.
+                </p>
+              </div>
+            </>
+          )}
         </Card>
 
         <Card>
