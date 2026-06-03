@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
     const club = { slug: slugify(academyName), name: academyName, location };
     const response = isFormSubmit
-      ? NextResponse.redirect(clubsUrl(request, returnTo))
+      ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
       : NextResponse.json({
           ok: true,
           source: "mock",
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
 
     const session = await signInWithPassword(ownerEmail, password);
     const response = isFormSubmit
-      ? NextResponse.redirect(clubsUrl(request, returnTo))
+      ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
       : NextResponse.json({ ok: true, source: "supabase", user, club, membership });
     setAuthCookies(response, session);
     setActiveClubCookie(response, club.slug);

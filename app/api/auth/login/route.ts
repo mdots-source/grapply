@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       }
 
       const response = returnTo
-        ? NextResponse.redirect(clubsUrl(request, returnTo))
+        ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
         : NextResponse.json({
             ok: true,
             source: "supabase",
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
 function createMockLoginResponse(request: Request, user: (typeof platformUsers)[number], returnTo: string | null) {
   const response = returnTo
-    ? NextResponse.redirect(clubsUrl(request, returnTo))
+    ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
     : NextResponse.json({ ok: true, source: "mock", user });
   setMockAuthCookie(response, user.id);
   return response;
