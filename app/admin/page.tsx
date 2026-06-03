@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, KeyRound, ShieldCheck, UserCog, Users } from "lucide-react";
+import { Activity, AlertTriangle, CalendarDays, KeyRound, ShieldCheck, UserCog, Users } from "lucide-react";
 import { InviteUserForm } from "@/components/admin/invite-user-form";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
@@ -14,6 +14,19 @@ export default async function AdminPage() {
   const club = clubs.find((item) => item.slug === session.activeClub.slug) ?? session.activeClub;
   const memberships = clubMemberships.filter((membership) => membership.clubId === club.id);
   const classes = clubClasses.filter((item) => item.clubId === club.id);
+  const roleCounts = roleDefinitions.map((role) => ({
+    ...role,
+    count: memberships.filter((membership) => membership.role === role.role).length,
+  }));
+  const rosterUsers = memberships
+    .map((membership) => ({
+      membership,
+      user: platformUsers.find((candidate) => candidate.id === membership.userId),
+    }))
+    .filter((item): item is { membership: (typeof memberships)[number]; user: (typeof platformUsers)[number] } => Boolean(item.user));
+  const connectedTraining = rosterUsers.filter(({ user }) => user.stravaStatus === "connected").length;
+  const needsTrainingConnection = rosterUsers.filter(({ user }) => user.stravaStatus !== "connected").length;
+  const staffCount = memberships.filter((membership) => membership.role !== "member").length;
 
   return (
     <AppShell
@@ -29,21 +42,44 @@ export default async function AdminPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Managing club</p>
                 <h2 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{club.name}</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">{club.location}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="success">{connectedTraining} training connected</Badge>
+                  {needsTrainingConnection > 0 && <Badge variant="muted">{needsTrainingConnection} need Strava</Badge>}
+                  <Badge variant="muted">{staffCount} staff roles</Badge>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 lg:justify-end">
                 <Badge variant="accent" className="capitalize">{session.activeRole}</Badge>
                 <Button variant="surface" size="sm" asChild>
                   <Link href="/clubs?returnTo=/admin">Switch club</Link>
+                </Button>
+                <Button variant="primary" size="sm" asChild>
+                  <Link href="/members?add=1">Add member</Link>
                 </Button>
               </div>
             </div>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <AdminStat icon={Users} label="Assigned users" value={memberships.length.toString()} />
             <AdminStat icon={CalendarDays} label="BJJ classes" value={classes.length.toString()} />
             <AdminStat icon={ShieldCheck} label="Role templates" value={roleDefinitions.length.toString()} />
+            <AdminStat icon={Activity} label="Training sync" value={`${connectedTraining}/${rosterUsers.length}`} />
           </div>
+
+          <Card className="p-4">
+            <div className="grid gap-3 lg:grid-cols-4">
+              {roleCounts.map((role) => (
+                <div key={role.role} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge variant={role.count > 0 ? "accent" : "muted"} className="capitalize">{role.role}</Badge>
+                    <span className="text-xl font-semibold tabular-nums text-[var(--foreground)]">{role.count}</span>
+                  </div>
+                  <p className="mt-3 line-clamp-2 text-xs leading-5 text-[var(--muted)]">{role.description}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -90,22 +126,31 @@ export default async function AdminPage() {
                 <CardTitle>Club users</CardTitle>
                 <CardDescription>People with access to this academy.</CardDescription>
               </div>
+              <Button variant="surface" size="sm" asChild>
+                <Link href="/members">Open roster</Link>
+              </Button>
             </CardHeader>
             <div className="space-y-2">
-              {memberships.map((membership) => {
-                const user = platformUsers.find((candidate) => candidate.id === membership.userId);
-                if (!user) return null;
+              {rosterUsers.map(({ membership, user }) => {
                 return (
                   <div key={membership.id} className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--foreground)]">{user.name}</p>
-                      <p className="text-xs text-[var(--muted)]">{user.email}</p>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{user.name}</p>
+                        <Badge variant="accent" className="capitalize">{membership.role}</Badge>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-[var(--muted)]">{user.email}</p>
+                      <p className="mt-1 text-[11px] text-[var(--muted)]">Joined {membership.joinedAt}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="accent" className="capitalize">{membership.role}</Badge>
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={user.stravaStatus === "connected" ? "success" : "muted"}>
                         {user.stravaStatus === "connected" ? "Training connected" : "Training not connected"}
                       </Badge>
+                      {user.stravaStatus === "error" && (
+                        <Badge variant="muted">
+                          <AlertTriangle size={12} /> Sync error
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 );
@@ -119,6 +164,9 @@ export default async function AdminPage() {
                 <CardTitle>Academy classes</CardTitle>
                 <CardDescription>Current classes available to members.</CardDescription>
               </div>
+              <Button variant="surface" size="sm" asChild>
+                <Link href="/schedule?create=class">Create class</Link>
+              </Button>
             </CardHeader>
             <div className="grid gap-3 lg:grid-cols-2">
               {classes.map((item) => (
@@ -130,7 +178,10 @@ export default async function AdminPage() {
                     </div>
                     <Badge variant="muted">{item.checkedIn} checked in</Badge>
                   </div>
-                  <p className="mt-3 text-xs text-[var(--muted)]">Coach {item.coach} · {item.level}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge variant="muted">Coach {item.coach}</Badge>
+                    <Badge variant="muted">{item.level}</Badge>
+                  </div>
                 </div>
               ))}
             </div>

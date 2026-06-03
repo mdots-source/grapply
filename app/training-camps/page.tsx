@@ -1,5 +1,17 @@
 import Link from "next/link";
-import { CalendarDays, Clock, MapPin, Mountain, Plane, ShieldCheck, Tent, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Mountain,
+  Plane,
+  ShieldCheck,
+  Target,
+  Tent,
+  Users,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -23,6 +35,11 @@ export default async function TrainingCampsPage() {
   const totalTravelers = new Set(trainingCamps.flatMap((camp) => camp.registered_students)).size;
   const nextCamp = trainingCamps[0];
   const canManagePlanning = session.activeRole !== "member";
+  const averagePrep = trainingCamps.length
+    ? Math.round(trainingCamps.reduce((total, camp) => total + camp.prep, 0) / trainingCamps.length)
+    : 0;
+  const lowPrepCamps = trainingCamps.filter((camp) => camp.prep < 65).length;
+  const openCamps = trainingCamps.filter((camp) => camp.status.toLowerCase().includes("open")).length;
 
   return (
     <AppShell
@@ -109,15 +126,75 @@ export default async function TrainingCampsPage() {
             </Card>
           </section>
 
+          <section className="grid gap-3 md:grid-cols-3">
+            <ReadinessCard
+              icon={Target}
+              label="Average readiness"
+              value={`${averagePrep}%`}
+              detail={averagePrep >= 75 ? "Travel plans are on track" : "Needs staff review"}
+              tone={averagePrep >= 75 ? "success" : "warning"}
+            />
+            <ReadinessCard
+              icon={AlertTriangle}
+              label="Trips under 65%"
+              value={lowPrepCamps.toString()}
+              detail={lowPrepCamps > 0 ? "Review travel and deposits" : "No weak trip plans"}
+              tone={lowPrepCamps > 0 ? "warning" : "success"}
+            />
+            <ReadinessCard
+              icon={CheckCircle2}
+              label="Registration open"
+              value={openCamps.toString()}
+              detail={canManagePlanning ? "Staff can plan rosters" : "Managed by academy staff"}
+              tone="accent"
+            />
+          </section>
+
           <section id="camp-list" className="scroll-mt-6 grid gap-4 xl:grid-cols-2">
             {trainingCamps.map((camp) => (
-              <CampCard key={camp.id} camp={camp} />
+              <CampCard key={camp.id} camp={camp} canManagePlanning={canManagePlanning} />
             ))}
           </section>
         </div>
         )}
       </PageTransition>
     </AppShell>
+  );
+}
+
+function ReadinessCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: string;
+  detail: string;
+  tone: "accent" | "success" | "warning";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+      : tone === "warning"
+        ? "border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-300"
+        : "border-[var(--accent-blue)]/25 bg-[var(--accent-blue)]/10 text-[var(--accent-blue)]";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-[var(--muted)]">{label}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--foreground)]">{value}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">{detail}</p>
+        </div>
+        <div className={`grid size-10 shrink-0 place-items-center rounded-xl border ${toneClass}`}>
+          <Icon size={18} />
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -130,15 +207,25 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CampCard({ camp }: { camp: TrainingCamp }) {
+function CampCard({ camp, canManagePlanning }: { camp: TrainingCamp; canManagePlanning: boolean }) {
   const roster = resolveStudentsByIds(camp.registered_students);
   const spotsLeft = camp.spotsTotal - camp.registered_students.length;
+  const needsReview = camp.prep < 65;
+  const fewSpotsLeft = spotsLeft <= 4;
 
   return (
     <Card className="flex min-h-[360px] flex-col p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <Badge variant={camp.status === "Registration open" ? "accent" : "default"}>{camp.status}</Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={camp.status === "Registration open" ? "accent" : "muted"}>{camp.status}</Badge>
+            {needsReview && (
+              <Badge variant="muted">
+                <AlertTriangle size={12} /> Needs travel plan
+              </Badge>
+            )}
+            {fewSpotsLeft && <Badge variant="muted">Few spots left</Badge>}
+          </div>
           <h3 className="mt-4 text-xl font-semibold text-[var(--foreground)]">{camp.name}</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">{camp.venue}</p>
         </div>
@@ -182,25 +269,27 @@ function CampCard({ camp }: { camp: TrainingCamp }) {
         </div>
       </div>
 
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
-        <div>
-          <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">Travel roster</p>
+      <div className="mt-auto pt-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">Travel roster</p>
+          <span className="text-xs text-[var(--muted)]">{roster.length} athletes</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex -space-x-3">
             {roster.map((student) => (
               <StudentAvatar key={student.id} student={student} className="size-10 border-2 border-[var(--background)]" />
             ))}
           </div>
+          {canManagePlanning ? (
+            <Button variant={needsReview ? "primary" : "surface"} size="sm" asChild>
+              <Link href={`/members?filter=camp&camp=${camp.id}`}>
+                {needsReview ? "Review trip" : "Plan roster"}
+              </Link>
+            </Button>
+          ) : (
+            <Badge variant="muted">Staff managed</Badge>
+          )}
         </div>
-        <details className="group">
-          <summary className="inline-flex h-8 cursor-pointer list-none items-center justify-center rounded-md border border-[var(--border)] bg-transparent px-3 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface)]">
-            View details
-          </summary>
-          <div className="mt-3 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-xs leading-5 text-[var(--muted)] sm:w-64">
-            <p className="font-semibold text-[var(--foreground)]">{camp.date} to {camp.endDate}</p>
-            <p className="mt-1">Hosted by {camp.host} with estimated cost {camp.estimatedCost}.</p>
-            <p className="mt-1">{spotsLeft} spots left before registration closes on {camp.registration_deadline}.</p>
-          </div>
-        </details>
       </div>
     </Card>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Clock, MapPin, Plane, ShieldCheck, Trophy, Users } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, Clock, MapPin, Plane, ShieldCheck, Target, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -23,6 +23,11 @@ export default async function CompetitionsPage() {
   const totalAthletes = new Set(competitions.flatMap((event) => event.registered_students)).size;
   const nextEvent = competitions[0];
   const canManagePlanning = session.activeRole !== "member";
+  const averagePrep = competitions.length
+    ? Math.round(competitions.reduce((total, event) => total + event.prep, 0) / competitions.length)
+    : 0;
+  const lowPrepEvents = competitions.filter((event) => event.prep < 65).length;
+  const openEvents = competitions.filter((event) => event.status.toLowerCase().includes("open")).length;
 
   return (
     <AppShell title="Competitions" subtitle="Track tournaments, deadlines, athlete rosters, and team preparation in one place." initialSession={session}>
@@ -102,15 +107,75 @@ export default async function CompetitionsPage() {
             </Card>
           </section>
 
+          <section className="grid gap-3 md:grid-cols-3">
+            <ReadinessCard
+              icon={Target}
+              label="Average readiness"
+              value={`${averagePrep}%`}
+              detail={averagePrep >= 75 ? "Team prep is on track" : "Needs coach review"}
+              tone={averagePrep >= 75 ? "success" : "warning"}
+            />
+            <ReadinessCard
+              icon={AlertTriangle}
+              label="Events under 65%"
+              value={lowPrepEvents.toString()}
+              detail={lowPrepEvents > 0 ? "Review divisions and travel" : "No weak prep plans"}
+              tone={lowPrepEvents > 0 ? "warning" : "success"}
+            />
+            <ReadinessCard
+              icon={CheckCircle2}
+              label="Registration open"
+              value={openEvents.toString()}
+              detail={canManagePlanning ? "Staff can manage rosters" : "Managed by academy staff"}
+              tone="accent"
+            />
+          </section>
+
           <section id="competition-events" className="scroll-mt-6 grid gap-4 xl:grid-cols-3">
             {competitions.map((event) => (
-              <CompetitionCard key={event.id} event={event} />
+              <CompetitionCard key={event.id} event={event} canManagePlanning={canManagePlanning} />
             ))}
           </section>
         </div>
         )}
       </PageTransition>
     </AppShell>
+  );
+}
+
+function ReadinessCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: string;
+  detail: string;
+  tone: "accent" | "success" | "warning";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+      : tone === "warning"
+        ? "border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-300"
+        : "border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-[var(--muted)]">{label}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--foreground)]">{value}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">{detail}</p>
+        </div>
+        <div className={`grid size-10 shrink-0 place-items-center rounded-xl border ${toneClass}`}>
+          <Icon size={18} />
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -123,14 +188,22 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CompetitionCard({ event }: { event: Competition }) {
+function CompetitionCard({ event, canManagePlanning }: { event: Competition; canManagePlanning: boolean }) {
   const roster = resolveStudentsByIds(event.registered_students);
+  const needsReview = event.prep < 65;
 
   return (
     <Card className="flex min-h-[330px] flex-col p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <Badge>{event.status}</Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={event.status.toLowerCase().includes("open") ? "accent" : "muted"}>{event.status}</Badge>
+            {needsReview && (
+              <Badge variant="muted">
+                <AlertTriangle size={12} /> Needs prep
+              </Badge>
+            )}
+          </div>
           <h3 className="mt-4 text-xl font-semibold text-[var(--foreground)]">{event.name}</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">{event.venue}</p>
         </div>
@@ -167,11 +240,25 @@ function CompetitionCard({ event }: { event: Competition }) {
       </div>
 
       <div className="mt-auto pt-5">
-        <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">Roster</p>
-        <div className="flex -space-x-3">
-          {roster.map((student) => (
-            <StudentAvatar key={student.id} student={student} className="size-10 border-2 border-[var(--background)]" />
-          ))}
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">Roster</p>
+          <span className="text-xs text-[var(--muted)]">{roster.length} athletes</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex -space-x-3">
+            {roster.map((student) => (
+              <StudentAvatar key={student.id} student={student} className="size-10 border-2 border-[var(--background)]" />
+            ))}
+          </div>
+          {canManagePlanning ? (
+            <Button variant={needsReview ? "primary" : "surface"} size="sm" asChild>
+              <Link href={`/members?filter=competition&event=${event.id}`}>
+                {needsReview ? "Review prep" : "Manage roster"}
+              </Link>
+            </Button>
+          ) : (
+            <Badge variant="muted">Staff managed</Badge>
+          )}
         </div>
       </div>
     </Card>

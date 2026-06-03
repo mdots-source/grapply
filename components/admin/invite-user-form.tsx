@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Send } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Send } from "lucide-react";
 import { useActiveClub } from "@/components/use-active-club";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+type InviteMessage = { tone: "success" | "error"; text: string };
 
 export function InviteUserForm() {
   const activeClub = useActiveClub();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<InviteMessage | null>(null);
   const [pendingInvites, setPendingInvites] = useState<Array<{ email: string; role: string }>>([]);
 
   return (
@@ -32,9 +34,9 @@ export function InviteUserForm() {
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Invite failed.");
           setPendingInvites((current) => [{ email, role }, ...current].slice(0, 3));
           setEmail("");
-          setMessage(`Invite saved for ${activeClub?.name ?? "this club"}.`);
+          setMessage({ tone: "success", text: `Invite saved for ${activeClub?.name ?? "this academy"}.` });
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : "Invite failed.");
+          setMessage({ tone: "error", text: error instanceof Error ? error.message : "Invite failed." });
         } finally {
           setLoading(false);
         }
@@ -64,7 +66,18 @@ export function InviteUserForm() {
           Invite
         </Button>
       </div>
-      {message && <p className="text-xs text-[var(--muted)] md:col-span-3">{message}</p>}
+      {message && (
+        <div
+          className={
+            message.tone === "success"
+              ? "flex items-start gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 md:col-span-3"
+              : "flex items-start gap-2 rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300 md:col-span-3"
+          }
+        >
+          {message.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+          <span>{message.text}</span>
+        </div>
+      )}
       {pendingInvites.length > 0 && (
         <div className="space-y-2 md:col-span-3">
           {pendingInvites.map((invite) => (

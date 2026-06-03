@@ -161,7 +161,7 @@ export const clubs: Club[] = [
 ];
 
 export const clubMemberships: ClubMembership[] = [
-  { id: "mem-001", userId: "usr-sofia", clubId: "club-grapply", role: "owner", joinedAt: "2025-01-08" },
+  { id: "mem-001", userId: "usr-sofia", clubId: "club-grapply", role: "member", joinedAt: "2025-01-08" },
   { id: "mem-002", userId: "usr-sofia", clubId: "club-alpine", role: "coach", invitedBy: "Noah Keller", joinedAt: "2026-02-14" },
   { id: "mem-003", userId: "usr-maya", clubId: "club-grapply", role: "admin", invitedBy: "Sofia Almeida", joinedAt: "2025-06-20" },
   { id: "mem-004", userId: "usr-eli", clubId: "club-grapply", role: "member", invitedBy: "Maya Ribeiro", joinedAt: "2026-03-02" },

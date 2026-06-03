@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Loader2, Palette, Save, Upload, Users } from "lucide-react";
+import { Activity, AlertTriangle, Building2, CheckCircle2, Loader2, Palette, Save, Upload, Users } from "lucide-react";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
 import { StravaConnectButton } from "@/components/strava-connect-button";
 import { useActiveClub } from "@/components/use-active-club";
@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const tabKeys = ["brand", "appearance", "coaches", "integrations", "tv"] as const;
+type SaveMessage = { tone: "success" | "error"; text: string };
 
 export function SettingsTabs() {
   const activeClub = useActiveClub();
@@ -24,18 +25,25 @@ export function SettingsTabs() {
     mats: "Mat A, Mat B, Main Mat",
     color: "#7c3aed",
   });
+  const [savedBrand, setSavedBrand] = useState(brand);
   const [tvSettings, setTvSettings] = useState({
     showActiveAthletes: true,
     liveCheckInQr: true,
     rotatingAthleteCards: true,
     liveActivityTicker: true,
   });
+  const [savedTvSettings, setSavedTvSettings] = useState(tvSettings);
   const [saving, setSaving] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<SaveMessage | null>(null);
+
+  const brandDirty = JSON.stringify(brand) !== JSON.stringify(savedBrand);
+  const tvDirty = JSON.stringify(tvSettings) !== JSON.stringify(savedTvSettings);
+  const hasPendingChanges = brandDirty || tvDirty;
 
   useEffect(() => {
     if (!activeClub?.name) return;
     setBrand((current) => ({ ...current, academyName: activeClub.name }));
+    setSavedBrand((current) => ({ ...current, academyName: activeClub.name }));
   }, [activeClub?.name]);
 
   const saveSetting = async (key: string, value: unknown) => {
@@ -49,9 +57,11 @@ export function SettingsTabs() {
       });
       const payload = (await response.json()) as { ok?: boolean; error?: string; source?: string };
       if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Settings save failed.");
-      setMessage(`Saved ${key} for ${activeClub?.name ?? "this club"}.`);
+      if (key === "brand") setSavedBrand(brand);
+      if (key === "tv") setSavedTvSettings(tvSettings);
+      setMessage({ tone: "success", text: `Saved ${key} settings for ${activeClub?.name ?? "this academy"}.` });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Settings save failed.");
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Settings save failed." });
     } finally {
       setSaving(null);
     }
@@ -59,6 +69,25 @@ export function SettingsTabs() {
 
   return (
     <>
+      <div className="mb-5 rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)]/12 text-[var(--accent)]">
+              <Building2 size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">{activeClub?.name ?? "Academy settings"}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                Changes apply to the selected academy workspace. Appearance changes stay on this device.
+              </p>
+            </div>
+          </div>
+          <Badge variant={hasPendingChanges ? "accent" : "success"}>
+            {hasPendingChanges ? "Unsaved changes" : "Saved"}
+          </Badge>
+        </div>
+      </div>
+
       <Tabs className="mb-5">
         <TabsList>
           {(
@@ -125,9 +154,9 @@ export function SettingsTabs() {
               <Button variant="surface" type="button">
                 <Upload size={16} /> Upload logo
               </Button>
-              <Button variant="primary" type="button" onClick={() => saveSetting("brand", brand)} disabled={saving === "brand"}>
+              <Button variant="primary" type="button" onClick={() => saveSetting("brand", brand)} disabled={saving === "brand" || !brandDirty}>
                 {saving === "brand" ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                Save brand
+                {brandDirty ? "Save brand" : "Brand saved"}
               </Button>
             </div>
           </div>
@@ -198,14 +227,25 @@ export function SettingsTabs() {
               </Label>
             ))}
           </div>
-          <Button className="mt-4" variant="primary" type="button" onClick={() => saveSetting("tv", tvSettings)} disabled={saving === "tv"}>
+          <Button className="mt-4" variant="primary" type="button" onClick={() => saveSetting("tv", tvSettings)} disabled={saving === "tv" || !tvDirty}>
             {saving === "tv" ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Save TV settings
+            {tvDirty ? "Save TV settings" : "TV settings saved"}
           </Button>
         </Card>
       )}
 
-      {message && <p className="mt-4 max-w-xl rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs text-[var(--muted)]">{message}</p>}
+      {message && (
+        <div
+          className={
+            message.tone === "success"
+              ? "mt-4 flex max-w-xl items-start gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-300"
+              : "mt-4 flex max-w-xl items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-xs text-rose-700 dark:text-rose-300"
+          }
+        >
+          {message.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+          <span>{message.text}</span>
+        </div>
+      )}
     </>
   );
 }

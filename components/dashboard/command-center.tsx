@@ -9,6 +9,7 @@ import {
   Plus,
   Radio,
   Clock,
+  ShieldCheck,
   Trophy,
   UserPlus,
 } from "lucide-react";
@@ -43,7 +44,6 @@ export function CommandCenter({
         className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-5 md:p-6"
         style={{ boxShadow: "var(--glow-accent)" }}
       >
-        <div className="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full bg-[var(--accent)]/8 blur-3xl" />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -54,12 +54,28 @@ export function CommandCenter({
               <Badge>{meta.liveClass.trainingType}</Badge>
             </div>
             <h2 className="mt-3 text-2xl font-semibold text-[var(--foreground)] md:text-3xl">
-              Today on the mats
+              Today&apos;s academy command center
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">
               <strong className="text-[var(--foreground)]">{meta.liveClass.name}</strong> with{" "}
               {meta.liveClass.coach} · {meta.liveClass.room} · {meta.liveClass.time}
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href="/schedule"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]/35 hover:bg-[var(--surface-hover)]"
+              >
+                <Clock size={14} />
+                View schedule
+              </Link>
+              <Link
+                href="/members?filter=attention"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]/35 hover:bg-[var(--surface-hover)]"
+              >
+                <ShieldCheck size={14} />
+                Review follow-ups
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
             <Link
@@ -86,8 +102,11 @@ export function CommandCenter({
       </motion.div>
 
       <div>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Quick actions</p>
-        <QuickActions actions={quickActions} />
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Quick actions</p>
+          <Badge variant="muted">Owner / coach workflow</Badge>
+        </div>
+        <QuickActions actions={quickActions} className="rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-3" />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
