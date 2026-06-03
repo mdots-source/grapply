@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { setActiveClubCookie, setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
+import { getRequestUrl } from "@/lib/request-origin";
 import { insertRow, isSupabaseConfigured, upsertRow } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
 }
 
 function clubsUrl(request: Request, returnTo: string) {
-  const url = new URL("/clubs", request.url);
+  const url = getRequestUrl("/clubs", request);
   url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
   return url;
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
 import { platformUsers } from "@/data/platform";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
+import { getRequestUrl } from "@/lib/request-origin";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
@@ -76,7 +77,7 @@ function createMockLoginResponse(request: Request, user: (typeof platformUsers)[
 }
 
 function clubsUrl(request: Request, returnTo: string) {
-  const url = new URL("/clubs", request.url);
+  const url = getRequestUrl("/clubs", request);
   url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
   return url;
 }

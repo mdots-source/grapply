@@ -13,6 +13,8 @@ const routeLabels: Record<string, string> = {
 
 const fallbackWorkspacePath = "/schedule";
 const blockedWorkspacePaths = new Set(["/", "/login", "/register", "/clubs"]);
+const staffOnlyPaths = new Set(["/admin", "/dashboard", "/members", "/settings", "/tv"]);
+const coachAllowedStaffPaths = new Set(["/dashboard", "/members", "/tv"]);
 
 export function normalizeWorkspaceReturnTo(returnTo?: string | null): string {
   if (!returnTo?.startsWith("/")) return fallbackWorkspacePath;
@@ -54,4 +56,15 @@ export function getWorkspaceIntentLabel(returnTo: string) {
 export function getWorkspaceDestinationLabel(returnTo: string) {
   const [pathname] = normalizeWorkspaceReturnTo(returnTo).split("?");
   return routeLabels[pathname] ?? "this workspace area";
+}
+
+export function getRoleSafeWorkspaceReturnTo(returnTo: string, role?: string | null) {
+  const normalizedReturnTo = normalizeWorkspaceReturnTo(returnTo);
+  const [pathname] = normalizedReturnTo.split("?");
+
+  if (!role || role === "owner" || role === "admin") return normalizedReturnTo;
+  if (role === "coach") return staffOnlyPaths.has(pathname) && !coachAllowedStaffPaths.has(pathname) ? fallbackWorkspacePath : normalizedReturnTo;
+  if (pathname.startsWith("/members/")) return normalizedReturnTo;
+
+  return staffOnlyPaths.has(pathname) ? fallbackWorkspacePath : normalizedReturnTo;
 }

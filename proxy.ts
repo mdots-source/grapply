@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { authCookieNames } from "@/lib/auth-cookies";
+import { getRequestUrl } from "@/lib/request-origin";
 import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 const publicPrefixes = [
@@ -22,7 +23,7 @@ export function proxy(request: NextRequest) {
 
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;
   if (!accessToken) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = getRequestUrl("/login", request);
     const requestedDestination = pathname === "/clubs/select"
       ? normalizeWorkspaceReturnTo(request.nextUrl.searchParams.get("returnTo"))
       : `${pathname}${search}`;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { getRequestUrl } from "@/lib/request-origin";
 
 export async function POST() {
   const response = NextResponse.json({ ok: true });
@@ -8,7 +9,7 @@ export async function POST() {
 }
 
 export async function GET(request: Request) {
-  const response = NextResponse.redirect(new URL("/login", request.url));
+  const response = NextResponse.redirect(getRequestUrl("/login", request));
   clearAuthCookies(response);
   return response;
 }
