@@ -33,3 +33,5 @@ Active: yes
 ```
 
 The endpoint only sends messages for pushes to `main`. This covers both direct commits to `main` and PR merges that update production. Pull request open/review events are ignored.
+
+For PR merges, the message uses the merged PR title/body and touched files. For direct commits to `main`, it falls back to commit titles and file paths from the push payload.
