@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/oss/empty-state";
 import { getCurrentSession } from "@/lib/auth-session";
-import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
+import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string; returnTo?: string }> }) {
   const params = await searchParams;
@@ -68,6 +68,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
             <div className="grid gap-4 lg:grid-cols-2">
               {memberships.map((membership) => {
                 const canManageTeam = membership.role === "owner" || membership.role === "admin";
+                const scopedReturnTo = scopeWorkspaceReturnTo(workspaceReturnTo, membership.club.slug);
 
                 return (
                   <Card key={membership.id} className="group p-0 transition hover:border-[var(--accent)]/30 hover:bg-[var(--surface-hover)]">
@@ -94,14 +95,14 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
 
                     <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
                       <Button variant="primary" asChild>
-                        <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>
+                        <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(scopedReturnTo)}`}>
                           Open academy
                           <ArrowRight size={16} />
                         </a>
                       </Button>
                       {canManageTeam && (
                         <Button variant="surface" asChild>
-                          <a href={`/clubs/select?club=${membership.club.slug}&returnTo=/admin`}>Manage team</a>
+                          <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(`/${membership.club.slug}/admin`)}`}>Manage team</a>
                         </Button>
                       )}
                     </div>

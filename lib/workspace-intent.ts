@@ -12,9 +12,40 @@ const routeLabels: Record<string, string> = {
 };
 
 const fallbackWorkspacePath = "/schedule";
+const workspacePaths = new Set(Object.keys(routeLabels));
 const blockedWorkspacePaths = new Set(["/", "/login", "/register", "/clubs"]);
 const ownerOnlyPaths = new Set(["/admin", "/settings"]);
 const staffOnlyPaths = new Set(["/tv"]);
+
+export function splitOrganizationWorkspacePath(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length < 2) return null;
+
+  const [, ...rest] = segments;
+  const workspacePath = `/${rest.join("/")}`;
+  const basePath = `/${rest[0] ?? ""}`;
+
+  if (workspacePaths.has(basePath) || basePath === "/members") {
+    return {
+      organizationId: segments[0],
+      workspacePath,
+      basePath,
+    };
+  }
+
+  return null;
+}
+
+function getWorkspacePathname(pathname: string) {
+  return splitOrganizationWorkspacePath(pathname)?.workspacePath ?? pathname;
+}
+
+export function scopeWorkspaceReturnTo(returnTo: string, organizationId: string) {
+  const normalizedReturnTo = normalizeWorkspaceReturnTo(returnTo);
+  const [pathname, query = ""] = normalizedReturnTo.split("?");
+  const workspacePath = getWorkspacePathname(pathname);
+  return `/${organizationId}${workspacePath}${query ? `?${query}` : ""}`;
+}
 
 export function normalizeWorkspaceReturnTo(returnTo?: string | null): string {
   if (!returnTo?.startsWith("/")) return fallbackWorkspacePath;
@@ -26,15 +57,17 @@ export function normalizeWorkspaceReturnTo(returnTo?: string | null): string {
       return normalizeWorkspaceReturnTo(destination.searchParams.get("returnTo"));
     }
 
-    if (destination.pathname.startsWith("/api") || blockedWorkspacePaths.has(destination.pathname)) {
+    const workspacePathname = getWorkspacePathname(destination.pathname);
+
+    if (workspacePathname.startsWith("/api") || blockedWorkspacePaths.has(workspacePathname)) {
       return fallbackWorkspacePath;
     }
 
-    if (!routeLabels[destination.pathname] && !destination.pathname.startsWith("/members/")) {
+    if (!routeLabels[workspacePathname] && !workspacePathname.startsWith("/members/")) {
       return fallbackWorkspacePath;
     }
 
-    return `${destination.pathname}${destination.search}`;
+    return `${workspacePathname}${destination.search}`;
   } catch {
     return fallbackWorkspacePath;
   }

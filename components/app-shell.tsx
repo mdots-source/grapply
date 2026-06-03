@@ -48,6 +48,17 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings, roles: ["owner", "admin"] as Role[] },
 ];
 
+function getWorkspaceHref(href: string, organizationId?: string | null) {
+  return organizationId ? `/${organizationId}${href}` : href;
+}
+
+function getWorkspacePath(pathname: string, organizationId?: string | null) {
+  if (!organizationId) return pathname;
+  const prefix = `/${organizationId}`;
+  if (pathname === prefix) return "/";
+  return pathname.startsWith(`${prefix}/`) ? pathname.slice(prefix.length) || "/" : pathname;
+}
+
 export function AppShell({
   children,
   title,
@@ -66,15 +77,17 @@ export function AppShell({
   const isAccountMode = mode === "account";
   const [session, setSession] = useState<ShellSession | null | undefined>(initialSession);
   const role = session?.activeRole;
+  const organizationId = session?.activeClub?.slug;
+  const workspacePath = getWorkspacePath(pathname, organizationId);
   const displayRole = role === "coach" ? "trainer" : role ?? "member";
   const visibleNav = useMemo(
-    () => (isAccountMode ? [] : nav.filter((item) => (role ? item.roles.includes(role) : item.roles.includes("member") || pathname.startsWith(item.href)))),
-    [isAccountMode, pathname, role],
+    () => (isAccountMode ? [] : nav.filter((item) => (role ? item.roles.includes(role) : item.roles.includes("member") || workspacePath.startsWith(item.href)))),
+    [isAccountMode, role, workspacePath],
   );
   const currentPath = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
   const switchReturnTo = pathname.startsWith("/clubs") ? searchParams.get("returnTo") ?? "/schedule" : currentPath;
   const switchClubHref = `/clubs?returnTo=${encodeURIComponent(switchReturnTo)}`;
-  const workspaceHomeHref = "/dashboard";
+  const workspaceHomeHref = getWorkspaceHref("/dashboard", organizationId);
   const shellHomeHref = isAccountMode ? "/clubs" : workspaceHomeHref;
   const profileLabel = session?.user?.name ?? "Profile";
   const profileDetail = session?.user?.email ?? "Account";
@@ -124,12 +137,13 @@ export function AppShell({
             </div>
           ) : visibleNav.map((item) => {
             const Icon = item.icon;
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active = workspacePath.startsWith(item.href);
             const belt = getNavBeltAccent(item.href);
+            const href = getWorkspaceHref(item.href, organizationId);
             return (
               <SidebarMenuButton
                 key={item.href}
-                href={item.href}
+                href={href}
                 active={active}
                 style={active ? activeNavStyle(belt) : undefined}
                 aria-current={active ? "page" : undefined}
@@ -245,12 +259,13 @@ export function AppShell({
 
             {!isAccountMode && <div className="mt-4 flex items-center gap-2 overflow-x-auto lg:hidden">
               {visibleNav.map((item) => {
-                const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                const active = workspacePath.startsWith(item.href);
                 const belt = getNavBeltAccent(item.href);
+                const href = getWorkspaceHref(item.href, organizationId);
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={href}
                     aria-current={active ? "page" : undefined}
                     className="whitespace-nowrap rounded-full border px-3 py-2 text-xs transition"
                     style={
