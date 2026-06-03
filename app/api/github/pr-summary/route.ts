@@ -3,10 +3,8 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type PullRequestAction = "opened" | "reopened" | "ready_for_review" | "closed";
-
 type GitHubPullRequestPayload = {
-  action?: PullRequestAction | string;
+  action?: string;
   pull_request?: {
     number: number;
     title: string;
@@ -33,8 +31,6 @@ type GitHubPullRequestPayload = {
   };
 };
 
-const handledActions = new Set(["opened", "reopened", "ready_for_review", "closed"]);
-
 export function GET() {
   return NextResponse.json({
     ok: true,
@@ -59,19 +55,15 @@ export async function POST(request: Request) {
   const payload = parsePayload(body);
   const pullRequest = payload.pull_request;
 
-  if (!pullRequest || !payload.action || !handledActions.has(payload.action)) {
-    return NextResponse.json({ ok: true, skipped: "Unsupported pull request action" });
+  if (!pullRequest || payload.action !== "closed") {
+    return NextResponse.json({ ok: true, skipped: "Not a merged pull request event" });
   }
 
   if (pullRequest.base.ref !== "main") {
     return NextResponse.json({ ok: true, skipped: "Pull request target is not main" });
   }
 
-  if (pullRequest.draft) {
-    return NextResponse.json({ ok: true, skipped: "Draft pull request" });
-  }
-
-  if (payload.action === "closed" && !pullRequest.merged) {
+  if (!pullRequest.merged) {
     return NextResponse.json({ ok: true, skipped: "Pull request closed without merge" });
   }
 
@@ -109,7 +101,6 @@ function formatPullRequestMessage(payload: GitHubPullRequestPayload) {
     throw new Error("Pull request payload is missing");
   }
 
-  const status = pullRequest.merged ? "merged into main" : String(payload.action).replaceAll("_", " ");
   const summary = pullRequest.body?.trim() || "No PR description provided.";
   const stats = [
     `${pullRequest.changed_files} files changed`,
@@ -119,7 +110,7 @@ function formatPullRequestMessage(payload: GitHubPullRequestPayload) {
   ].join(" | ");
 
   return [
-    `<b>Grapply PR ${escapeHtml(status)}</b>`,
+    "<b>Grapply production update</b>",
     "",
     `<b>#${pullRequest.number}: ${escapeHtml(pullRequest.title)}</b>`,
     `Author: ${escapeHtml(pullRequest.user.login)}`,
