@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserClubContext, platformUsers } from "@/data/platform";
+import { getDemoSafeRole, getUserClubContext, platformUsers } from "@/data/platform";
 import { toClub, toClubMembership, toPlatformUser } from "@/lib/supabase/mappers";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 
@@ -32,12 +32,16 @@ export async function GET(request: Request) {
           stravaStatus: stravaConnection ? "connected" : user.stravaStatus,
           stravaAthleteId: stravaConnection?.athlete_id,
         },
-        memberships: memberships.map((membership) => ({
-          ...toClubMembership(membership),
-          club: clubs.find((club) => club.id === membership.club_id)
-            ? toClub(clubs.find((club) => club.id === membership.club_id)!)
-            : undefined,
-        })),
+        memberships: memberships.map((membership) => {
+          const membershipClub = clubs.find((club) => club.id === membership.club_id);
+          const mappedClub = membershipClub ? toClub(membershipClub) : undefined;
+          const mappedMembership = toClubMembership(membership);
+          return {
+            ...mappedMembership,
+            role: getDemoSafeRole(user.email, mappedClub?.slug, mappedMembership.role),
+            club: mappedClub,
+          };
+        }),
       });
     } catch (error) {
       return NextResponse.json({ source: "mock", ...getUserClubContext(userId), supabaseError: String(error) });

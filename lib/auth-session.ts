@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { authCookieNames } from "@/lib/auth-cookies";
-import { clubMemberships, clubs, platformUsers } from "@/data/platform";
+import { clubMemberships, clubs, getDemoSafeRole, platformUsers } from "@/data/platform";
 import { getAuthUser } from "@/lib/supabase/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { selectRows } from "@/lib/supabase/server";
@@ -23,7 +23,7 @@ export async function getCurrentSession() {
       .map((membership) => {
         const club = clubs.find((candidate) => candidate.id === membership.clubId);
         if (!club) return null;
-        return { ...membership, club };
+        return { ...membership, role: getDemoSafeRole(user.email, club.slug, membership.role), club };
       })
       .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
 
@@ -54,7 +54,9 @@ export async function getCurrentSession() {
     .map((membership) => {
       const club = clubRows.find((row) => row.id === membership.club_id);
       if (!club) return null;
-      return { ...toClubMembership(membership), club: toClub(club) };
+      const mappedClub = toClub(club);
+      const mappedMembership = toClubMembership(membership);
+      return { ...mappedMembership, role: getDemoSafeRole(userRow.email, mappedClub.slug, mappedMembership.role), club: mappedClub };
     })
     .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
 

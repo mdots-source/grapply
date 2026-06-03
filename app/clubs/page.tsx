@@ -94,14 +94,14 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
 
                     <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
                       <Button variant="primary" asChild>
-                        <Link href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>
+                        <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`}>
                           Open academy
                           <ArrowRight size={16} />
-                        </Link>
+                        </a>
                       </Button>
                       {canManageTeam && (
                         <Button variant="surface" asChild>
-                          <Link href={`/clubs/select?club=${membership.club.slug}&returnTo=/admin`}>Manage team</Link>
+                          <a href={`/clubs/select?club=${membership.club.slug}&returnTo=/admin`}>Manage team</a>
                         </Button>
                       )}
                     </div>

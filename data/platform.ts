@@ -161,7 +161,7 @@ export const clubs: Club[] = [
 ];
 
 export const clubMemberships: ClubMembership[] = [
-  { id: "mem-001", userId: "usr-sofia", clubId: "club-grapply", role: "member", joinedAt: "2025-01-08" },
+  { id: "mem-001", userId: "usr-sofia", clubId: "club-grapply", role: "owner", joinedAt: "2025-01-08" },
   { id: "mem-002", userId: "usr-sofia", clubId: "club-alpine", role: "coach", invitedBy: "Noah Keller", joinedAt: "2026-02-14" },
   { id: "mem-003", userId: "usr-maya", clubId: "club-grapply", role: "admin", invitedBy: "Sofia Almeida", joinedAt: "2025-06-20" },
   { id: "mem-004", userId: "usr-eli", clubId: "club-grapply", role: "member", invitedBy: "Maya Ribeiro", joinedAt: "2026-03-02" },
@@ -173,6 +173,14 @@ export const clubMemberships: ClubMembership[] = [
   { id: "mem-010", userId: "usr-ana", clubId: "club-grapply", role: "admin", invitedBy: "Sofia Almeida", joinedAt: "2025-09-14" },
   { id: "mem-011", userId: "usr-ana", clubId: "club-harbor", role: "coach", invitedBy: "Lina Okafor", joinedAt: "2026-05-01" },
 ];
+
+export function getDemoSafeRole(userEmail: string | undefined, clubSlug: string | undefined, role: PlatformRole): PlatformRole {
+  if (userEmail?.toLowerCase() === "sofia@grapply.app" && clubSlug === "grapply-bjj") {
+    return "owner";
+  }
+
+  return role;
+}
 
 export const roleDefinitions: RoleDefinition[] = [
   {

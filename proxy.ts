@@ -6,6 +6,7 @@ import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
 const publicPrefixes = [
   "/login",
   "/register",
+  "/clubs/select",
   "/api",
   "/tv",
   "/ui",
