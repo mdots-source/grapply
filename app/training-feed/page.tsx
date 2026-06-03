@@ -7,7 +7,7 @@ import { requireWorkspaceRole } from "@/lib/workspace-access";
 
 export default async function TrainingFeedPage({ searchParams }: { searchParams?: Promise<{ create?: string }> }) {
   const params = await searchParams;
-  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], `/training-feed${params?.create ? "?create=post" : ""}`);
+  const session = await requireWorkspaceRole(["owner", "admin", "coach"], `/training-feed${params?.create ? "?create=post" : ""}`);
   const trainingPosts = await getTrainingPostsData();
   const canCreatePost = session.activeRole !== "member";
 

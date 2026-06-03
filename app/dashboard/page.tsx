@@ -4,7 +4,7 @@ import { PageTransition } from "@/components/page-transition";
 import { requireWorkspaceRole } from "@/lib/workspace-access";
 
 export default async function DashboardPage() {
-  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/dashboard");
+  const session = await requireWorkspaceRole(["owner", "admin", "coach"], "/dashboard");
 
   return (
     <AppShell title="Dashboard" subtitle="Today’s schedule, roster, and club activity." initialSession={session}>

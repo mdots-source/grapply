@@ -19,7 +19,7 @@ export async function requireWorkspaceRole(allowedRoles: PlatformRole[], returnT
   }
 
   if (!allowedRoles.includes(session.activeRole)) {
-    redirect(`/schedule?access=denied&from=${encodeURIComponent(returnTo)}`);
+    redirect(`/clubs?access=denied&returnTo=${encodeURIComponent(returnTo)}`);
   }
 
   return session as WorkspaceSession;

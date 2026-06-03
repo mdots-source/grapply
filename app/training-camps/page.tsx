@@ -29,7 +29,7 @@ const tasks = [
 ];
 
 export default async function TrainingCampsPage() {
-  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/training-camps");
+  const session = await requireWorkspaceRole(["owner", "admin", "coach"], "/training-camps");
   const trainingCamps = await getTrainingCampsData();
   const totalTravelers = new Set(trainingCamps.flatMap((camp) => camp.registered_students)).size;
   const nextCamp = trainingCamps[0];

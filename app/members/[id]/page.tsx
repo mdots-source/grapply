@@ -8,7 +8,7 @@ import { requireWorkspaceRole } from "@/lib/workspace-access";
 
 export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], `/members/${id}`);
+  const session = await requireWorkspaceRole(["owner", "admin", "coach"], `/members/${id}`);
   const clubId = getMockClubId(session.activeClub?.slug);
   const member = getClubRoster(clubId).find((item) => item.id === id);
   if (!member) notFound();

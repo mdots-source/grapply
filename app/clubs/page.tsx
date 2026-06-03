@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Building2, CheckCircle2, DoorOpen, Plus, Shield, Users } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, DoorOpen, Lock, Plus, Shield, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/oss/empty-state";
 import { getCurrentSession } from "@/lib/auth-session";
 import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
-export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string; returnTo?: string }> }) {
+export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string; returnTo?: string; access?: string }> }) {
   const params = await searchParams;
   const session = await getCurrentSession();
   const user = session?.user;
@@ -17,6 +17,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
   const stravaStatus = params?.strava;
   const workspaceReturnTo = normalizeWorkspaceReturnTo(params?.returnTo);
   const intentLabel = getWorkspaceIntentLabel(workspaceReturnTo);
+  const accessDenied = params?.access === "denied";
   const inviteMailto = `mailto:?subject=${encodeURIComponent("Grapply club access request")}&body=${encodeURIComponent(
     `Hi,\n\nPlease invite ${user?.name ?? "me"} (${user?.email ?? "this account"}) to the right Grapply academy workspace.\n\nThanks!`,
   )}`;
@@ -57,6 +58,18 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
             </Card>
           )}
 
+          {accessDenied && (
+            <Card className="border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/8 p-4">
+              <div className="flex items-start gap-3 text-sm text-[var(--foreground)]">
+                <Lock size={17} className="mt-0.5 shrink-0 text-[var(--accent-coral)]" />
+                <div>
+                  <p className="font-semibold">Manager access required.</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Ask an owner or admin to upgrade this account before opening the organization workspace.</p>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {memberships.length === 0 ? (
             <EmptyState
               icon={DoorOpen}
@@ -67,6 +80,7 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {memberships.map((membership) => {
+                const canOpenWorkspace = membership.role === "owner" || membership.role === "admin" || membership.role === "coach";
                 const canManageTeam = membership.role === "owner" || membership.role === "admin";
                 const scopedReturnTo = scopeWorkspaceReturnTo(workspaceReturnTo, membership.club.slug);
 
@@ -94,12 +108,19 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
                     </div>
 
                     <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
-                      <Button variant="primary" asChild>
-                        <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(scopedReturnTo)}`}>
-                          Open academy
-                          <ArrowRight size={16} />
-                        </a>
-                      </Button>
+                      {canOpenWorkspace ? (
+                        <Button variant="primary" asChild>
+                          <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(scopedReturnTo)}`}>
+                            Open academy
+                            <ArrowRight size={16} />
+                          </a>
+                        </Button>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">
+                          <Lock size={14} />
+                          Manager access required
+                        </div>
+                      )}
                       {canManageTeam && (
                         <Button variant="surface" asChild>
                           <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(`/${membership.club.slug}/admin`)}`}>Manage team</a>

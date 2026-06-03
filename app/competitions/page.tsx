@@ -19,7 +19,7 @@ const tasks = [
 ];
 
 export default async function CompetitionsPage() {
-  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/competitions");
+  const session = await requireWorkspaceRole(["owner", "admin", "coach"], "/competitions");
   const competitions = await getCompetitionsData();
   const totalAthletes = new Set(competitions.flatMap((event) => event.registered_students)).size;
   const nextEvent = competitions[0];

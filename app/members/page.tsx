@@ -15,7 +15,7 @@ export default async function MembersPage({ searchParams }: { searchParams?: Pro
   if (params?.add) returnToParams.set("add", params.add);
   if (params?.filter) returnToParams.set("filter", params.filter);
   if (params?.member) returnToParams.set("member", params.member);
-  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], `/members${returnToParams.size ? `?${returnToParams}` : ""}`);
+  const session = await requireWorkspaceRole(["owner", "admin", "coach"], `/members${returnToParams.size ? `?${returnToParams}` : ""}`);
   const canManageMembers = session.activeRole !== "member";
   const filterOptions: RosterFilter[] = ["all", "active", "promotion", "inactive", "trial", "follow-up"];
   const initialFilter = filterOptions.includes(params?.filter as RosterFilter) ? (params?.filter as RosterFilter) : "all";

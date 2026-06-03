@@ -204,8 +204,8 @@ export const roleDefinitions: RoleDefinition[] = [
   {
     role: "member",
     label: "Member",
-    description: "View-only access to the club workspace.",
-    permissions: ["view_dashboard", "view_members", "view_schedule", "view_camps", "view_competitions", "view_rankings"],
+    description: "Club member record without manager access to the organization workspace.",
+    permissions: ["view_profile"],
   },
 ];
 

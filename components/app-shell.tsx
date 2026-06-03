@@ -28,6 +28,8 @@ import { getNavBeltAccent } from "@/lib/nav-belt";
 import { cn, initials } from "@/lib/utils";
 
 type Role = "owner" | "admin" | "coach" | "member";
+const managerRoles: Role[] = ["owner", "admin", "coach"];
+
 export type ShellSession = {
   user?: { name: string; email: string; avatar?: string };
   activeClub?: { name: string; slug: string } | null;
@@ -36,14 +38,14 @@ export type ShellSession = {
 };
 
 const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["owner", "admin", "coach", "member"] as Role[] },
-  { href: "/members", label: "Members", icon: Users, roles: ["owner", "admin", "coach", "member"] as Role[] },
-  { href: "/schedule", label: "Schedule", icon: CalendarDays, roles: ["owner", "admin", "coach", "member"] as Role[] },
-  { href: "/competitions", label: "Competitions", icon: Medal, roles: ["owner", "admin", "coach", "member"] as Role[] },
-  { href: "/training-camps", label: "Training Camps", icon: Mountain, roles: ["owner", "admin", "coach", "member"] as Role[] },
-  { href: "/training-feed", label: "Training Feed", icon: Flame, roles: ["owner", "admin", "coach", "member"] as Role[] },
-  { href: "/rankings", label: "Rankings", icon: Trophy, roles: ["owner", "admin", "coach", "member"] as Role[] },
-  { href: "/tv", label: "TV Screen", icon: MonitorPlay, roles: ["owner", "admin", "coach"] as Role[] },
+  { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: managerRoles },
+  { href: "/members", label: "Members", icon: Users, roles: managerRoles },
+  { href: "/schedule", label: "Schedule", icon: CalendarDays, roles: managerRoles },
+  { href: "/competitions", label: "Competitions", icon: Medal, roles: managerRoles },
+  { href: "/training-camps", label: "Training Camps", icon: Mountain, roles: managerRoles },
+  { href: "/training-feed", label: "Training Feed", icon: Flame, roles: managerRoles },
+  { href: "/rankings", label: "Rankings", icon: Trophy, roles: managerRoles },
+  { href: "/tv", label: "TV Screen", icon: MonitorPlay, roles: managerRoles },
   { href: "/admin", label: "Team", icon: UserCog, roles: ["owner", "admin"] as Role[] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["owner", "admin"] as Role[] },
 ];
@@ -81,7 +83,7 @@ export function AppShell({
   const workspacePath = getWorkspacePath(pathname, organizationId);
   const displayRole = role === "coach" ? "trainer" : role ?? "member";
   const visibleNav = useMemo(
-    () => (isAccountMode ? [] : nav.filter((item) => (role ? item.roles.includes(role) : item.roles.includes("member") || workspacePath.startsWith(item.href)))),
+    () => (isAccountMode ? [] : nav.filter((item) => (role ? item.roles.includes(role) : workspacePath.startsWith(item.href)))),
     [isAccountMode, role, workspacePath],
   );
   const currentPath = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;

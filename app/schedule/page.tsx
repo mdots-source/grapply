@@ -12,7 +12,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
   const params = await searchParams;
   const returnToParams = new URLSearchParams();
   if (params?.create) returnToParams.set("create", params.create);
-  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], `/schedule${returnToParams.size ? `?${returnToParams}` : ""}`);
+  const session = await requireWorkspaceRole(["owner", "admin", "coach"], `/schedule${returnToParams.size ? `?${returnToParams}` : ""}`);
   const deniedFrom = params?.access === "denied" && params.from?.startsWith("/") ? params.from : null;
   const canManageClasses = session.activeRole !== "member";
 
