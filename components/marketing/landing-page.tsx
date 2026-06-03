@@ -109,14 +109,24 @@ const pricingPlans = [
     items: ["Member directory", "Schedule management", "Rankings", "Basic dashboard", "Mock TV preview", "Email support"],
   },
   {
-    name: "Purple Belt",
+    name: "Blue Belt",
     price: "$200",
     suffix: "/mo",
-    accent: beltStyles.purple.hex,
-    description: "The recommended academy OS for growing BJJ teams.",
+    accent: beltStyles.blue.hex,
+    description: "For academies ready to run richer daily operations.",
     cta: "Book demo",
     featured: true,
-    items: ["Everything in White Belt", "Advanced academy dashboard", "Coach/admin roles", "TV display mode", "Training activity feed", "Competitions and camps", "Priority support", "Product preview/demo setup"],
+    items: ["Everything in White Belt", "Advanced academy dashboard", "TV display mode", "Training activity feed", "Priority support", "Product preview/demo setup"],
+  },
+  {
+    name: "Purple Belt",
+    price: "$400",
+    suffix: "/mo",
+    accent: beltStyles.purple.hex,
+    description: "For serious teams building a connected academy culture.",
+    cta: "Book demo",
+    featured: false,
+    items: ["Everything in Blue Belt", "Coach/admin roles", "Competitions and camps", "Advanced permissions", "Custom academy setup", "Priority roadmap input"],
   },
   {
     name: "Black Belt",
@@ -182,9 +192,9 @@ function Header() {
           <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--foreground)] sm:inline-flex">
             Login
           </Link>
-          <Link href="/dashboard" className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
-            Open live demo <ArrowRight size={16} />
-          </Link>
+          <a href="#demo" className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
+            Book demo <ArrowRight size={16} />
+          </a>
         </div>
       </div>
     </header>
@@ -208,9 +218,9 @@ function Hero() {
             Members, classes, rankings, roles, training activity, and live academy displays in one premium operating system.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link href="/dashboard" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
-              Open live demo <ArrowRight size={16} />
-            </Link>
+            <a href="#demo" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
+              Book demo <ArrowRight size={16} />
+            </a>
             <a href="#product" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
               View product preview <MonitorPlay size={16} />
             </a>
@@ -631,7 +641,7 @@ function PricingSection() {
           <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Pricing that follows the belt system.</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">Start with the core operating system, then grow into TV, roles, feed, competitions, and custom network support.</p>
         </div>
-        <div className="mt-7 grid gap-4 lg:grid-cols-3">
+        <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {pricingPlans.map((plan) => (
             <motion.div
               key={plan.name}
