@@ -6,6 +6,30 @@ import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { selectRows } from "@/lib/supabase/server";
 import { toClub, toClubMembership, toPlatformUser } from "@/lib/supabase/mappers";
 
+export function getDemoWorkspaceSession(activeClubSlug = "grapply-bjj") {
+  const user = platformUsers.find((candidate) => candidate.id === "usr-sofia") ?? platformUsers[0];
+  if (!user) return null;
+
+  const normalizedMemberships = clubMemberships
+    .filter((membership) => membership.userId === user.id)
+    .map((membership) => {
+      const club = clubs.find((candidate) => candidate.id === membership.clubId);
+      if (!club) return null;
+      return { ...membership, role: getDemoSafeRole(user.email, club.slug, membership.role), club };
+    })
+    .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
+
+  const activeMembership = normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? normalizedMemberships[0] ?? null;
+
+  return {
+    authUser: { id: user.id, email: user.email },
+    user,
+    memberships: normalizedMemberships,
+    activeClub: activeMembership?.club ?? null,
+    activeRole: activeMembership?.role ?? null,
+  };
+}
+
 export async function getCurrentSession() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(authCookieNames.accessToken)?.value;
@@ -28,8 +52,8 @@ export async function getCurrentSession() {
       .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
 
     const activeMembership = activeClubSlug
-      ? normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? null
-      : null;
+      ? normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? normalizedMemberships[0] ?? null
+      : normalizedMemberships[0] ?? null;
 
     return {
       authUser: { id: user.id, email: user.email },
@@ -61,8 +85,8 @@ export async function getCurrentSession() {
     .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
 
   const activeMembership = activeClubSlug
-    ? normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? null
-    : null;
+    ? normalizedMemberships.find((membership) => membership.club.slug === activeClubSlug) ?? normalizedMemberships[0] ?? null
+    : normalizedMemberships[0] ?? null;
 
   return {
     authUser,
