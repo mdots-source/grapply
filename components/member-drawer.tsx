@@ -21,6 +21,7 @@ type MemberDrawerProps = {
   mode: DrawerMode;
   member?: Student | null;
   onAddMember?: (member: Student) => void;
+  canManageMembers?: boolean;
 };
 
 const beltOptions: Belt[] = ["white", "blue", "purple", "brown", "black"];
@@ -41,7 +42,7 @@ type ClassOption = {
   mat: string;
 };
 
-export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: MemberDrawerProps) {
+export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, canManageMembers = false }: MemberDrawerProps) {
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <BeltPill belt={member.belt} stripes={member.stripes} />
                 <Badge variant={member.role === "coach" ? "accent" : "default"} className="capitalize">
-                  {member.role}
+                  {member.role === "coach" ? "trainer" : member.role}
                 </Badge>
                 <Badge variant={member.status === "active" ? "success" : "muted"}>{member.status}</Badge>
               </div>
@@ -87,7 +88,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
             ))}
           </div>
 
-          <MemberActions member={member} />
+          {canManageMembers && <MemberActions member={member} />}
 
           <div className="mt-auto flex flex-col gap-2 pt-8">
             <Button variant="primary" className="w-full" asChild>
@@ -100,7 +101,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
             </Button>
           </div>
         </>
-      ) : (
+      ) : canManageMembers ? (
         <>
           <DrawerHeader onClose={close}>
             <div className="grid size-10 place-items-center rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]">
@@ -174,7 +175,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
                   Member
                 </option>
                 <option value="coach" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                  Coach
+                  Trainer
                 </option>
               </select>
             </div>
@@ -206,7 +207,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember }: 
             </div>
           </form>
         </>
-      )}
+      ) : null}
     </Drawer>
   );
 }

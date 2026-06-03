@@ -196,9 +196,6 @@ export function toTrainingPost(row: TableRow<"training_posts">): TrainingPost {
     sparringHighlight: row.sparring_highlight ?? undefined,
     achievements: row.achievements ?? undefined,
     taggedStudents: row.tagged_students ?? undefined,
-    reactions: row.reactions,
-    comments: row.comments,
-    heat: row.heat,
   };
 }
 
@@ -219,8 +216,5 @@ export function toTrainingPostInsert(item: TrainingPost, clubId: string): TableI
     sparring_highlight: item.sparringHighlight ?? null,
     achievements: item.achievements ?? null,
     tagged_students: item.taggedStudents ?? null,
-    reactions: item.reactions,
-    comments: item.comments,
-    heat: item.heat,
   };
 }

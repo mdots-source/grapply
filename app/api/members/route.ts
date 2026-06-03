@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { compareMemberHierarchy, type Student } from "@/data/academy";
 import { getClubRoster } from "@/data/platform";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId, getMockClubId, getRequestedClubSlug } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 import { toAcademyMemberInsert, toStudent } from "@/lib/supabase/mappers";
@@ -37,6 +38,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = (await request.json()) as Partial<Student> & { clubSlug?: string };
+  const access = await requireApiRole(["owner", "admin", "coach"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload.name || !payload.belt) {
     return NextResponse.json({ ok: false, error: "Missing member name or belt." }, { status: 400 });

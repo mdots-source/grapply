@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Award, Medal, MessageSquarePlus, TrendingUp, Trophy } from "lucide-react";
+import { Award, MessageSquarePlus, TrendingUp, Trophy } from "lucide-react";
 import { BeltPill } from "@/components/belt-pill";
-import { PromotionCard } from "@/components/oss/promotion-card";
 import { SectionHeader } from "@/components/oss/section-header";
 import { StripeIndicator } from "@/components/oss/stripe-indicator";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -31,9 +30,7 @@ export function MemberProfile({ member, viewerRole }: { member: Student; viewerR
                 <BeltPill belt={member.belt} stripes={member.stripes} />
                 <Badge>{extra.roleLabel}</Badge>
                 {extra.trial && <Badge variant="accent">Trial</Badge>}
-                {extra.attendanceRisk === "high" && (
-                  <Badge className="border-rose-400/30 bg-rose-400/10 text-rose-300">Needs attention</Badge>
-                )}
+                {extra.attendanceRisk === "high" && <Badge variant="muted">Coach follow-up</Badge>}
               </div>
               <h2 className="mt-4 text-3xl font-semibold md:text-4xl">{member.name}</h2>
               <p className="mt-2 text-sm text-[var(--muted)]">Primary focus: {member.focus}</p>
@@ -60,11 +57,6 @@ export function MemberProfile({ member, viewerRole }: { member: Student; viewerR
                 </Button>
               </>
             )}
-            <Button variant="ghost" size="sm" className="gap-1.5" asChild>
-              <Link href="/competitions">
-                <Medal size={14} /> Register comp
-              </Link>
-            </Button>
           </div>
         </div>
 
@@ -131,7 +123,7 @@ export function MemberProfile({ member, viewerRole }: { member: Student; viewerR
           <CardHeader>
             <div>
               <CardTitle>Weekly attendance</CardTitle>
-              <CardKicker>Academy reference trend</CardKicker>
+              <CardKicker>Recent class rhythm</CardKicker>
             </div>
             <Badge>{member.lastSeen}</Badge>
           </CardHeader>
@@ -218,16 +210,6 @@ export function MemberProfile({ member, viewerRole }: { member: Student; viewerR
           )}
         </Card>
       </div>
-
-      {member.id === "st-001" && (
-        <PromotionCard
-          student={member.name}
-          detail="Moved to #2 in academy rankings"
-          awardedBy="System"
-          when="Yesterday"
-          type="ranking"
-        />
-      )}
     </div>
   );
 }

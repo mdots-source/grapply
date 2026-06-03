@@ -21,9 +21,6 @@ export type TrainingPost = {
   sparringHighlight?: string;
   achievements?: string[];
   taggedStudents?: string[];
-  reactions: number;
-  comments: number;
-  heat: number;
 };
 
 export const trainingPosts: TrainingPost[] = [
@@ -39,12 +36,9 @@ export const trainingPosts: TrainingPost[] = [
     summary:
       "Eight five-minute rounds with positional starts from headquarters. Competition team logged 44 exchanges with strong back attack finishes.",
     attendance: 31,
-    topParticipant: { name: "Maya Ribeiro", note: "9 rounds · highest intensity" },
+    topParticipant: { name: "Maya Ribeiro", note: "9 rounds · strong guard retention" },
     sparringHighlight: "Turtle to back chain — 14 successful finishes recorded on the floor.",
     taggedStudents: ["Maya Ribeiro", "Camille Duran", "Noah Keller"],
-    reactions: 48,
-    comments: 12,
-    heat: 94,
   },
   {
     id: "tf-2",
@@ -56,9 +50,6 @@ export const trainingPosts: TrainingPost[] = [
     summary: "Awarded after consistent competition prep and leadership in advanced rounds.",
     achievements: ["Black belt stripe milestone"],
     taggedStudents: ["Noah Keller"],
-    reactions: 86,
-    comments: 24,
-    heat: 91,
   },
   {
     id: "tf-3",
@@ -70,9 +61,6 @@ export const trainingPosts: TrainingPost[] = [
     summary: "All registered athletes cleared weight. Final rules review scheduled Saturday 11:00.",
     attendance: 5,
     taggedStudents: ["Maya Ribeiro", "Sofia Almeida", "Camille Duran"],
-    reactions: 32,
-    comments: 8,
-    heat: 78,
   },
   {
     id: "tf-4",
@@ -85,9 +73,6 @@ export const trainingPosts: TrainingPost[] = [
     summary: "All belts welcome. Flow rounds followed by free sparring — 28 check-ins, great community energy.",
     attendance: 28,
     sparringHighlight: "Best exchange: purple belt sweep to mount transition drill.",
-    reactions: 41,
-    comments: 15,
-    heat: 72,
   },
   {
     id: "tf-5",
@@ -96,12 +81,9 @@ export const trainingPosts: TrainingPost[] = [
     date: "Yesterday",
     time: "09:15",
     title: "Eli Morgan — beginner streak unlocked",
-    summary: "Three consecutive fundamentals classes with improved escape scores.",
+    summary: "Three consecutive fundamentals classes with cleaner hip escapes.",
     achievements: ["3-class beginner streak", "Attendance +22%"],
     taggedStudents: ["Eli Morgan"],
-    reactions: 55,
-    comments: 9,
-    heat: 68,
   },
   {
     id: "tf-6",
@@ -111,9 +93,6 @@ export const trainingPosts: TrainingPost[] = [
     time: "08:00",
     title: "Friday schedule change",
     summary: "Fight Night Rounds moves to Main Mat at 19:30 for competition prep week.",
-    reactions: 19,
-    comments: 4,
-    heat: 54,
   },
 ];
 

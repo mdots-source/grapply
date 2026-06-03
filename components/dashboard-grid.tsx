@@ -3,17 +3,16 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { AdminOverview } from "@/components/dashboard/admin-overview";
-import { AcademyUpdates } from "@/components/dashboard/academy-updates";
-import { CommandCenter } from "@/components/dashboard/command-center";
 import { useActiveClubState } from "@/components/use-active-club";
 import { Badge } from "@/components/ui/badge";
 import { academyMeta } from "@/data/academy-meta";
 import { dashboardStats } from "@/data/dashboard";
+import type { PlatformRole } from "@/data/platform";
 
 export type DashboardMeta = typeof academyMeta;
 export type DashboardStats = typeof dashboardStats;
 
-export function DashboardGrid() {
+export function DashboardGrid({ viewerRole }: { viewerRole: PlatformRole }) {
   const { activeClub, loading } = useActiveClubState();
   const [dashboard, setDashboard] = useState<{ meta: DashboardMeta; stats: DashboardStats }>({
     meta: academyMeta,
@@ -50,20 +49,24 @@ export function DashboardGrid() {
   }, [activeClub?.slug, loading]);
 
   return (
-    <div className="space-y-8 pb-4">
+    <div className="space-y-5 pb-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[var(--border)] bg-[var(--panel)] px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-[var(--foreground)]">{activeClub?.name ?? "Academy dashboard"}</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">Operational view for today&apos;s classes, roster health, and coach actions.</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {viewerRole === "member"
+              ? "Member view: read-only access to club schedule, roster, and updates."
+              : viewerRole === "coach"
+                ? "Trainer view: manage classes, members, camps, competitions, and training posts."
+                : "Owner view: manage the organization, trainers, members, and all club operations."}
+          </p>
         </div>
         <Badge variant={dashboardError ? "muted" : "accent"}>
           {dashboardLoading ? <Loader2 size={13} className="animate-spin" /> : dashboardError ? <AlertTriangle size={13} /> : null}
           {dashboardLoading ? "Syncing" : dashboardError ? "Offline fallback" : "Live data"}
         </Badge>
       </div>
-      <CommandCenter meta={dashboard.meta} stats={dashboard.stats} />
-      <AdminOverview stats={dashboard.stats} />
-      <AcademyUpdates />
+      <AdminOverview stats={dashboard.stats} viewerRole={viewerRole} meta={dashboard.meta} />
     </div>
   );
 }

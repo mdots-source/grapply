@@ -21,7 +21,7 @@ import { compareMemberHierarchy, students as seedMembers, type Student } from "@
 import { getMemberProfileExtra } from "@/data/member-profiles";
 import { countCompetitionTeam } from "@/lib/members";
 
-export type RosterFilter = "all" | "active" | "promotion" | "inactive" | "trial" | "attention";
+export type RosterFilter = "all" | "active" | "promotion" | "inactive" | "trial" | "follow-up";
 type DrawerMode = "view" | "add";
 
 function matchesFilter(member: Student, filter: RosterFilter) {
@@ -29,7 +29,7 @@ function matchesFilter(member: Student, filter: RosterFilter) {
   if (filter === "active") return member.status === "active";
   if (filter === "inactive") return member.status === "inactive";
   if (filter === "trial") return getMemberProfileExtra(member.id).trial === true;
-  if (filter === "attention") {
+  if (filter === "follow-up") {
     const extra = getMemberProfileExtra(member.id);
     return extra.attendanceRisk === "high" || extra.attendanceRisk === "medium" || member.classes30 < 6;
   }
@@ -40,10 +40,12 @@ export function MembersGrid({
   initialAdd = false,
   initialFilter = "all",
   initialMemberId,
+  canManageMembers = false,
 }: {
   initialAdd?: boolean;
   initialFilter?: RosterFilter;
   initialMemberId?: string;
+  canManageMembers?: boolean;
 }) {
   const activeClub = useActiveClub();
   const [members, setMembers] = useState<Student[]>(seedMembers);
@@ -62,6 +64,7 @@ export function MembersGrid({
   }, []);
 
   const openAddDrawer = () => {
+    if (!canManageMembers) return;
     setSelectedMember(null);
     setDrawerMode("add");
     setDrawerOpen(true);
@@ -204,9 +207,11 @@ export function MembersGrid({
             </Card>
           ))}
         </div>
-        <Button variant="primary" className="shrink-0" onClick={openAddDrawer}>
-          <Plus size={16} /> Add member
-        </Button>
+        {canManageMembers && (
+          <Button variant="primary" className="shrink-0" onClick={openAddDrawer}>
+            <Plus size={16} /> Add member
+          </Button>
+        )}
       </div>
 
       <Tabs>
@@ -226,8 +231,8 @@ export function MembersGrid({
           <TabsTrigger active={filter === "trial"} onClick={() => setFilter("trial")}>
             Trial
           </TabsTrigger>
-          <TabsTrigger active={filter === "attention"} onClick={() => setFilter("attention")}>
-            Needs attention
+          <TabsTrigger active={filter === "follow-up"} onClick={() => setFilter("follow-up")}>
+            Follow-up
           </TabsTrigger>
         </TabsList>
         <TabsContent>
@@ -287,6 +292,7 @@ export function MembersGrid({
               <MembersEmptyState
                 hasMembers={members.length > 0}
                 canClear={Boolean(search || filter !== "all")}
+                canAdd={canManageMembers}
                 onClear={() => {
                   setSearch("");
                   setFilter("all");
@@ -304,6 +310,7 @@ export function MembersGrid({
         mode={drawerMode}
         member={selectedMember}
         onAddMember={addMember}
+        canManageMembers={canManageMembers}
       />
     </div>
   );
@@ -314,9 +321,11 @@ function MembersEmptyState({
   canClear,
   onClear,
   onAdd,
+  canAdd,
 }: {
   hasMembers: boolean;
   canClear: boolean;
+  canAdd: boolean;
   onClear: () => void;
   onAdd: () => void;
 }) {
@@ -340,10 +349,12 @@ function MembersEmptyState({
               Clear filters
             </Button>
           )}
-          <Button variant="primary" onClick={onAdd}>
-            <Plus size={16} />
-            Add member
-          </Button>
+          {canAdd && (
+            <Button variant="primary" onClick={onAdd}>
+              <Plus size={16} />
+              Add member
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -401,7 +412,7 @@ function RoleCell(params: ICellRendererParams<Student>) {
   return (
     <div className="flex h-full items-center">
       <Badge variant={member.role === "coach" ? "accent" : "default"} className="capitalize">
-        {member.role}
+        {member.role === "coach" ? "trainer" : member.role}
       </Badge>
     </div>
   );

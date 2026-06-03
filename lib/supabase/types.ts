@@ -262,9 +262,6 @@ export type Database = {
           sparring_highlight: string | null;
           achievements: string[] | null;
           tagged_students: string[] | null;
-          reactions: number;
-          comments: number;
-          heat: number;
           created_at: string;
           updated_at: string;
         };
@@ -284,9 +281,6 @@ export type Database = {
           sparring_highlight?: string | null;
           achievements?: string[] | null;
           tagged_students?: string[] | null;
-          reactions?: number;
-          comments?: number;
-          heat?: number;
         };
         Update: Partial<Database["public"]["Tables"]["training_posts"]["Insert"]>;
       };

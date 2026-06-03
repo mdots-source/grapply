@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
@@ -26,6 +27,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = (await request.json()) as { clubSlug?: string; key?: string; value?: Json };
+  const access = await requireApiRole(["owner", "admin"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload.key) {
     return NextResponse.json({ ok: false, error: "Missing settings key." }, { status: 400 });

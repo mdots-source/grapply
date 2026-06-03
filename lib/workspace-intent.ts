@@ -13,8 +13,8 @@ const routeLabels: Record<string, string> = {
 
 const fallbackWorkspacePath = "/schedule";
 const blockedWorkspacePaths = new Set(["/", "/login", "/register", "/clubs"]);
-const staffOnlyPaths = new Set(["/admin", "/dashboard", "/members", "/settings", "/tv"]);
-const coachAllowedStaffPaths = new Set(["/dashboard", "/members", "/tv"]);
+const ownerOnlyPaths = new Set(["/admin", "/settings"]);
+const staffOnlyPaths = new Set(["/tv"]);
 
 export function normalizeWorkspaceReturnTo(returnTo?: string | null): string {
   if (!returnTo?.startsWith("/")) return fallbackWorkspacePath;
@@ -63,8 +63,8 @@ export function getRoleSafeWorkspaceReturnTo(returnTo: string, role?: string | n
   const [pathname] = normalizedReturnTo.split("?");
 
   if (!role || role === "owner" || role === "admin") return normalizedReturnTo;
-  if (role === "coach") return staffOnlyPaths.has(pathname) && !coachAllowedStaffPaths.has(pathname) ? fallbackWorkspacePath : normalizedReturnTo;
+  if (role === "coach") return ownerOnlyPaths.has(pathname) ? fallbackWorkspacePath : normalizedReturnTo;
   if (pathname.startsWith("/members/")) return normalizedReturnTo;
 
-  return staffOnlyPaths.has(pathname) ? fallbackWorkspacePath : normalizedReturnTo;
+  return ownerOnlyPaths.has(pathname) || staffOnlyPaths.has(pathname) ? fallbackWorkspacePath : normalizedReturnTo;
 }

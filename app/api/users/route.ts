@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { platformUsers } from "@/data/platform";
+import { requireApiRole } from "@/lib/api-access";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 import { toPlatformUser } from "@/lib/supabase/mappers";
 
@@ -32,6 +33,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.name || !payload?.email) {
     return NextResponse.json({ ok: false, error: "Missing user name or email." }, { status: 400 });

@@ -56,7 +56,7 @@ export const memberProfileExtras: Record<string, MemberProfileExtra> = {
       { belt: "black", stripes: 0, date: "2016", awardedBy: "Professor Mendes" },
       { belt: "black", stripes: 3, date: "Apr 2026", awardedBy: "IBJJF panel" },
     ],
-    coachNotes: [{ id: "n1", coach: "System", date: "Ongoing", body: "Leading competition team and evening advanced blocks." }],
+    coachNotes: [{ id: "n1", coach: "Sofia Almeida", date: "Ongoing", body: "Leading competition team and evening advanced blocks." }],
     registeredCompetitions: [],
   },
   "st-004": {

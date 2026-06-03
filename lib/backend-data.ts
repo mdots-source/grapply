@@ -35,7 +35,7 @@ export async function getTrainingPostsData() {
   try {
     const clubId = await getBackendClubId(clubSlug);
     if (!clubId) return [];
-    const rows = await selectRows("training_posts", `select=*&club_id=eq.${clubId}&order=pinned.desc,heat.desc`);
+    const rows = await selectRows("training_posts", `select=*&club_id=eq.${clubId}&order=pinned.desc,id.asc`);
     return rows.map(toTrainingPost);
   } catch {
     return getMockTrainingPostsForClub(clubSlug);

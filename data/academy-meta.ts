@@ -7,7 +7,6 @@ export const academyMeta = {
   tagline: "Competition-focused Brazilian Jiu-Jitsu",
   memberCount: 212,
   checkedInToday: 47,
-  academyPulse: 89,
   liveClass: {
     name: currentSession.name,
     coach: currentSession.coach,
@@ -24,5 +23,5 @@ export const tvTickerItems = [
   "IBJJF LA Open registration closes in 8 days",
   "Maya Ribeiro on a 9-class attendance streak",
   "47 athletes checked in today at Grapply Jiu-Jitsu",
-  "Competition Team capacity at 89% this week",
+  "Competition Team rules review on Saturday",
 ];

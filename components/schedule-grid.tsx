@@ -18,8 +18,6 @@ type SessionBlock = {
   name: string;
   coach: string;
   room: string;
-  capacity: number;
-  fill: number;
   level: string;
 };
 
@@ -53,68 +51,68 @@ const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
 const initialRows: ScheduleRow[] = [
   {
     time: "06:30",
-    mon: [session("06:30", "Dawn Patrol Gi", "Sofia Almeida", "Mat A", 28, 82, "Experienced")],
-    tue: [session("06:30", "No-Gi Conditioning", "Noah Keller", "Mat B", 24, 68, "Basics")],
-    wed: [session("06:30", "Dawn Patrol Gi", "Sofia Almeida", "Mat A", 28, 91, "Experienced")],
-    thu: [session("06:30", "Wrestling Entries", "Lina Okafor", "Mat B", 22, 73, "Advanced basics")],
-    fri: [session("06:30", "Open Mat", "Sofia Almeida", "Main Mat", 40, 62, "All levels")],
+    mon: [session("06:30", "Dawn Patrol Gi", "Sofia Almeida", "Mat A", "Experienced")],
+    tue: [session("06:30", "No-Gi Conditioning", "Noah Keller", "Mat B", "Basics")],
+    wed: [session("06:30", "Dawn Patrol Gi", "Sofia Almeida", "Mat A", "Experienced")],
+    thu: [session("06:30", "Wrestling Entries", "Lina Okafor", "Mat B", "Advanced basics")],
+    fri: [session("06:30", "Open Mat", "Sofia Almeida", "Main Mat", "All levels")],
     sat: [],
     sun: [],
   },
   {
     time: "08:00",
-    mon: [session("08:00", "Fundamentals", "Eli Morgan", "Mat B", 32, 56, "Beginners")],
+    mon: [session("08:00", "Fundamentals", "Eli Morgan", "Mat B", "Beginners")],
     tue: [],
-    wed: [session("08:00", "Fundamentals", "Eli Morgan", "Mat B", 32, 64, "Beginners")],
+    wed: [session("08:00", "Fundamentals", "Eli Morgan", "Mat B", "Beginners")],
     thu: [],
-    fri: [session("08:00", "Mobility + Drilling", "Noah Keller", "Mat A", 26, 58, "Basics")],
-    sat: [session("08:00", "Weekend Beginners", "Eli Morgan", "Mat B", 30, 78, "Beginners")],
+    fri: [session("08:00", "Mobility + Drilling", "Noah Keller", "Mat A", "Basics")],
+    sat: [session("08:00", "Weekend Beginners", "Eli Morgan", "Mat B", "Beginners")],
     sun: [],
   },
   {
     time: "12:00",
-    mon: [session("12:00", "Lunch No-Gi", "Lina Okafor", "Mat B", 34, 74, "Basics")],
-    tue: [session("12:00", "Gi Passing Lab", "Sofia Almeida", "Mat A", 28, 88, "Experienced")],
-    wed: [session("12:00", "Lunch No-Gi", "Lina Okafor", "Mat B", 34, 69, "Basics")],
-    thu: [session("12:00", "Leg Lock Systems", "Noah Keller", "Mat A", 24, 81, "Experienced")],
-    fri: [session("12:00", "Competition Drills", "Sofia Almeida", "Main Mat", 36, 93, "Competition")],
-    sat: [session("12:00", "Open Mat", "Lina Okafor", "Main Mat", 46, 87, "All levels")],
-    sun: [session("12:00", "Recovery Flow", "Eli Morgan", "Mat B", 20, 44, "Basics")],
+    mon: [session("12:00", "Lunch No-Gi", "Lina Okafor", "Mat B", "Basics")],
+    tue: [session("12:00", "Gi Passing Lab", "Sofia Almeida", "Mat A", "Experienced")],
+    wed: [session("12:00", "Lunch No-Gi", "Lina Okafor", "Mat B", "Basics")],
+    thu: [session("12:00", "Leg Lock Systems", "Noah Keller", "Mat A", "Experienced")],
+    fri: [session("12:00", "Competition Drills", "Sofia Almeida", "Main Mat", "Competition")],
+    sat: [session("12:00", "Open Mat", "Lina Okafor", "Main Mat", "All levels")],
+    sun: [session("12:00", "Recovery Flow", "Eli Morgan", "Mat B", "Basics")],
   },
   {
     time: "17:30",
-    mon: [session("17:30", "Kids Competition", "Noah Keller", "Mat A", 22, 86, "Youth")],
-    tue: [session("17:30", "Teen Advanced", "Lina Okafor", "Mat B", 18, 72, "Teen advanced")],
-    wed: [session("17:30", "Kids Competition", "Noah Keller", "Mat A", 22, 91, "Youth")],
-    thu: [session("17:30", "Youth Fundamentals", "Eli Morgan", "Mat B", 24, 67, "Youth basics")],
-    fri: [session("17:30", "Teen Open Mat", "Noah Keller", "Mat A", 26, 79, "Teen all levels")],
+    mon: [session("17:30", "Kids Competition", "Noah Keller", "Mat A", "Youth")],
+    tue: [session("17:30", "Teen Advanced", "Lina Okafor", "Mat B", "Teen advanced")],
+    wed: [session("17:30", "Kids Competition", "Noah Keller", "Mat A", "Youth")],
+    thu: [session("17:30", "Youth Fundamentals", "Eli Morgan", "Mat B", "Youth basics")],
+    fri: [session("17:30", "Teen Open Mat", "Noah Keller", "Mat A", "Teen all levels")],
     sat: [],
     sun: [],
   },
   {
     time: "19:00",
-    mon: [session("19:00", "Advanced Sparring", "Sofia Almeida", "Main Mat", 46, 89, "Experienced")],
-    tue: [session("19:00", "Fundamentals Gi", "Eli Morgan", "Mat A", 36, 76, "Beginners")],
-    wed: [session("19:00", "Advanced Sparring", "Sofia Almeida", "Main Mat", 46, 96, "Experienced")],
-    thu: [session("19:00", "No-Gi Advanced", "Lina Okafor", "Main Mat", 42, 84, "Experienced")],
-    fri: [session("19:00", "Fight Night Rounds", "Sofia Almeida", "Main Mat", 50, 98, "Competition")],
+    mon: [session("19:00", "Advanced Sparring", "Sofia Almeida", "Main Mat", "Experienced")],
+    tue: [session("19:00", "Fundamentals Gi", "Eli Morgan", "Mat A", "Beginners")],
+    wed: [session("19:00", "Advanced Sparring", "Sofia Almeida", "Main Mat", "Experienced")],
+    thu: [session("19:00", "No-Gi Advanced", "Lina Okafor", "Main Mat", "Experienced")],
+    fri: [session("19:00", "Fight Night Rounds", "Sofia Almeida", "Main Mat", "Competition")],
     sat: [],
     sun: [],
   },
   {
     time: "20:30",
-    mon: [session("20:30", "Open Mat", "Lina Okafor", "Mat B", 30, 61, "All levels")],
-    tue: [session("20:30", "Women Only", "Camille Duran", "Mat B", 24, 70, "Basics")],
-    wed: [session("20:30", "Guard Retention", "Maya Ribeiro", "Mat A", 28, 83, "Advanced basics")],
-    thu: [session("20:30", "Open Mat", "Noah Keller", "Mat B", 34, 64, "All levels")],
-    fri: [session("20:30", "Coaches Lab", "Sofia Almeida", "Mat A", 18, 72, "Experienced")],
+    mon: [session("20:30", "Open Mat", "Lina Okafor", "Mat B", "All levels")],
+    tue: [session("20:30", "Women Only", "Camille Duran", "Mat B", "Basics")],
+    wed: [session("20:30", "Guard Retention", "Maya Ribeiro", "Mat A", "Advanced basics")],
+    thu: [session("20:30", "Open Mat", "Noah Keller", "Mat B", "All levels")],
+    fri: [session("20:30", "Coaches Lab", "Sofia Almeida", "Mat A", "Experienced")],
     sat: [],
     sun: [],
   },
 ];
 
-function session(time: string, name: string, coach: string, room: string, capacity: number, fill: number, level: string): SessionBlock {
-  return { time, name, coach, room, capacity, fill, level };
+function session(time: string, name: string, coach: string, room: string, level: string): SessionBlock {
+  return { time, name, coach, room, level };
 }
 
 function emptyRow(time: string): ScheduleRow {
@@ -132,21 +130,39 @@ function compareTimes(a: string, b: string) {
 }
 
 function classToSessionBlock(value: ClassFormValue): SessionBlock {
-  return session(value.time, value.name, value.coach, value.mat, 28, 0, value.level);
+  return session(value.time, value.name, value.coach, value.mat, value.level);
 }
 
 function classApiToSessionBlock(value: ApiClass): SessionBlock {
-  return session(value.time, value.name, value.coach, value.mat, 28, 0, value.level);
+  return session(value.time, value.name, value.coach, value.mat, value.level);
 }
 
-function classesToRows(classes: ApiClass[]) {
+function classesToScheduleRows(classes?: ApiClass[]) {
   const rows = new Map<string, ScheduleRow>();
 
-  for (const classItem of classes) {
+  for (const initialRow of initialRows) {
+    rows.set(initialRow.time, {
+      time: initialRow.time,
+      mon: [...initialRow.mon],
+      tue: [...initialRow.tue],
+      wed: [...initialRow.wed],
+      thu: [...initialRow.thu],
+      fri: [...initialRow.fri],
+      sat: [...initialRow.sat],
+      sun: [...initialRow.sun],
+    });
+  }
+
+  for (const classItem of classes ?? []) {
     const time = classItem.time;
     const day = dayKeyFromLabel(classItem.day);
+    const block = classApiToSessionBlock(classItem);
     const row = rows.get(time) ?? emptyRow(time);
-    row[day] = [...row[day], classApiToSessionBlock(classItem)];
+    const alreadyShown = row[day].some(
+      (item) => item.time === block.time && item.name === block.name && item.coach === block.coach && item.room === block.room,
+    );
+
+    if (!alreadyShown) row[day] = [...row[day], block];
     rows.set(time, row);
   }
 
@@ -188,10 +204,13 @@ function weekOffsetFrom(start: Date) {
 }
 
 function levelTone(level: string) {
-  if (level.includes("Beginner")) return "border-sky-400/20 bg-sky-400/10 text-sky-200";
-  if (level.includes("Competition")) return "border-rose-400/20 bg-rose-400/10 text-rose-200";
-  if (level.includes("Experienced")) return "border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]";
-  if (level.includes("Youth") || level.includes("Teen")) return "border-violet-400/20 bg-violet-400/10 text-violet-200";
+  const normalized = level.toLowerCase();
+  if (normalized.includes("beginner") || normalized.includes("white")) return "border-sky-400/20 bg-sky-400/10 text-sky-200";
+  if (normalized.includes("competition")) return "border-rose-400/20 bg-rose-400/10 text-rose-200";
+  if (normalized.includes("experienced") || normalized.includes("purple") || normalized.includes("black")) {
+    return "border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]";
+  }
+  if (normalized.includes("youth") || normalized.includes("teen") || normalized.includes("kids")) return "border-violet-400/20 bg-violet-400/10 text-violet-200";
   return "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]";
 }
 
@@ -253,11 +272,13 @@ export function ScheduleGrid({
     fetch(`/api/classes${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load classes."))))
       .then((payload: { classes?: ApiClass[] }) => {
-        const rows = classesToRows(payload.classes ?? []);
-        setScheduleRows(rows);
+        setScheduleRows(classesToScheduleRows(payload.classes));
       })
       .catch((error: Error) => {
-        if (error.name !== "AbortError") setClassesError(error.message);
+        if (error.name !== "AbortError") {
+          setClassesError(error.message);
+          setScheduleRows(initialRows);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadingClasses(false);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId } from "@/lib/backend";
 import { insertRow, isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 
@@ -26,6 +27,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin", "coach"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.memberId || !payload?.detail || !payload?.awardedByName || !payload?.type) {
     return NextResponse.json({ ok: false, error: "Missing promotion memberId, type, awardedByName, or detail." }, { status: 400 });

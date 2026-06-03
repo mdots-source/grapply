@@ -117,11 +117,11 @@ export const tvCheckedInAthletes: TvCheckedInAthlete[] = students.map((student, 
 }));
 
 export const feed = [
-  { id: "f1", author: "Sofia Almeida", title: "Competition team rounds", text: "8 five-minute rounds, positional starts from headquarters, and late-stage back escapes.", meta: "31 athletes checked in", heat: 92 },
-  { id: "f2", author: "Maya Ribeiro", title: "Promotion watch", text: "Maya held a nine-class streak and logged her strongest passing score this month.", meta: "Purple belt cohort", heat: 84 },
-  { id: "f3", author: "Noah Keller", title: "No-Gi lunch recap", text: "Leg entry chains and defensive hand fighting produced 44 recorded sparring exchanges.", meta: "22 rounds tracked", heat: 76 },
-  { id: "f4", author: "Ana Costa", title: "Takedown lab notes", text: "Purple and blue belts drilled snap-down chains before live rounds from the wall.", meta: "14 takedown rounds", heat: 79 },
-  { id: "f5", author: "Zoe Chen", title: "Strava conditioning synced", text: "Morning roadwork landed in the member profile and tagged her competition camp plan.", meta: "5.8 km synced", heat: 71 },
+  { id: "f1", author: "Sofia Almeida", title: "Competition team rounds", text: "8 five-minute rounds, positional starts from headquarters, and late-stage back escapes.", meta: "31 athletes checked in" },
+  { id: "f2", author: "Maya Ribeiro", title: "Promotion watch", text: "Maya held a nine-class streak and logged her strongest passing score this month.", meta: "Purple belt cohort" },
+  { id: "f3", author: "Noah Keller", title: "No-Gi lunch recap", text: "Leg entry chains and defensive hand fighting produced 44 recorded sparring exchanges.", meta: "22 rounds tracked" },
+  { id: "f4", author: "Ana Costa", title: "Takedown lab notes", text: "Purple and blue belts drilled snap-down chains before live rounds from the wall.", meta: "14 takedown rounds" },
+  { id: "f5", author: "Zoe Chen", title: "Strava conditioning synced", text: "Morning roadwork landed in the member profile and tagged her competition camp plan.", meta: "5.8 km synced" },
 ];
 
 export const recentActivity = [

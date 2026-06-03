@@ -66,3 +66,9 @@ export async function upsertRow<T extends TableName>(table: T, row: TableInsert<
 
   return created;
 }
+
+export async function deleteRows<T extends TableName>(table: T, query: string) {
+  return supabaseRequest<TableRow<T>[]>(`${table}?${query}`, {
+    method: "DELETE",
+  });
+}

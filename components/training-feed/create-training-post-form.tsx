@@ -72,9 +72,6 @@ export function CreateTrainingPostForm({
             title: form.title,
             summary: form.summary,
             attendance: Number(form.attendance) || undefined,
-            reactions: 0,
-            comments: 0,
-            heat: 35,
           };
           const response = await fetch("/api/training-feed", {
             method: "POST",

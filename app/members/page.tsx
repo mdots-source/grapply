@@ -15,14 +15,15 @@ export default async function MembersPage({ searchParams }: { searchParams?: Pro
   if (params?.add) returnToParams.set("add", params.add);
   if (params?.filter) returnToParams.set("filter", params.filter);
   if (params?.member) returnToParams.set("member", params.member);
-  const session = await requireWorkspaceRole(["owner", "admin", "coach"], `/members${returnToParams.size ? `?${returnToParams}` : ""}`);
-  const filterOptions: RosterFilter[] = ["all", "active", "promotion", "inactive", "trial", "attention"];
+  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], `/members${returnToParams.size ? `?${returnToParams}` : ""}`);
+  const canManageMembers = session.activeRole !== "member";
+  const filterOptions: RosterFilter[] = ["all", "active", "promotion", "inactive", "trial", "follow-up"];
   const initialFilter = filterOptions.includes(params?.filter as RosterFilter) ? (params?.filter as RosterFilter) : "all";
 
   return (
-    <AppShell title="Members" subtitle="A high-signal roster for membership status, attendance momentum, belt progression, and coaching focus." initialSession={session}>
+    <AppShell title="Members" subtitle="Roster, belts, roles, and profiles for the active academy." initialSession={session}>
       <PageTransition>
-        <MembersGrid initialAdd={params?.add === "1"} initialFilter={initialFilter} initialMemberId={params?.member} />
+        <MembersGrid initialAdd={canManageMembers && params?.add === "1"} initialFilter={initialFilter} initialMemberId={params?.member} canManageMembers={canManageMembers} />
       </PageTransition>
     </AppShell>
   );

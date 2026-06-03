@@ -45,7 +45,7 @@ const productScreens = [
     id: "members",
     label: "Members",
     icon: Users,
-    title: "Member command center",
+    title: "Member workspace",
     copy: "Belt, role, focus, attendance, hours, points, and coach context in one premium athlete view.",
   },
   {
@@ -79,11 +79,11 @@ const productScreens = [
 ] as const;
 
 const beltOrbitItems = [
-  { belt: "white", transform: "translate(58px, -6px) rotate(0deg)" },
-  { belt: "blue", transform: "translate(-1.4245px, 56.7694px) rotate(18deg)" },
-  { belt: "purple", transform: "translate(-97.5755px, 32.7938px) rotate(36deg)" },
-  { belt: "brown", transform: "translate(-97.5755px, -44.7938px) rotate(54deg)" },
-  { belt: "black", transform: "translate(-1.4245px, -68.7694px) rotate(72deg)" },
+  { belt: "white", transform: "translate(-50%, -50%) translate(96px, -12px) rotate(2deg)" },
+  { belt: "blue", transform: "translate(-50%, -50%) translate(33px, 94px) rotate(21deg)" },
+  { belt: "purple", transform: "translate(-50%, -50%) translate(-92px, 55px) rotate(38deg)" },
+  { belt: "brown", transform: "translate(-50%, -50%) translate(-94px, -54px) rotate(58deg)" },
+  { belt: "black", transform: "translate(-50%, -50%) translate(30px, -98px) rotate(75deg)" },
 ] as const satisfies { belt: keyof typeof beltStyles; transform: string }[];
 
 const features = [
@@ -92,8 +92,8 @@ const features = [
   { icon: Award, title: "Belt system", copy: "Progression, promotion watch, stripes, and emotional moments around rank." },
   { icon: UserCog, title: "Coach/admin roles", copy: "Permissions and workspace roles for owners, admins, coaches, and members." },
   { icon: MonitorPlay, title: "Academy TV display", copy: "A live screen that makes the room feel active, modern, and connected." },
-  { icon: MessageCircle, title: "Training feed", copy: "Session recaps, announcements, milestones, reactions, and academy memory." },
-  { icon: Medal, title: "Competitions & camps", copy: "Rosters, deadlines, prep readiness, events, and team culture." },
+  { icon: MessageCircle, title: "Training feed", copy: "Session recaps, announcements, milestones, and academy memory." },
+  { icon: Medal, title: "Competitions & camps", copy: "Rosters, deadlines, travel details, events, and team culture." },
   { icon: Network, title: "Integration-ready", copy: "Strava-ready scaffolding and a product direction for future academy integrations." },
 ];
 
@@ -136,7 +136,7 @@ const pricingPlans = [
     description: "For larger academies, networks, and serious operators.",
     cta: "Talk to us",
     featured: false,
-    items: ["Multi-club support", "Custom onboarding", "Advanced permissions", "Integrations", "Custom analytics", "Dedicated support", "Roadmap partnership"],
+    items: ["Multi-club support", "Custom onboarding", "Advanced permissions", "Integrations", "Custom reports", "Dedicated support", "Roadmap partnership"],
   },
 ];
 
@@ -209,7 +209,7 @@ function Hero() {
         <div className="relative z-10">
           <Badge variant="accent" className="mb-5">
             <Gamepad2 size={13} />
-            BJJ academy command center
+            BJJ academy workspace
           </Badge>
           <h1 className="max-w-3xl text-4xl font-semibold leading-[1.03] tracking-normal sm:text-6xl lg:text-7xl">
             Run your Jiu-Jitsu academy like a high-performance fight team.
@@ -228,7 +228,7 @@ function Hero() {
           <div className="mt-8 grid grid-cols-3 gap-3">
             <Metric value={academyMeta.memberCount} label="Members" />
             <Metric value={academyMeta.checkedInToday} label="Today" accent />
-            <Metric value={academyMeta.academyPulse} label="Pulse" />
+            <Metric value={schedule.length} label="Classes" />
           </div>
         </div>
 
@@ -240,43 +240,117 @@ function Hero() {
 
 function HeroCommandScene() {
   return (
-    <div className="relative z-10 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
-      <div className="relative min-h-[430px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] p-4 [perspective:1100px] sm:min-h-[520px]">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent)_12%,transparent),transparent_42%,color-mix(in_srgb,var(--accent-blue)_9%,transparent))]" />
-        <div className="absolute inset-x-8 bottom-10 h-48 origin-bottom rounded-lg border border-[var(--border)] bg-[linear-gradient(90deg,color-mix(in_srgb,var(--accent)_12%,transparent)_1px,transparent_1px),linear-gradient(0deg,color-mix(in_srgb,var(--accent-blue)_10%,transparent)_1px,transparent_1px)] bg-[length:36px_36px] [transform:rotateX(62deg)]" />
-        <div className="absolute left-8 top-8 w-48 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel)_86%,transparent)] p-4 shadow-[var(--shadow)] [transform:rotateY(12deg)_rotateX(4deg)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Live class</p>
-          <h3 className="mt-2 text-xl font-semibold">{currentSession.name}</h3>
-          <p className="mt-1 text-xs text-[var(--muted)]">{currentSession.room} · {currentSession.time}</p>
+    <div className="relative z-10 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 shadow-[var(--shadow)] sm:p-3">
+      <div className="relative min-h-[720px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] [perspective:1200px] sm:min-h-[560px]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,color-mix(in_srgb,var(--accent)_18%,transparent),transparent_31%),radial-gradient(circle_at_82%_72%,color-mix(in_srgb,var(--accent-blue)_16%,transparent),transparent_28%),linear-gradient(135deg,color-mix(in_srgb,var(--accent)_9%,transparent),transparent_42%,color-mix(in_srgb,var(--foreground)_4%,transparent))]" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel)_86%,transparent),transparent)]" />
+        <div className="absolute inset-y-0 left-1/2 hidden w-px bg-[linear-gradient(180deg,transparent,color-mix(in_srgb,var(--accent)_34%,transparent),transparent)] sm:block" />
+        <div className="absolute -bottom-8 inset-x-3 h-72 origin-bottom rounded-lg border border-[color-mix(in_srgb,var(--accent-blue)_18%,var(--border))] bg-[linear-gradient(90deg,color-mix(in_srgb,var(--foreground)_8%,transparent)_1px,transparent_1px),linear-gradient(0deg,color-mix(in_srgb,var(--accent)_12%,transparent)_1px,transparent_1px)] bg-[length:34px_34px] opacity-80 [transform:rotateX(64deg)] sm:inset-x-8 sm:-bottom-4 sm:h-80" />
+
+        <div className="absolute inset-x-3 top-3 z-30 flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel)_86%,transparent)] px-3 py-2 shadow-[var(--shadow)] backdrop-blur-xl sm:inset-x-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex shrink-0 gap-1.5">
+              <span className="size-2 rounded-full bg-[var(--accent)]" />
+              <span className="size-2 rounded-full bg-[var(--accent-blue)]" />
+              <span className="size-2 rounded-full bg-[var(--status-success)]" />
+            </span>
+            <span className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Academy live operations</span>
+          </div>
+          <div className="hidden items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--status-success)_28%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_9%,transparent)] px-3 py-1 text-[11px] font-semibold text-[var(--status-success)] sm:flex">
+            <span className="size-1.5 rounded-full bg-[var(--status-success)] shadow-[0_0_18px_color-mix(in_srgb,var(--status-success)_80%,transparent)]" />
+            {academyMeta.checkedInToday} checked in
+          </div>
         </div>
-        <div className="absolute right-7 top-12 w-52 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel)_88%,transparent)] p-4 shadow-[var(--shadow)] [transform:rotateY(-14deg)_rotateX(5deg)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Leaderboard</p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 18, rotateY: 10 }}
+          animate={{ opacity: 1, y: 0, rotateY: 8 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="absolute left-4 right-4 top-16 z-20 rounded-lg border border-[color-mix(in_srgb,var(--accent)_26%,var(--border))] bg-[color-mix(in_srgb,var(--panel)_88%,transparent)] p-4 shadow-[var(--shadow)] backdrop-blur-xl [transform-style:preserve-3d] sm:left-6 sm:right-auto sm:top-[72px] sm:w-60"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Live class</p>
+            <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)]">{currentSession.room}</span>
+          </div>
+          <h3 className="mt-3 text-2xl font-semibold leading-tight">{currentSession.name}</h3>
+          <p className="mt-2 text-sm leading-5 text-[var(--muted)]">{currentSession.focus}</p>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <span className="text-xs tabular-nums text-[var(--muted)]">{currentSession.time} - {currentSession.endTime}</span>
+            <span className="flex -space-x-1">
+              {(["blue", "purple", "brown", "black"] as const).map((belt) => (
+                <span key={belt} className="size-4 rounded-full border border-[var(--background)]" style={{ backgroundColor: beltStyles[belt].hex }} />
+              ))}
+            </span>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 18, rotateY: -10 }}
+          animate={{ opacity: 1, y: 0, rotateY: -8 }}
+          transition={{ duration: 0.75, delay: 0.08, ease: "easeOut" }}
+          className="absolute left-4 right-4 top-[232px] z-20 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel)_90%,transparent)] p-3 shadow-[var(--shadow)] backdrop-blur-xl [transform-style:preserve-3d] sm:left-auto sm:right-6 sm:top-[78px] sm:w-60"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Leaderboard</p>
+            <Trophy size={16} className="text-[var(--accent)]" />
+          </div>
           <div className="mt-3 space-y-2">
             {rankedMembers.slice(0, 3).map((member, index) => (
-              <div key={member.id} className="flex items-center gap-2 rounded-lg bg-[var(--surface)] px-2 py-2">
-                <span className="text-xs font-semibold text-[var(--accent)]">{index + 1}</span>
+              <div key={member.id} className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2">
+                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-[color-mix(in_srgb,var(--accent)_13%,transparent)] text-xs font-semibold text-[var(--accent)]">{index + 1}</span>
                 <StudentAvatar student={member} size="sm" />
-                <p className="min-w-0 truncate text-xs font-semibold">{member.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold">{member.name}</p>
+                  <p className="text-[11px] capitalize text-[var(--muted)]">{member.belt} belt</p>
+                </div>
+                <span className="ml-auto text-[11px] font-semibold tabular-nums text-[var(--muted)]">{member.points}</span>
               </div>
             ))}
           </div>
-        </div>
-        <div className="absolute bottom-9 left-1/2 w-64 -translate-x-1/2 rounded-lg border border-[color-mix(in_srgb,var(--accent)_28%,transparent)] bg-[color-mix(in_srgb,var(--accent)_9%,var(--panel))] p-4 shadow-[var(--shadow)]">
-          <div className="flex items-center justify-between">
-            <Badge variant="success">TV online</Badge>
-            <span className="text-xs tabular-nums text-[var(--muted)]">{currentSession.time}–{currentSession.endTime}</span>
+        </motion.div>
+
+        <div className="absolute left-1/2 top-[455px] z-10 size-52 -translate-x-1/2 -translate-y-1/2 sm:top-[276px] sm:size-64">
+          <motion.div
+            animate={{ scale: [1, 1.04, 1], opacity: [0.55, 0.9, 0.55] }}
+            transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 rounded-full border border-[color-mix(in_srgb,var(--accent)_34%,transparent)]"
+          />
+          <div className="absolute inset-8 rounded-full border border-[color-mix(in_srgb,var(--accent-blue)_24%,transparent)] bg-[radial-gradient(circle,color-mix(in_srgb,var(--panel)_82%,transparent),transparent_70%)]" />
+          <BeltOrbit />
+          <div aria-label="Academy status" className="absolute left-1/2 top-1/2 w-36 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[color-mix(in_srgb,var(--accent)_28%,var(--border))] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] p-3 text-center shadow-[var(--shadow)] backdrop-blur-xl sm:w-40 sm:p-4">
+            <div className="mx-auto grid size-9 place-items-center rounded-lg bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--accent)]">
+              <Radio size={18} />
+            </div>
+            <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--accent)]">Live</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-left">
+              <SceneMiniMetric value={activeMembers.length} label="Active" />
+              <SceneMiniMetric value={academyMeta.checkedInToday} label="Today" />
+            </div>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {tvCheckedInAthletes.slice(0, 3).map((member) => (
-              <div key={member.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2">
-                <StudentAvatar student={member} size="sm" />
-                <p className="mt-2 truncate text-xs font-semibold">{member.name.split(" ")[0]}</p>
-              </div>
-            ))}
-          </div>
         </div>
-        <div className="absolute left-1/2 top-24 size-44 -translate-x-1/2 rounded-full border border-[color-mix(in_srgb,var(--accent)_28%,transparent)]" />
-        <BeltOrbit />
+
+        <div className="absolute bottom-4 left-4 right-4 z-20 sm:bottom-6 sm:left-1/2 sm:right-auto sm:w-[400px] sm:-translate-x-1/2">
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.75, delay: 0.14, ease: "easeOut" }}
+            className="rounded-lg border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--accent)_9%,var(--panel))] p-3 shadow-[var(--shadow)] backdrop-blur-xl sm:p-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <Badge variant="success">TV online</Badge>
+              <span className="text-xs tabular-nums text-[var(--muted)]">{currentSession.time} - {currentSession.endTime}</span>
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {tvCheckedInAthletes.slice(0, 4).map((member) => (
+                <div key={member.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2">
+                  <StudentAvatar student={member} size="sm" />
+                  <p className="mt-2 truncate text-xs font-semibold">{member.name.split(" ")[0]}</p>
+                  <span className="mt-2 block h-1 rounded-full" style={{ backgroundColor: beltStyles[member.belt].hex }} />
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       </div>
     </div>
   );
@@ -284,12 +358,12 @@ function HeroCommandScene() {
 
 function BeltOrbit() {
   return (
-    <div className="absolute left-1/2 top-24 size-44 -translate-x-1/2">
+    <div className="absolute inset-0">
       {beltOrbitItems.map((item) => {
         return (
           <span
             key={item.belt}
-            className="absolute left-1/2 top-1/2 h-3 w-14 rounded-full border border-[var(--border)]"
+            className="absolute left-1/2 top-1/2 h-3 w-16 rounded-full border border-[color-mix(in_srgb,var(--foreground)_18%,transparent)] shadow-[0_12px_38px_color-mix(in_srgb,var(--background)_70%,transparent)] sm:w-[72px]"
             style={{
               backgroundColor: beltStyles[item.belt].hex,
               transform: item.transform,
@@ -297,6 +371,15 @@ function BeltOrbit() {
           />
         );
       })}
+    </div>
+  );
+}
+
+function SceneMiniMetric({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5">
+      <p className="text-sm font-semibold tabular-nums">{value}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">{label}</p>
     </div>
   );
 }
@@ -569,11 +652,11 @@ function ControlRoomVisual() {
           </div>
         </div>
         <div className="absolute right-8 top-12 w-56 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)] [transform:rotateY(-16deg)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Competition prep</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Competition roster</p>
           {competitions.slice(0, 2).map((event) => (
             <div key={event.id} className="mt-3 rounded-lg bg-[var(--surface)] p-3">
               <p className="text-sm font-semibold">{event.name}</p>
-              <p className="text-xs text-[var(--muted)]">{event.registered_students.length} athletes · {event.prep}% prep</p>
+              <p className="text-xs text-[var(--muted)]">{event.registered_students.length} athletes · {event.status}</p>
             </div>
           ))}
         </div>
@@ -606,7 +689,7 @@ function CompetitionSection() {
           <Kicker icon={Medal}>Competitions & camps</Kicker>
           <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Competition culture belongs inside the academy OS.</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-            Rosters, deadlines, prep readiness, and team moments stay connected to the same athletes, rankings, and training feed.
+            Rosters, deadlines, travel details, and team moments stay connected to the same athletes, rankings, and training feed.
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -617,13 +700,10 @@ function CompetitionSection() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{event.type}</p>
                   <h3 className="mt-2 text-xl font-semibold">{event.name}</h3>
                 </div>
-                <Badge variant={event.prep >= 70 ? "success" : "muted"}>{event.prep}% prep</Badge>
+                <Badge variant={event.status === "Registration open" ? "success" : "muted"}>{event.status}</Badge>
               </div>
               <p className="mt-3 text-sm text-[var(--muted)]">{event.date} · {event.city}</p>
-              <p className="mt-2 text-sm text-[var(--muted)]">{event.registered_students.length} registered athletes · {event.status}</p>
-              <div className="mt-4 h-2 rounded-full bg-[var(--surface)]">
-                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${event.prep}%` }} />
-              </div>
+              <p className="mt-2 text-sm text-[var(--muted)]">{event.registered_students.length} registered athletes · deadline {event.registration_deadline}</p>
             </motion.article>
           ))}
         </div>

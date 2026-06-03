@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId } from "@/lib/backend";
 import { insertRow, isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 
@@ -26,6 +27,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin", "coach"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.memberId || !payload?.body || !payload?.coachName) {
     return NextResponse.json({ ok: false, error: "Missing memberId, coachName, or body." }, { status: 400 });

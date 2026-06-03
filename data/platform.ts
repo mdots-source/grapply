@@ -186,26 +186,26 @@ export const roleDefinitions: RoleDefinition[] = [
   {
     role: "owner",
     label: "Owner",
-    description: "Full control over club settings, billing, roles, integrations, and all academy operations.",
-    permissions: ["manage_club", "manage_roles", "manage_billing", "manage_integrations", "manage_classes", "view_members"],
+    description: "Can change everything: organization settings, trainers, members, classes, camps, competitions, and integrations.",
+    permissions: ["manage_organization", "manage_trainers", "manage_members", "manage_classes", "manage_camps", "manage_competitions"],
   },
   {
     role: "admin",
     label: "Admin",
-    description: "Runs daily operations: members, schedules, classes, posts, and reports.",
-    permissions: ["manage_roles", "manage_classes", "manage_members", "publish_feed", "view_reports"],
+    description: "Legacy manager role. Treat like owner for this prototype until billing/ownership is separated.",
+    permissions: ["manage_trainers", "manage_members", "manage_classes", "manage_camps", "manage_competitions"],
   },
   {
     role: "coach",
-    label: "Coach",
-    description: "Manages class check-ins, coach notes, attendance, and promotion recommendations.",
-    permissions: ["manage_classes", "coach_notes", "recommend_promotions", "view_members"],
+    label: "Trainer",
+    description: "Can plan trainings, camps, competitions, and manage participants.",
+    permissions: ["manage_classes", "manage_camps", "manage_competitions", "manage_members"],
   },
   {
     role: "member",
     label: "Member",
-    description: "Can view assigned club, schedule, profile, attendance, rankings, and connected activity.",
-    permissions: ["view_schedule", "view_profile", "connect_strava"],
+    description: "View-only access to the club workspace.",
+    permissions: ["view_dashboard", "view_members", "view_schedule", "view_camps", "view_competitions", "view_rankings"],
   },
 ];
 

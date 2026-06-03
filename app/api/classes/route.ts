@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clubClasses } from "@/data/platform";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId, getMockClubId, getRequestedClubSlug } from "@/lib/backend";
 import { isSupabaseConfigured, insertRow, selectRows } from "@/lib/supabase/server";
 import { toClubClass } from "@/lib/supabase/mappers";
@@ -25,6 +26,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin", "coach"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.name || !payload?.coach || !payload?.day || !payload?.time) {
     return NextResponse.json({ ok: false, error: "Missing class name, coach, day, or time." }, { status: 400 });

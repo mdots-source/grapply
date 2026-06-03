@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { TrainingPost } from "@/data/training-feed";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId, getRequestedClubSlug } from "@/lib/backend";
 import { getMockTrainingPostsForClub } from "@/lib/mock-club-content";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
     try {
       const clubId = await getBackendClubId(clubSlug);
       if (!clubId) return NextResponse.json({ source: "supabase", posts: [] });
-      const rows = await selectRows("training_posts", `select=*&club_id=eq.${clubId}&order=pinned.desc,heat.desc`);
+      const rows = await selectRows("training_posts", `select=*&club_id=eq.${clubId}&order=pinned.desc,id.asc`);
       return NextResponse.json({ source: "supabase", posts: rows.map(toTrainingPost) });
     } catch (error) {
       return NextResponse.json({ source: "mock", posts: getMockTrainingPostsForClub(clubSlug), supabaseError: String(error) });
@@ -25,6 +26,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = (await request.json()) as TrainingPost & { clubSlug?: string };
+  const access = await requireApiRole(["owner", "admin", "coach"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.id || !payload?.title) {
     return NextResponse.json({ ok: false, error: "Missing post id or title." }, { status: 400 });

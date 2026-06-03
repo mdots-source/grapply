@@ -12,7 +12,6 @@ import {
   Sparkles,
   Trophy,
   Users,
-  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,14 +28,11 @@ const typeIcons = {
   "open-mat": Flame,
 };
 
-export function TrainingPostCard({ post, index = 0 }: { post: TrainingPost; index?: number }) {
+export function TrainingPostCard({ post, index = 0, canComment = false }: { post: TrainingPost; index?: number; canComment?: boolean }) {
   const Icon = typeIcons[post.type];
-  const [boosted, setBoosted] = useState(false);
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [localNotes, setLocalNotes] = useState<string[]>([]);
-  const reactions = post.reactions + (boosted ? 1 : 0);
-  const comments = post.comments + localNotes.length;
 
   function addDiscussionNote() {
     const note = draft.trim();
@@ -82,10 +78,6 @@ export function TrainingPostCard({ post, index = 0 }: { post: TrainingPost; inde
                 )}
               </p>
             </div>
-            <div className="shrink-0 rounded-xl border border-[var(--border)] bg-[var(--accent)] px-3 py-2 text-center text-[var(--accent-foreground)]">
-              <p className="text-xl font-black tabular-nums">{post.heat}</p>
-              <p className="text-[10px] font-bold uppercase">heat</p>
-            </div>
           </div>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">{post.summary}</p>
 
@@ -125,20 +117,11 @@ export function TrainingPostCard({ post, index = 0 }: { post: TrainingPost; inde
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-          <div className="flex gap-4 text-xs text-[var(--muted)]">
-            <span>{reactions} reactions</span>
-            <span>{comments} comments</span>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setBoosted((current) => !current)}
-              aria-pressed={boosted}
-            >
-              <Zap size={14} /> {boosted ? "Boosted" : "Boost"}
-            </Button>
+          <p className="text-xs text-[var(--muted)]">
+            {post.className ? `${post.className} update` : `${typeLabels[post.type]} update`}
+          </p>
+          {canComment && (
+            <div className="flex gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -148,14 +131,13 @@ export function TrainingPostCard({ post, index = 0 }: { post: TrainingPost; inde
             >
               <MessageCircle size={14} /> Discuss
             </Button>
-          </div>
+            </div>
+          )}
         </div>
-        {discussionOpen && (
+        {canComment && discussionOpen && (
           <div className="border-t border-[var(--border)] bg-[var(--surface)]/55 px-5 py-4">
             <p className="text-sm font-semibold text-[var(--foreground)]">Discussion</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              {comments} coach and member comments are attached to this post.
-            </p>
+            <p className="mt-1 text-xs text-[var(--muted)]">Add private planning notes for the staff team.</p>
             {localNotes.length > 0 && (
               <div className="mt-3 space-y-2">
                 {localNotes.map((note, noteIndex) => (

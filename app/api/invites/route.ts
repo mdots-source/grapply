@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId } from "@/lib/backend";
 import { insertRow, isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 
@@ -21,6 +22,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.email) {
     return NextResponse.json({ ok: false, error: "Missing invite email." }, { status: 400 });
@@ -50,6 +53,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.id || !payload?.status) {
     return NextResponse.json({ ok: false, error: "Missing invite id or status." }, { status: 400 });

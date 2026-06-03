@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/api-access";
 import { getBackendClubId } from "@/lib/backend";
 import { insertRow, isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
 
@@ -26,6 +27,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin", "coach"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.memberId || !payload?.title) {
     return NextResponse.json({ ok: false, error: "Missing memberId or goal title." }, { status: 400 });
@@ -55,6 +58,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const payload = await request.json();
+  const access = await requireApiRole(["owner", "admin", "coach"], payload.clubSlug);
+  if (access.error) return access.error;
 
   if (!payload?.id || !payload?.memberId || !payload?.title) {
     return NextResponse.json({ ok: false, error: "Missing goal id, memberId, or title." }, { status: 400 });

@@ -79,7 +79,7 @@ export function TrainingFeedTimeline({
       ) : (
         <>
           {pinned.map((post, index) => (
-            <TrainingPostCard key={post.id} post={post} index={index} />
+            <TrainingPostCard key={post.id} post={post} index={index} canComment={canCreatePost} />
           ))}
           <div className="border-t border-[var(--border)] pt-2">
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -87,7 +87,7 @@ export function TrainingFeedTimeline({
             </p>
             {rest.map((post, index) => (
               <div key={post.id} className="mb-5">
-                <TrainingPostCard post={post} index={index + pinned.length} />
+                <TrainingPostCard post={post} index={index + pinned.length} canComment={canCreatePost} />
               </div>
             ))}
           </div>

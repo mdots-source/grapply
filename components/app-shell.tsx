@@ -36,8 +36,8 @@ export type ShellSession = {
 };
 
 const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["owner", "admin", "coach"] as Role[] },
-  { href: "/members", label: "Members", icon: Users, roles: ["owner", "admin", "coach"] as Role[] },
+  { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["owner", "admin", "coach", "member"] as Role[] },
+  { href: "/members", label: "Members", icon: Users, roles: ["owner", "admin", "coach", "member"] as Role[] },
   { href: "/schedule", label: "Schedule", icon: CalendarDays, roles: ["owner", "admin", "coach", "member"] as Role[] },
   { href: "/competitions", label: "Competitions", icon: Medal, roles: ["owner", "admin", "coach", "member"] as Role[] },
   { href: "/training-camps", label: "Training Camps", icon: Mountain, roles: ["owner", "admin", "coach", "member"] as Role[] },
@@ -66,7 +66,7 @@ export function AppShell({
   const isAccountMode = mode === "account";
   const [session, setSession] = useState<ShellSession | null | undefined>(initialSession);
   const role = session?.activeRole;
-  const displayRole = role ?? "member";
+  const displayRole = role === "coach" ? "trainer" : role ?? "member";
   const visibleNav = useMemo(
     () => (isAccountMode ? [] : nav.filter((item) => (role ? item.roles.includes(role) : item.roles.includes("member") || pathname.startsWith(item.href)))),
     [isAccountMode, pathname, role],
@@ -74,7 +74,7 @@ export function AppShell({
   const currentPath = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
   const switchReturnTo = pathname.startsWith("/clubs") ? searchParams.get("returnTo") ?? "/schedule" : currentPath;
   const switchClubHref = `/clubs?returnTo=${encodeURIComponent(switchReturnTo)}`;
-  const workspaceHomeHref = role && role !== "member" ? "/dashboard" : "/schedule";
+  const workspaceHomeHref = "/dashboard";
   const shellHomeHref = isAccountMode ? "/clubs" : workspaceHomeHref;
   const profileLabel = session?.user?.name ?? "Profile";
   const profileDetail = session?.user?.email ?? "Account";
@@ -158,27 +158,6 @@ export function AppShell({
         </SidebarContent>
 
         <SidebarFooter className="space-y-3 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
-          {!isAccountMode && (
-            <>
-              <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/6 p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">On the mats</div>
-                <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{academyMeta.liveClass.name}</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  {academyMeta.liveClass.coach} · {academyMeta.liveClass.room}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-2">
-                  <p className="text-lg font-semibold tabular-nums text-[var(--accent)]">{academyMeta.checkedInToday}</p>
-                  <p className="text-[10px] text-[var(--muted)]">Checked in</p>
-                </div>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-2">
-                  <p className="text-lg font-semibold tabular-nums">{academyMeta.liveClass.time}</p>
-                  <p className="text-[10px] text-[var(--muted)]">Class time</p>
-                </div>
-              </div>
-            </>
-          )}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3">
             <div className="flex items-start gap-2">
               <Building2 size={15} className="mt-0.5 shrink-0 text-[var(--accent)]" />
