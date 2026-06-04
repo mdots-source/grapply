@@ -34,6 +34,8 @@ async function supabaseRequest<T>(path: string, init?: RequestInit): Promise<T> 
       ...init?.headers,
     },
     cache: "no-store",
+  }).catch((error) => {
+    throw new Error(`Cannot reach Supabase REST API at ${config.url}. Check NEXT_PUBLIC_SUPABASE_URL, DNS, and project status. ${formatFetchError(error)}`);
   });
 
   if (!response.ok) {
@@ -42,6 +44,10 @@ async function supabaseRequest<T>(path: string, init?: RequestInit): Promise<T> 
   }
 
   return response.json() as Promise<T>;
+}
+
+function formatFetchError(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export async function selectRows<T extends TableName>(table: T, query = "select=*") {

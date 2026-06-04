@@ -4,7 +4,7 @@ import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { getRequestUrl } from "@/lib/request-origin";
 import { insertRow, isSupabaseConfigured, upsertRow } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
-import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
+import { normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
@@ -18,18 +18,21 @@ export async function POST(request: Request) {
   const password = String(payload?.password ?? "demo");
 
   if (!academyName || !ownerEmail || !location || password.length < 6) {
+    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/register", returnTo, "Academy name, owner email, city, and 6+ character password are required."), 303);
     return NextResponse.json({ ok: false, error: "Academy name, owner email, city, and 6+ character password are required." }, { status: 400 });
   }
 
   if (!isSupabaseConfigured()) {
     const club = { slug: slugify(academyName), name: academyName, location };
+    const destination = scopeWorkspaceReturnTo(returnTo, club.slug);
     const response = isFormSubmit
-      ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
+      ? NextResponse.redirect(getRequestUrl(destination, request), 303)
       : NextResponse.json({
           ok: true,
           source: "mock",
           user: { id: "usr-empty", name: ownerName, email: ownerEmail },
           club,
+          redirectTo: destination,
         });
     setMockAuthCookie(response, "usr-empty");
     setActiveClubCookie(response, club.slug);
@@ -38,7 +41,15 @@ export async function POST(request: Request) {
 
   try {
     const slug = `${slugify(academyName)}-${Date.now().toString(36)}`;
-    const authUser = await createAuthUser({ email: ownerEmail, password, name: ownerName });
+    let authUser: Awaited<ReturnType<typeof createAuthUser>>;
+    let session: Awaited<ReturnType<typeof signInWithPassword>> | null = null;
+
+    try {
+      authUser = await createAuthUser({ email: ownerEmail, password, name: ownerName });
+    } catch {
+      session = await signInWithPassword(ownerEmail, password);
+      authUser = session.user;
+    }
 
     const user = await upsertRow(
       "app_users",
@@ -78,20 +89,30 @@ export async function POST(request: Request) {
       upsertRow("club_settings", { club_id: club.id, key: "integrations", value: { strava: false, supabase: true } }, "club_id,key"),
     ]);
 
-    const session = await signInWithPassword(ownerEmail, password);
+    session ??= await signInWithPassword(ownerEmail, password);
+    const destination = scopeWorkspaceReturnTo(returnTo, club.slug);
     const response = isFormSubmit
-      ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
-      : NextResponse.json({ ok: true, source: "supabase", user, club, membership });
+      ? NextResponse.redirect(getRequestUrl(destination, request), 303)
+      : NextResponse.json({ ok: true, source: "supabase", user, club, membership, redirectTo: destination });
     setAuthCookies(response, session);
     setActiveClubCookie(response, club.slug);
     return response;
   } catch (error) {
+    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/register", returnTo, getAuthErrorMessage(error)), 303);
     return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
   }
 }
 
-function clubsUrl(request: Request, returnTo: string) {
-  const url = getRequestUrl("/clubs", request);
+function authErrorUrl(request: Request, path: string, returnTo: string, error: string) {
+  const url = getRequestUrl(path, request);
   url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
+  url.searchParams.set("error", error);
   return url;
+}
+
+function getAuthErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("Cannot reach Supabase")) return "Grapply cannot reach Supabase right now. Check the Supabase project URL, DNS, and project status.";
+  if (message.includes("already") || message.includes("registered")) return "This email is already registered. Try signing in with the same password.";
+  return "Registration failed. Check the details and try again.";
 }

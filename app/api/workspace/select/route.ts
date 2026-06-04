@@ -1,18 +1,33 @@
 import { NextResponse } from "next/server";
-import { setActiveClubCookie, setMockAuthCookie } from "@/lib/auth-cookies";
+import { setActiveClubCookie } from "@/lib/auth-cookies";
 import { getCurrentSession } from "@/lib/auth-session";
 import { getRequestUrl } from "@/lib/request-origin";
 import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const club = url.searchParams.get("club") ?? "grapply-bjj";
+  const club = url.searchParams.get("club");
   const session = await getCurrentSession();
-  const role = session?.memberships.find((membership) => membership.club.slug === club)?.role;
   const requestedDestination = normalizeWorkspaceReturnTo(url.searchParams.get("returnTo"));
-  const destination = scopeWorkspaceReturnTo(getRoleSafeWorkspaceReturnTo(requestedDestination, role), club);
+
+  if (!session) {
+    const loginUrl = getRequestUrl("/login", request);
+    loginUrl.searchParams.set("returnTo", requestedDestination);
+    return NextResponse.redirect(loginUrl, 303);
+  }
+
+  const membership = club ? session.memberships.find((item) => item.club.slug === club) : null;
+  if (!membership) {
+    const clubsUrl = getRequestUrl("/clubs", request);
+    clubsUrl.searchParams.set("access", "denied");
+    clubsUrl.searchParams.set("returnTo", requestedDestination);
+    return NextResponse.redirect(clubsUrl, 303);
+  }
+
+  const role = membership.role;
+  const clubSlug = membership.club.slug;
+  const destination = scopeWorkspaceReturnTo(getRoleSafeWorkspaceReturnTo(requestedDestination, role), clubSlug);
   const response = NextResponse.redirect(getRequestUrl(destination, request));
-  if (!session) setMockAuthCookie(response, "usr-sofia");
-  setActiveClubCookie(response, club);
+  setActiveClubCookie(response, clubSlug);
   return response;
 }

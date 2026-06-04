@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { authCookieNames } from "@/lib/auth-cookies";
 import { clubMemberships, clubs, getDemoSafeRole, platformUsers } from "@/data/platform";
-import { getAuthUser } from "@/lib/supabase/auth";
+import { getAuthUser, refreshPasswordSession } from "@/lib/supabase/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { selectRows } from "@/lib/supabase/server";
 import { toClub, toClubMembership, toPlatformUser } from "@/lib/supabase/mappers";
@@ -35,6 +35,7 @@ export function getDemoWorkspaceSession(activeClubSlug = "grapply-bjj") {
 export async function getCurrentSession() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(authCookieNames.accessToken)?.value;
+  const refreshToken = cookieStore.get(authCookieNames.refreshToken)?.value;
   const activeClubSlug = cookieStore.get(authCookieNames.activeClub)?.value;
 
   if (!accessToken) return null;
@@ -66,7 +67,11 @@ export async function getCurrentSession() {
     };
   }
 
-  const authUser = await getAuthUser(accessToken);
+  let authUser = await getAuthUser(accessToken);
+  if (!authUser?.email && refreshToken) {
+    const refreshed = await refreshPasswordSession(refreshToken).catch(() => null);
+    authUser = refreshed?.user ?? null;
+  }
   if (!authUser?.email) return null;
 
   const users = await selectRows("app_users", `select=*&email=eq.${encodeURIComponent(authUser.email)}&limit=1`);

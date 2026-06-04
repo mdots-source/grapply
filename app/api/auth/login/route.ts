@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
-import { platformUsers } from "@/data/platform";
+import { clubMemberships, clubs, getDemoSafeRole, platformUsers } from "@/data/platform";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { getRequestUrl } from "@/lib/request-origin";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
-import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
+import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
@@ -15,6 +15,7 @@ export async function POST(request: Request) {
   const password = String(payload?.password ?? "");
 
   if (!email || !password) {
+    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "Email and password are required."), 303);
     return NextResponse.json({ ok: false, error: "Email and password are required." }, { status: 400 });
   }
 
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
       const user = users[0];
 
       if (!user) {
+        if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "No account found for that email."), 303);
         return NextResponse.json({ ok: false, source: "supabase", error: "User not found." }, { status: 404 });
       }
 
@@ -45,12 +47,14 @@ export async function POST(request: Request) {
         }).catch(() => {});
       }
 
-      const response = returnTo
-        ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
+      const redirectTo = returnTo ? await getSupabasePostAuthDestination(user.id, returnTo) : null;
+      const response = redirectTo
+        ? NextResponse.redirect(getRequestUrl(redirectTo, request), 303)
         : NextResponse.json({
             ok: true,
             source: "supabase",
             user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar_url },
+            ...(redirectTo ? { redirectTo } : {}),
           });
       setAuthCookies(response, session);
       return response;
@@ -59,25 +63,78 @@ export async function POST(request: Request) {
       if (mockUser && password === "demo123") {
         return createMockLoginResponse(request, mockUser, returnTo);
       }
+      if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", getAuthErrorMessage(error)), 303);
       return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
     }
   }
 
   const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
-  if (!user) return NextResponse.json({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
+  if (!user) {
+    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "No account found for that email."), 303);
+    return NextResponse.json({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
+  }
   return createMockLoginResponse(request, user, returnTo);
 }
 
 function createMockLoginResponse(request: Request, user: (typeof platformUsers)[number], returnTo: string | null) {
-  const response = returnTo
-    ? NextResponse.redirect(clubsUrl(request, returnTo), 303)
+  const redirectTo = returnTo ? getMockPostAuthDestination(user.id, returnTo) : null;
+  const response = redirectTo
+    ? NextResponse.redirect(getRequestUrl(redirectTo, request), 303)
     : NextResponse.json({ ok: true, source: "mock", user });
   setMockAuthCookie(response, user.id);
   return response;
 }
 
-function clubsUrl(request: Request, returnTo: string) {
-  const url = getRequestUrl("/clubs", request);
+async function getSupabasePostAuthDestination(userId: string, returnTo: string) {
+  const memberships = await selectRows("club_memberships", `select=*&user_id=eq.${userId}`);
+  if (memberships.length !== 1) {
+    return clubsPath(returnTo);
+  }
+
+  const membership = memberships[0];
+  const clubs = await selectRows("clubs", `select=*&id=eq.${membership.club_id}&limit=1`);
+  const club = clubs[0];
+  if (!club) return clubsPath(returnTo);
+
+  const safeReturnTo = getRoleSafeWorkspaceReturnTo(returnTo, membership.role);
+  return scopeWorkspaceReturnTo(safeReturnTo, club.slug);
+}
+
+function getMockPostAuthDestination(userId: string, returnTo: string) {
+  const userMemberships = requireMockMemberships(userId);
+  if (userMemberships.length !== 1) return clubsPath(returnTo);
+
+  const membership = userMemberships[0];
+  const safeReturnTo = getRoleSafeWorkspaceReturnTo(returnTo, membership.role);
+  return scopeWorkspaceReturnTo(safeReturnTo, membership.club.slug);
+}
+
+function clubsPath(returnTo: string) {
+  return `/clubs?returnTo=${encodeURIComponent(normalizeWorkspaceReturnTo(returnTo))}`;
+}
+
+function authErrorUrl(request: Request, path: string, returnTo: string, error: string) {
+  const url = getRequestUrl(path, request);
   url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
+  url.searchParams.set("error", error);
   return url;
+}
+
+function getAuthErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("Cannot reach Supabase")) return "Grapply cannot reach Supabase right now. Check the Supabase project URL, DNS, and project status.";
+  if (message.includes("Invalid login credentials")) return "Wrong email or password.";
+  return "Sign in failed. Check your email and password.";
+}
+
+function requireMockMemberships(userId: string) {
+  return clubMemberships
+    .filter((membership) => membership.userId === userId)
+    .map((membership) => {
+      const club = clubs.find((candidate) => candidate.id === membership.clubId);
+      const user = platformUsers.find((candidate) => candidate.id === userId);
+      if (!club || !user) return null;
+      return { ...membership, role: getDemoSafeRole(user.email, club.slug, membership.role), club };
+    })
+    .filter((membership): membership is NonNullable<typeof membership> => Boolean(membership));
 }
