@@ -32,7 +32,7 @@ const unscopedWorkspacePrefixes = [
 ];
 
 function isDemoAutoLoginEnabled() {
-  return process.env.GRAPPLY_DEMO_AUTO_LOGIN === "true";
+  return process.env.NODE_ENV !== "production" && process.env.GRAPPLY_DEMO_AUTO_LOGIN === "true";
 }
 
 function appendRequestCookie(cookieHeader: string, name: string, value: string) {
