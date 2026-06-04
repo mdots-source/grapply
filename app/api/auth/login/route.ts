@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
+import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
 import { clubMemberships, clubs, getDemoSafeRole, platformUsers } from "@/data/platform";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { getRequestUrl } from "@/lib/request-origin";
@@ -60,12 +61,18 @@ export async function POST(request: Request) {
       return response;
     } catch (error) {
       const mockUser = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
-      if (mockUser && password === "demo123") {
+      if (isMockAuthFallbackAllowed() && mockUser && password === "demo123") {
         return createMockLoginResponse(request, mockUser, returnTo);
       }
       if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", getAuthErrorMessage(error)), 303);
       return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
     }
+  }
+
+  if (!isMockAuthFallbackAllowed()) {
+    const error = "Supabase backend is not configured on this deployment. Use the demo button or add SUPABASE_SERVICE_ROLE_KEY.";
+    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", error), 303);
+    return NextResponse.json({ ok: false, source: "supabase", error }, { status: 500 });
   }
 
   const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);

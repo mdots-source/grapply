@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { authCookieNames } from "@/lib/auth-cookies";
+import { isAutomaticDemoLoginEnabled } from "@/lib/auth-mode";
 import { getRequestUrl } from "@/lib/request-origin";
 import { normalizeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
@@ -31,10 +32,6 @@ const unscopedWorkspacePrefixes = [
   "/tv",
 ];
 
-function isDemoAutoLoginEnabled() {
-  return process.env.NODE_ENV !== "production" && process.env.GRAPPLY_DEMO_AUTO_LOGIN === "true";
-}
-
 function appendRequestCookie(cookieHeader: string, name: string, value: string) {
   return cookieHeader ? `${cookieHeader}; ${name}=${value}` : `${name}=${value}`;
 }
@@ -48,7 +45,7 @@ export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;
 
   if (organizationRoute) {
-    if (!accessToken && !isDemoAutoLoginEnabled()) {
+    if (!accessToken && !isAutomaticDemoLoginEnabled()) {
       const loginUrl = getRequestUrl("/login", request);
       loginUrl.searchParams.set("returnTo", `${pathname}${search}`);
       return NextResponse.redirect(loginUrl);
@@ -70,7 +67,7 @@ export function proxy(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 90,
     });
 
-    if (!accessToken && isDemoAutoLoginEnabled()) {
+    if (!accessToken && isAutomaticDemoLoginEnabled()) {
       response.cookies.set(authCookieNames.accessToken, demoAccessToken, {
         httpOnly: true,
         sameSite: "lax",
@@ -92,7 +89,7 @@ export function proxy(request: NextRequest) {
   }
 
   if (!accessToken) {
-    if (isDemoAutoLoginEnabled()) {
+    if (isAutomaticDemoLoginEnabled()) {
       const requestHeaders = new Headers(request.headers);
       let cookieHeader = requestHeaders.get("cookie") ?? "";
       cookieHeader = appendRequestCookie(cookieHeader, authCookieNames.accessToken, demoAccessToken);
