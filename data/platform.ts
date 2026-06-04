@@ -213,18 +213,18 @@ export const roleDefinitions: RoleDefinition[] = [
   {
     role: "owner",
     label: "Owner",
-    description: "Can change everything: organization settings, trainers, members, classes, camps, competitions, and integrations.",
-    permissions: ["manage_organization", "manage_trainers", "manage_members", "manage_classes", "manage_camps", "manage_competitions"],
+    description: "Can change everything: organization settings, coaches, members, classes, camps, competitions, and integrations.",
+    permissions: ["manage_organization", "manage_coaches", "manage_members", "manage_classes", "manage_camps", "manage_competitions"],
   },
   {
     role: "admin",
     label: "Admin",
     description: "Legacy manager role. Treat like owner for this prototype until billing/ownership is separated.",
-    permissions: ["manage_trainers", "manage_members", "manage_classes", "manage_camps", "manage_competitions"],
+    permissions: ["manage_coaches", "manage_members", "manage_classes", "manage_camps", "manage_competitions"],
   },
   {
     role: "coach",
-    label: "Trainer",
+    label: "Coach",
     description: "Can plan trainings, camps, competitions, and manage participants.",
     permissions: ["manage_classes", "manage_camps", "manage_competitions", "manage_members"],
   },

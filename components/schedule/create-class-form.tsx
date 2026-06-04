@@ -95,7 +95,7 @@ export function CreateClassForm({
           </p>
         )}
         <Button variant="primary" className="w-full justify-center" onClick={() => setOpen(true)}>
-          <CalendarPlus size={16} /> Add class
+          <CalendarPlus size={16} /> Add training
         </Button>
       </div>
     );
@@ -118,16 +118,16 @@ export function CreateClassForm({
             body: JSON.stringify({ ...form, ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}) }),
           });
           const payload = (await response.json()) as { ok?: boolean; error?: string; class?: Partial<ClassFormValue> };
-          if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Class creation failed.");
+          if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Training creation failed.");
           onCreate?.({ ...form, ...payload.class });
-          setMessage("Class saved and added to the timetable.");
+          setMessage("Training saved and added to the timetable.");
           if (forceOpen) {
             onSaved?.();
           } else {
             setOpen(false);
           }
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : "Class creation failed.");
+          setMessage(error instanceof Error ? error.message : "Training creation failed.");
         } finally {
           setLoading(false);
         }
@@ -153,7 +153,7 @@ export function CreateClassForm({
       </div>
 
       <div className="grid gap-2">
-        <Field id="class-name" label="Class" value={form.name} onChange={(name) => setForm((value) => ({ ...value, name }))} />
+        <Field id="class-name" label="Training" value={form.name} onChange={(name) => setForm((value) => ({ ...value, name }))} />
         <Field id="class-coach" label="Coach" value={form.coach} onChange={(coach) => setForm((value) => ({ ...value, coach }))} />
         <div className="grid grid-cols-2 gap-2">
           <SelectField id="class-day" label="Day" value={form.day} options={dayOptions} onChange={(day) => setForm((value) => ({ ...value, day }))} />

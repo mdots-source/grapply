@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 export function formatBeltRank(belt: Belt, stripes = 0) {
   const stripeCount = Math.max(0, Math.min(4, stripes));
-  return `${beltStyles[belt].label} Belt - ${stripeCount} ${stripeCount === 1 ? "stripe" : "stripes"}`;
+  return `${beltStyles[belt].label} Belt — ${stripeCount} ${stripeCount === 1 ? "stripe" : "stripes"}`;
 }
 
 export function BeltPill({ belt, stripes = 0, className }: { belt: Belt; stripes?: number; className?: string }) {
