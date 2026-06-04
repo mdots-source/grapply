@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { setActiveClubCookie, setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
+import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { getRequestUrl } from "@/lib/request-origin";
 import { insertRow, isSupabaseConfigured, upsertRow } from "@/lib/supabase/server";
@@ -23,6 +24,12 @@ export async function POST(request: Request) {
   }
 
   if (!isSupabaseConfigured()) {
+    if (!isMockAuthFallbackAllowed()) {
+      const error = "Supabase backend is not configured on this deployment. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.";
+      if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/register", returnTo, error), 303);
+      return NextResponse.json({ ok: false, source: "supabase", error }, { status: 500 });
+    }
+
     const club = { slug: slugify(academyName), name: academyName, location };
     const destination = scopeWorkspaceReturnTo(returnTo, club.slug);
     const response = isFormSubmit
