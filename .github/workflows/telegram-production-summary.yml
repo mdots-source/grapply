@@ -35,6 +35,22 @@ jobs:
               if (status === "renamed") return ">";
               return "~";
             };
+            const describeFile = (file) => {
+              const filename = file.filename || file;
+              const changes = typeof file.changes === "number" ? `${file.changes} lines` : "changed";
+              let area = "project file";
+
+              if (filename.startsWith(".github/workflows/")) area = "automation/workflow";
+              else if (filename.startsWith("app/api/")) area = "backend API route";
+              else if (filename.startsWith("app/")) area = "app page/route";
+              else if (filename.startsWith("components/")) area = "UI component";
+              else if (filename.startsWith("data/")) area = "domain/mock data";
+              else if (filename.startsWith("lib/")) area = "shared app logic";
+              else if (filename.startsWith("supabase/")) area = "database schema/seed";
+              else if (filename.startsWith("docs/")) area = "documentation";
+
+              return `${filePrefix(file.status)} ${filename} (${area}, ${changes})`;
+            };
 
             const after = context.payload.after || context.sha;
             const commits = context.payload.commits || [];
@@ -49,11 +65,32 @@ jobs:
             let detailsUrl = context.payload.compare || `https://github.com/${owner}/${repo}/commit/${after}`;
             let stats = `${commits.length || 1} commit${commits.length === 1 ? "" : "s"}`;
             let touchedAreas = [];
+            let compareFiles = [];
+            let compareCommits = [];
 
             for (const commit of commits) {
               for (const file of commit.added || []) touchedAreas.push(`+ ${file}`);
               for (const file of commit.modified || []) touchedAreas.push(`~ ${file}`);
               for (const file of commit.removed || []) touchedAreas.push(`- ${file}`);
+            }
+
+            if (context.payload.before && after) {
+              try {
+                const { data: compare } = await github.rest.repos.compareCommitsWithBasehead({
+                  owner,
+                  repo,
+                  basehead: `${context.payload.before}...${after}`,
+                  per_page: 100,
+                });
+                compareFiles = compare.files || [];
+                compareCommits = compare.commits || [];
+                detailsUrl = compare.html_url || detailsUrl;
+                const totalCommits = compare.total_commits || commits.length || 1;
+                stats = `${totalCommits} commit${totalCommits === 1 ? "" : "s"} | ${compareFiles.length} files changed`;
+                touchedAreas = compareFiles.map(describeFile);
+              } catch (error) {
+                core.warning(`Could not fetch compare details: ${error.message}`);
+              }
             }
 
             let prNumber = messagePrMatch?.[1] || messagePrMatch?.[2];
@@ -106,6 +143,32 @@ jobs:
               } catch (error) {
                 core.warning(`Could not fetch commit files: ${error.message}`);
               }
+            }
+
+            if (!prNumber) {
+              const commitTitles = (compareCommits.length ? compareCommits : commits)
+                .slice(-8)
+                .map((commit) => {
+                  const message = commit.commit?.message || commit.message || "";
+                  return `- ${truncate(message.split("\n")[0], 110)}`;
+                });
+              const impactAreas = [...new Set((compareFiles || []).map((file) => {
+                const filename = file.filename || "";
+                if (filename.startsWith("components/")) return "UI components";
+                if (filename.startsWith("app/api/")) return "backend/API routes";
+                if (filename.startsWith("app/")) return "app routes/pages";
+                if (filename.startsWith("data/")) return "domain/mock data";
+                if (filename.startsWith("lib/")) return "shared app logic";
+                if (filename.startsWith("supabase/")) return "database schema/seed";
+                if (filename.startsWith(".github/")) return "automation";
+                if (filename.startsWith("docs/")) return "documentation";
+                return null;
+              }).filter(Boolean))];
+
+              summary = [
+                commitTitles.length ? commitTitles.join("\n") : `- ${truncate(headMessage || after, 110)}`,
+                impactAreas.length ? `\nImpact areas: ${impactAreas.join(", ")}` : "",
+              ].join("").trim();
             }
 
             const fileLines = [...new Set(touchedAreas)].slice(0, 12);
