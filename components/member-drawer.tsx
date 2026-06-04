@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckCircle2, ExternalLink, Loader2, Medal, NotebookPen, UserPlus } from "lucide-react";
-import { BeltPill } from "@/components/belt-pill";
+import { BeltPill, formatBeltRank } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const beltOptions: Belt[] = ["white", "blue", "purple", "brown", "black"];
 const emptyForm = {
   name: "",
   belt: "white" as Belt,
+  stripes: 0,
   role: "member" as MemberRole,
   status: "active" as Student["status"],
 };
@@ -66,6 +67,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
               <h3 className="text-2xl font-semibold text-[var(--foreground)]">{member.name}</h3>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <BeltPill belt={member.belt} stripes={member.stripes} />
+                <span className="text-xs font-medium text-[var(--muted)]">{formatBeltRank(member.belt, member.stripes)}</span>
                 <Badge variant={member.role === "coach" ? "accent" : "default"} className="capitalize">
                   {member.role === "coach" ? "trainer" : member.role}
                 </Badge>
@@ -121,7 +123,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
                 id,
                 name: form.name.trim(),
                 belt: form.belt,
-                stripes: 0,
+                stripes: form.stripes,
                 role: form.role,
                 status: form.status,
                 totalHours: 0,
@@ -161,6 +163,26 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="member-stripes">Stripes</Label>
+              <select
+                id="member-stripes"
+                value={form.stripes}
+                onChange={(event) => setForm((value) => ({ ...value, stripes: Number(event.target.value) }))}
+                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
+              >
+                {[0, 1, 2, 3, 4].map((stripe) => (
+                  <option key={stripe} value={stripe} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                    {stripe} {stripe === 1 ? "stripe" : "stripes"}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+                <BeltPill belt={form.belt} stripes={form.stripes} />
+                <span className="text-xs text-[var(--muted)]">{formatBeltRank(form.belt, form.stripes)}</span>
+              </div>
             </div>
 
             <div className="space-y-2">

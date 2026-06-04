@@ -20,7 +20,7 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuButton } from "@/components/ui/sidebar";
 import { ActiveClubProvider } from "@/components/use-active-club";
 import { academyMeta } from "@/data/academy-meta";
@@ -81,18 +81,17 @@ export function AppShell({
   const role = session?.activeRole;
   const organizationId = session?.activeClub?.slug;
   const workspacePath = getWorkspacePath(pathname, organizationId);
-  const displayRole = role === "coach" ? "trainer" : role ?? "member";
   const visibleNav = useMemo(
     () => (isAccountMode ? [] : nav.filter((item) => (role ? item.roles.includes(role) : workspacePath.startsWith(item.href)))),
     [isAccountMode, role, workspacePath],
   );
   const currentPath = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
   const switchReturnTo = pathname.startsWith("/clubs") ? searchParams.get("returnTo") ?? "/schedule" : currentPath;
-  const switchClubHref = `/clubs?returnTo=${encodeURIComponent(switchReturnTo)}`;
   const workspaceHomeHref = getWorkspaceHref("/dashboard", organizationId);
   const shellHomeHref = isAccountMode ? "/clubs" : workspaceHomeHref;
   const profileLabel = session?.user?.name ?? "Profile";
   const profileDetail = session?.user?.email ?? "Account";
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/session", { cache: "no-store" })
@@ -173,35 +172,7 @@ export function AppShell({
           })}
         </SidebarContent>
 
-        <SidebarFooter className="space-y-3 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3">
-            <div className="flex items-start gap-2">
-              <Building2 size={15} className="mt-0.5 shrink-0 text-[var(--accent)]" />
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-[var(--foreground)]">
-                  {isAccountMode ? session?.user?.name ?? "Account" : session?.activeClub?.name ?? "Choose club"}
-                </p>
-                <p className="mt-1 text-[11px] text-[var(--muted)]">
-                  {isAccountMode ? (
-                    session?.user?.email ?? "Choose a workspace"
-                  ) : (
-                    <>
-                      <span className="capitalize text-[var(--accent)]">{displayRole}</span>
-                      {session?.memberships?.length ? ` · ${session.memberships.length} workspace${session.memberships.length === 1 ? "" : "s"}` : ""}
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-            {!isAccountMode && (
-              <Link
-                href={switchClubHref}
-                className="mt-3 block rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-center text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)]/30 hover:text-[var(--foreground)]"
-              >
-                Switch club
-              </Link>
-            )}
-          </div>
+        <SidebarFooter>
           <Link
             href="/api/auth/logout"
             className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent-coral)]/30 hover:text-[var(--foreground)]"
@@ -215,12 +186,14 @@ export function AppShell({
       <main className="lg:pl-72">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <header className="relative mb-7 border-b border-[var(--border)] pb-6">
-            <Link
-              href="/clubs"
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
               className={cn(
-                "absolute right-0 top-0 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 transition hover:border-[var(--accent)]/35 hover:bg-[var(--surface-hover)]",
+                "absolute right-0 top-0 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left transition hover:border-[var(--accent)]/35 hover:bg-[var(--surface-hover)]",
                 pathname.startsWith("/clubs") && "border-[var(--accent)]/40 bg-[var(--accent)]/10",
               )}
+              aria-label="Open profile"
             >
               <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] text-xs font-black text-[var(--foreground)]">
                 {session?.user?.avatar ? (
@@ -233,7 +206,7 @@ export function AppShell({
                 <span className="block max-w-32 truncate text-xs font-semibold text-[var(--foreground)]">{profileLabel}</span>
                 <span className="block max-w-32 truncate text-[11px] text-[var(--muted)]">{profileDetail}</span>
               </span>
-            </Link>
+            </button>
 
             <motion.div
               className="pr-28 sm:pr-40"
@@ -246,17 +219,6 @@ export function AppShell({
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-[var(--foreground)] md:text-4xl">{title}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{subtitle}</p>
-              {!isAccountMode && (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge variant="accent" className="capitalize">{displayRole}</Badge>
-                  <Link
-                    href={switchClubHref}
-                    className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)]/30 hover:text-[var(--foreground)]"
-                  >
-                    Switch club
-                  </Link>
-                </div>
-              )}
             </motion.div>
 
             {!isAccountMode && <div className="mt-4 flex items-center gap-2 overflow-x-auto lg:hidden">
@@ -293,7 +255,79 @@ export function AppShell({
           {children}
         </div>
       </main>
+      <ProfileDrawer
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        session={session}
+        currentPath={switchReturnTo}
+      />
       </div>
     </ActiveClubProvider>
+  );
+}
+
+function ProfileDrawer({
+  open,
+  onOpenChange,
+  session,
+  currentPath,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  session: ShellSession | null | undefined;
+  currentPath: string;
+}) {
+  const memberships = session?.memberships ?? [];
+  const activeSlug = session?.activeClub?.slug;
+  const canSwitchOrganizations = memberships.length > 1;
+  const close = () => onOpenChange(false);
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerHeader onClose={close}>
+        <DrawerTitle>{session?.user?.name ?? "Profile"}</DrawerTitle>
+        <DrawerDescription>{session?.user?.email ?? "Manage your account and academy access."}</DrawerDescription>
+      </DrawerHeader>
+
+      <div className="mt-6 space-y-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Current academy</p>
+          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{session?.activeClub?.name ?? "No academy selected"}</p>
+        </div>
+
+        {canSwitchOrganizations && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Organizations</p>
+            {memberships.map((membership) => {
+              const active = membership.club.slug === activeSlug;
+              return (
+                <Link
+                  key={membership.club.slug}
+                  href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(currentPath)}`}
+                  onClick={close}
+                  className={cn(
+                    "flex items-center justify-between rounded-xl border px-3 py-3 text-sm transition",
+                    active
+                      ? "border-[var(--accent)]/35 bg-[var(--accent)]/10 text-[var(--foreground)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--accent)]/30 hover:text-[var(--foreground)]",
+                  )}
+                >
+                  <span className="min-w-0 truncate">{membership.club.name}</span>
+                  {active && <span className="text-xs font-semibold text-[var(--accent)]">Current</span>}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        <Link
+          href="/api/auth/logout"
+          className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent-coral)]/30 hover:text-[var(--foreground)]"
+        >
+          <LogOut size={15} />
+          Logout
+        </Link>
+      </div>
+    </Drawer>
   );
 }

@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { AlertTriangle, CalendarDays, CalendarPlus, Loader2 } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
+import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgGridHost } from "@/components/ag-grid-host";
 import { useActiveClubState } from "@/components/use-active-club";
@@ -40,6 +41,10 @@ type ApiClass = {
   mat: string;
   level: string;
   checkedIn?: number;
+};
+
+type TrainingDrawerDefaults = Partial<ClassFormValue> & {
+  title?: string;
 };
 
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
@@ -219,14 +224,20 @@ export function ScheduleGrid({
   canManageClasses?: boolean;
 }) {
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>(initialRows);
-  const [loadingClasses, setLoadingClasses] = useState(false);
   const [classesError, setClassesError] = useState<string | null>(null);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => startOfWeek(new Date()));
+  const [trainingDrawerOpen, setTrainingDrawerOpen] = useState(initialCreateClass);
+  const [trainingDefaults, setTrainingDefaults] = useState<TrainingDrawerDefaults>({
+    day: "Mon",
+    time: "18:00",
+    title: "Add training",
+  });
   const { activeClub, loading: loadingClub } = useActiveClubState();
 
   const selectedDay = useMemo(() => addDays(weekStart, 3), [weekStart]);
+  const isCurrentWeek = weekStart.getTime() === startOfWeek(new Date()).getTime();
 
   const hasClasses = useMemo(() => {
     const allSessions = scheduleRows.flatMap((row) => dayKeys.flatMap((key) => row[key]));
@@ -262,6 +273,17 @@ export function ScheduleGrid({
     return `${existingClass.name} already uses ${value.day} at ${value.time}. Pick another time before saving.`;
   };
 
+  const openTrainingDrawer = (defaults?: TrainingDrawerDefaults) => {
+    if (!canManageClasses) return;
+    setTrainingDefaults({
+      day: defaults?.day ?? "Mon",
+      time: defaults?.time ?? "18:00",
+      title: defaults?.title ?? "Add training",
+      ...defaults,
+    });
+    setTrainingDrawerOpen(true);
+  };
+
   useEffect(() => {
     if (loadingClub) return;
 
@@ -269,7 +291,6 @@ export function ScheduleGrid({
     const params = new URLSearchParams();
     if (activeClub?.slug) params.set("club", activeClub.slug);
 
-    setLoadingClasses(true);
     setClassesError(null);
 
     fetch(`/api/classes${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
@@ -282,9 +303,6 @@ export function ScheduleGrid({
           setClassesError(error.message);
           setScheduleRows(initialRows);
         }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoadingClasses(false);
       });
 
     return () => controller.abort();
@@ -300,6 +318,11 @@ export function ScheduleGrid({
       filter: false,
       cellDataType: false,
       cellRenderer: ScheduleCell,
+      cellRendererParams: {
+        day: dayLabels[index],
+        canManageClasses,
+        onOpenSlot: (time: string) => openTrainingDrawer({ day: dayLabels[index], time, title: `Add ${dayLabels[index]} training` }),
+      },
       headerClass: "schedule-day-header",
     }));
 
@@ -315,15 +338,27 @@ export function ScheduleGrid({
       },
       ...dayColumns,
     ];
-  }, [weekStart]);
+  }, [canManageClasses, weekStart]);
 
   return (
     <div className="space-y-4">
       <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-2xl font-semibold text-[var(--foreground)]">{formatRange(weekStart)}</h2>
+              <Button
+                variant="surface"
+                size="icon"
+                onClick={() => {
+                  const next = addDays(weekStart, -7);
+                  setWeekStart(next);
+                  setCalendarMonth(next);
+                }}
+                aria-label="Previous week"
+              >
+                <ChevronLeft size={16} />
+              </Button>
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
@@ -356,11 +391,38 @@ export function ScheduleGrid({
                   />
                 </PopoverContent>
               </Popover>
+              <Button
+                variant="surface"
+                size="icon"
+                onClick={() => {
+                  const next = addDays(weekStart, 7);
+                  setWeekStart(next);
+                  setCalendarMonth(next);
+                }}
+                aria-label="Next week"
+              >
+                <ChevronRight size={16} />
+              </Button>
+              <Button
+                variant={isCurrentWeek ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => {
+                  const today = startOfWeek(new Date());
+                  setWeekStart(today);
+                  setCalendarMonth(today);
+                }}
+              >
+                <RotateCcw size={16} />
+                This week
+              </Button>
             </div>
           </div>
           <div className="w-full lg:max-w-[340px]">
             {canManageClasses ? (
-              <CreateClassForm initialOpen={initialCreateClass} onCreate={addClassToTimetable} validateClass={validateClassOverlap} />
+              <Button variant="primary" className="w-full justify-center" onClick={() => openTrainingDrawer()}>
+                <CalendarPlus size={16} />
+                Add training
+              </Button>
             ) : (
               <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-3 text-xs leading-5 text-[var(--muted)]">
                 Class changes are managed by academy admins.
@@ -377,20 +439,6 @@ export function ScheduleGrid({
             <p className="text-xs text-[var(--muted)]">
               {classesError ?? "Horizontal scroll keeps the full week readable."}
             </p>
-          </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            {loadingClasses && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent)]">
-                <Loader2 size={13} className="animate-spin" />
-                Syncing
-              </span>
-            )}
-            {classesError && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent-coral)]">
-                <AlertTriangle size={13} />
-                Offline fallback
-              </span>
-            )}
           </div>
         </div>
         {hasClasses ? (
@@ -420,24 +468,59 @@ export function ScheduleGrid({
               </p>
               {canManageClasses && (
                 <div className="mt-6">
-                  <CreateClassForm initialOpen={false} onCreate={addClassToTimetable} validateClass={validateClassOverlap} />
+                  <Button variant="primary" onClick={() => openTrainingDrawer()}>
+                    <CalendarPlus size={16} />
+                    Add training
+                  </Button>
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
+      <Drawer open={trainingDrawerOpen} onOpenChange={setTrainingDrawerOpen}>
+        <DrawerHeader onClose={() => setTrainingDrawerOpen(false)}>
+          <DrawerTitle>{trainingDefaults.title ?? "Add training"}</DrawerTitle>
+          <DrawerDescription>Create a class directly from the weekly schedule.</DrawerDescription>
+        </DrawerHeader>
+        <div className="mt-6">
+          <CreateClassForm
+            forceOpen
+            initialValue={trainingDefaults}
+            onCreate={addClassToTimetable}
+            validateClass={validateClassOverlap}
+            onCancel={() => setTrainingDrawerOpen(false)}
+            onSaved={() => setTrainingDrawerOpen(false)}
+          />
+        </div>
+      </Drawer>
     </div>
   );
 }
 
-function ScheduleCell(params: ICellRendererParams<ScheduleRow, SessionBlock[]>) {
+function ScheduleCell(
+  params: ICellRendererParams<ScheduleRow, SessionBlock[]> & {
+    day?: string;
+    canManageClasses?: boolean;
+    onOpenSlot?: (time: string) => void;
+  },
+) {
   const blocks = params.value ?? [];
 
   if (!blocks.length) {
     return (
       <div className="grid h-full w-full place-items-center">
-        <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">Open slot</span>
+        {params.canManageClasses ? (
+          <button
+            type="button"
+            className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)]/45 hover:text-[var(--foreground)]"
+            onClick={() => params.onOpenSlot?.(params.data?.time ?? "")}
+          >
+            Add training
+          </button>
+        ) : (
+          <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">Open slot</span>
+        )}
       </div>
     );
   }

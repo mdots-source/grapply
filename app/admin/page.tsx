@@ -48,9 +48,6 @@ export default async function AdminPage() {
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <Badge variant="accent" className="capitalize">{session.activeRole}</Badge>
-                <Button variant="surface" size="sm" asChild>
-                  <Link href="/clubs?returnTo=/admin">Switch club</Link>
-                </Button>
                 <Button variant="primary" size="sm" asChild>
                   <Link href="/members?add=1">Add member</Link>
                 </Button>

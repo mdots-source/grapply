@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Award, MessageSquarePlus, TrendingUp, Trophy } from "lucide-react";
-import { BeltPill } from "@/components/belt-pill";
+import { BeltPill, formatBeltRank } from "@/components/belt-pill";
 import { SectionHeader } from "@/components/oss/section-header";
 import { StripeIndicator } from "@/components/oss/stripe-indicator";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -28,6 +28,7 @@ export function MemberProfile({ member, viewerRole }: { member: Student; viewerR
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <BeltPill belt={member.belt} stripes={member.stripes} />
+                <Badge variant="muted">{formatBeltRank(member.belt, member.stripes)}</Badge>
                 <Badge>{extra.roleLabel}</Badge>
                 {extra.trial && <Badge variant="accent">Trial</Badge>}
                 {extra.attendanceRisk === "high" && <Badge variant="muted">Coach follow-up</Badge>}

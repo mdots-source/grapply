@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,25 +53,40 @@ export function CreateClassForm({
   initialOpen = false,
   onCreate,
   validateClass,
+  initialValue,
+  forceOpen = false,
+  onCancel,
+  onSaved,
 }: {
   initialOpen?: boolean;
   onCreate?: (value: ClassFormValue) => void;
   validateClass?: (value: ClassFormValue) => string | null;
+  initialValue?: Partial<ClassFormValue>;
+  forceOpen?: boolean;
+  onCancel?: () => void;
+  onSaved?: () => void;
 }) {
   const activeClub = useActiveClub();
   const [open, setOpen] = useState(initialOpen);
   const [form, setForm] = useState<ClassFormValue>({
     name: "No-Gi Fundamentals",
     coach: "Sofia Almeida",
-    day: "Mon",
-    time: "18:00",
+    day: initialValue?.day ?? "Mon",
+    time: initialValue?.time ?? "18:00",
     mat: "Main Mat",
     level: "white / blue",
+    ...initialValue,
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  if (!open) {
+  useEffect(() => {
+    if (!forceOpen) return;
+    setForm((value) => ({ ...value, ...initialValue }));
+    setMessage(null);
+  }, [forceOpen, initialValue]);
+
+  if (!forceOpen && !open) {
     return (
       <div className="space-y-2">
         {message && (
@@ -106,7 +121,11 @@ export function CreateClassForm({
           if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Class creation failed.");
           onCreate?.({ ...form, ...payload.class });
           setMessage("Class saved and added to the timetable.");
-          setOpen(false);
+          if (forceOpen) {
+            onSaved?.();
+          } else {
+            setOpen(false);
+          }
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "Class creation failed.");
         } finally {
@@ -147,7 +166,7 @@ export function CreateClassForm({
       </div>
       {message && <p className="text-xs text-[var(--muted)]">{message}</p>}
       <div className="grid grid-cols-2 gap-2">
-        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" onClick={() => (forceOpen ? onCancel?.() : setOpen(false))}>
           Cancel
         </Button>
         <Button type="submit" variant="primary" disabled={loading}>

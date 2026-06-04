@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
 import { ScheduleGrid } from "@/components/schedule-grid";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getWorkspaceDestinationLabel } from "@/lib/workspace-intent";
 import { requireWorkspaceRole } from "@/lib/workspace-access";
@@ -29,7 +27,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
 function AccessNotice({ from }: { from: string }) {
   return (
     <Card className="mb-4 border-[var(--accent)]/25 bg-[var(--accent)]/8 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex gap-3">
         <div className="flex gap-3">
           <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/12 text-[var(--accent)]">
             <LockKeyhole size={18} />
@@ -39,9 +37,6 @@ function AccessNotice({ from }: { from: string }) {
             <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Switch to a club where you have staff access, or keep working from the schedule.</p>
           </div>
         </div>
-        <Button variant="surface" size="sm" asChild>
-          <Link href={`/clubs?returnTo=${encodeURIComponent(from)}`}>Switch club</Link>
-        </Button>
       </div>
     </Card>
   );

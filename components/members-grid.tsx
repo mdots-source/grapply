@@ -7,9 +7,9 @@ import {
   type ICellRendererParams,
   type RowClickedEvent,
 } from "ag-grid-community";
-import { AlertTriangle, Loader2, Plus, Search, UserPlus } from "lucide-react";
+import { Plus, Search, UserPlus } from "lucide-react";
 import { MemberDrawer } from "@/components/member-drawer";
-import { BeltPill } from "@/components/belt-pill";
+import { BeltPill, formatBeltRank } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,6 @@ export function MembersGrid({
 }) {
   const activeClub = useActiveClub();
   const [members, setMembers] = useState<Student[]>(seedMembers);
-  const [loadingMembers, setLoadingMembers] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(initialAdd);
@@ -71,7 +70,6 @@ export function MembersGrid({
     let cancelled = false;
 
     async function loadMembers() {
-      setLoadingMembers(true);
       setMembersError(null);
 
       try {
@@ -87,8 +85,6 @@ export function MembersGrid({
       } catch (error) {
         if (!cancelled) setMembersError(error instanceof Error ? error.message : "Could not refresh members.");
         // Keep the seeded roster visible if the roster cannot refresh.
-      } finally {
-        if (!cancelled) setLoadingMembers(false);
       }
     }
 
@@ -191,18 +187,6 @@ export function MembersGrid({
             className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none ring-[var(--accent)]/40 placeholder:text-[var(--muted)] focus:border-[var(--accent)]/40 focus:ring-2 md:max-w-md"
           />
           <div className="flex shrink-0 items-center gap-2">
-            {loadingMembers && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent)]">
-                <Loader2 size={13} className="animate-spin" />
-                Syncing
-              </span>
-            )}
-            {membersError && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/10 px-2.5 py-1 text-xs font-medium text-[var(--accent-coral)]">
-                <AlertTriangle size={13} />
-                Offline fallback
-              </span>
-            )}
             {canManageMembers && (
               <Button variant="primary" className="shrink-0" onClick={openAddDrawer}>
                 <Plus size={16} /> Add member
@@ -210,6 +194,7 @@ export function MembersGrid({
             )}
           </div>
         </div>
+        {membersError && <p className="border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)]">{membersError}</p>}
 
         {rowData.length > 0 ? (
           <AgGridHost className="oss-members-grid ag-theme-quartz h-[520px] w-full">
@@ -331,8 +316,9 @@ function BeltCell(params: ICellRendererParams<Student>) {
   const member = params.data;
   if (!member) return null;
   return (
-    <div className="flex h-full items-center">
+    <div className="flex h-full flex-col justify-center gap-1">
       <BeltPill belt={member.belt} stripes={member.stripes} />
+      <span className="text-[11px] leading-none text-[var(--muted)]">{formatBeltRank(member.belt, member.stripes)}</span>
     </div>
   );
 }
