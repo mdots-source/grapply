@@ -20,7 +20,7 @@ type ClubUser = {
 };
 
 function roleLabel(role: PlatformRole) {
-  if (role === "coach") return "Trainer";
+  if (role === "coach") return "Coach";
   return role[0].toUpperCase() + role.slice(1);
 }
 

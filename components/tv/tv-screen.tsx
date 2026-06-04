@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { Clock, Flame, MapPin, RadioTower, UserRound } from "lucide-react";
+import { Clock, Flame, MapPin, RadioTower, Timer, UserRound } from "lucide-react";
 import { BeltPill } from "@/components/belt-pill";
 import { LiveTicker } from "@/components/oss/live-ticker";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -24,6 +24,11 @@ function formatDuration(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins > 0 ? `${hours}h ${mins}m on the mat` : `${hours}h on the mat`;
+}
+
+function formatRosterWindow(total: number) {
+  if (total <= VISIBLE_COUNT) return `${total} athletes active`;
+  return `${VISIBLE_COUNT} of ${total} active`;
 }
 
 export function TvScreen() {
@@ -52,21 +57,23 @@ export function TvScreen() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#020203] text-zinc-50">
-      <div className="relative min-h-screen p-4 md:p-6 lg:p-8">
+      <div className="relative min-h-screen bg-[linear-gradient(135deg,#030306_0%,#080915_46%,#020203_100%)] p-4 md:p-6 lg:p-8">
         <motion.div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(167,139,250,0.18),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(167,139,250,0.12),transparent_32%,rgba(56,189,248,0.08)_100%)]"
           animate={{ opacity: [0.85, 1, 0.85] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
 
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+
         <div className="relative z-10 mx-auto flex min-h-[calc(100vh-64px)] max-w-[1800px] flex-col">
           <SessionHeader now={now} checkedInCount={athletes.length} />
 
-          <section className="mt-6 flex flex-1 flex-col rounded-[20px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl md:p-6">
+          <section className="mt-5 flex flex-1 flex-col">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">On the mat now</p>
-                <h2 className="mt-1 text-3xl font-black text-zinc-50 md:text-4xl">Active athletes</h2>
+                <h2 className="mt-1 text-3xl font-black text-zinc-50 md:text-4xl">Training floor</h2>
               </div>
               <div className="flex items-center gap-3">
                 <Badge variant="accent" className="gap-2 px-3 py-1.5 text-sm">
@@ -74,19 +81,25 @@ export function TvScreen() {
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--accent)] opacity-70" />
                     <span className="relative inline-flex size-2 rounded-full bg-[var(--accent)]" />
                   </span>
-                  {athletes.length} checked in
+                  {formatRosterWindow(athletes.length)}
                 </Badge>
-                {athletes.length > VISIBLE_COUNT && (
-                  <span className="text-xs text-zinc-500">Rotating roster · updates every few seconds</span>
-                )}
               </div>
             </div>
 
-            <div className="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-              {visibleAthletes.map((athlete, slot) => (
-                <AthleteCard key={`${athlete.id}-${rotationIndex}`} athlete={athlete} slot={slot} />
-              ))}
-            </div>
+            <AnimatePresence mode="popLayout">
+              <motion.div
+                key={visibleAthletes.map((athlete) => athlete.id).join("-")}
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -18 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
+              >
+                {visibleAthletes.map((athlete, slot) => (
+                  <AthleteCard key={athlete.id} athlete={athlete} slot={slot} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
           </section>
 
           <div className="mt-4">
@@ -102,14 +115,21 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
   const liveTime = formatLiveClock(now);
 
   return (
-    <header className="rounded-[20px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl md:p-6">
-      <div className="grid gap-6 xl:grid-cols-[1fr_auto]">
+    <header className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-6">
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="accent" className="gap-2">
-              <RadioTower size={14} />
-              Live mat display
-            </Badge>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="accent" className="gap-2">
+                <RadioTower size={14} />
+                Live training
+              </Badge>
+              <div className="flex flex-wrap gap-2">
+                <Badge>{currentSession.trainingType}</Badge>
+                <Badge variant="default">{currentSession.experienceLevel}</Badge>
+                <Badge className="border-violet-400/25 bg-violet-400/10 text-violet-200">{currentSession.category}</Badge>
+              </div>
+            </div>
             <motion.div
               className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-4 py-1.5 font-mono text-lg font-bold text-[var(--accent)]"
               animate={{ boxShadow: ["0 0 0 rgba(167,139,250,0)", "0 0 24px rgba(167,139,250,0.22)", "0 0 0 rgba(167,139,250,0)"] }}
@@ -123,12 +143,6 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
             </motion.div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Badge>{currentSession.trainingType}</Badge>
-            <Badge variant="default">{currentSession.experienceLevel}</Badge>
-            <Badge className="border-violet-400/25 bg-violet-400/10 text-violet-200">{currentSession.category}</Badge>
-          </div>
-
           <div>
             <h1 className="text-4xl font-black leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">{currentSession.name}</h1>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-zinc-400 md:text-base">
@@ -139,9 +153,12 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
               <span>Coach {currentSession.coach}</span>
               <span className="inline-flex items-center gap-2">
                 <Clock size={16} className="text-[var(--accent-blue)]" />
-                Live now — {currentSession.time} to {currentSession.endTime}
+                {currentSession.time} to {currentSession.endTime}
               </span>
-              <span>{currentSession.durationMinutes} min session</span>
+              <span className="inline-flex items-center gap-2">
+                <Timer size={16} className="text-[var(--accent)]" />
+                {currentSession.durationMinutes} min
+              </span>
             </div>
           </div>
 
@@ -151,9 +168,9 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-4 xl:w-[400px]">
+        <div className="flex w-full flex-col gap-4">
           <motion.div
-            className="relative rounded-2xl border border-[var(--accent)]/30 bg-black/50 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+            className="relative rounded-2xl border border-[var(--accent)]/30 bg-black/45 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
             animate={{ boxShadow: ["0 0 0 rgba(167,139,250,0)", "0 0 40px rgba(167,139,250,0.18)", "0 0 0 rgba(167,139,250,0)"] }}
             transition={{ duration: 3, repeat: Infinity }}
           >
@@ -178,7 +195,7 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
           </motion.div>
           <div className="grid grid-cols-2 gap-3">
             <StatTile label="Checked in" value={checkedInCount.toString()} />
-            <StatTile label="Session type" value={currentSession.trainingType} />
+            <StatTile label="Mat" value={currentSession.room} />
           </div>
         </div>
       </div>
@@ -201,29 +218,25 @@ function AthleteCard({ athlete, slot }: { athlete: TvCheckedInAthlete; slot: num
   return (
     <motion.article
       layout
-      className="relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[28px] border border-white/10 p-5 md:min-h-[360px]"
+      className="relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[26px] border border-white/10 p-5 md:min-h-[360px]"
       style={{
-        background: `linear-gradient(155deg, rgba(255,255,255,.12) 0%, ${beltColor}40 42%, rgba(8,9,12,.92) 100%)`,
+        background: `linear-gradient(155deg, rgba(255,255,255,.12) 0%, ${beltColor}36 44%, rgba(8,9,12,.94) 100%)`,
         boxShadow: `0 0 40px ${beltColor}22, inset 0 1px 0 rgba(255,255,255,.08)`,
       }}
+      initial={{ opacity: 0, y: 16, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -12, scale: 0.985 }}
+      transition={{ duration: 0.5, delay: slot * 0.035, ease: [0.22, 1, 0.36, 1] }}
     >
       <motion.div
-        className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full blur-3xl"
-        style={{ background: beltColor }}
-        animate={{ opacity: [0.15, 0.3, 0.15], scale: [1, 1.06, 1] }}
-        transition={{ duration: 3.5 + slot * 0.2, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.14] to-transparent"
+        animate={{ opacity: [0.65, 1, 0.65] }}
+        transition={{ duration: 4 + slot * 0.2, repeat: Infinity, ease: "easeInOut" }}
       />
-      <AnimatePresence mode="wait">
         <motion.div
           key={athlete.id}
-          initial={{ opacity: 0, scale: 0.97, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: -8 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="relative flex h-full flex-col justify-between"
         >
-          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.12] to-transparent" />
-
           <div className="relative flex items-start justify-between gap-2">
             <Badge variant="accent" className="gap-1.5 text-[10px] uppercase tracking-wider">
               <span className="relative flex size-1.5">
@@ -261,7 +274,6 @@ function AthleteCard({ athlete, slot }: { athlete: TvCheckedInAthlete; slot: num
             </p>
           </div>
         </motion.div>
-      </AnimatePresence>
     </motion.article>
   );
 }

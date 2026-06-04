@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, CheckCircle2, Clock, MapPin, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { CreateCompetitionForm } from "@/components/planning/create-competition-form";
+import { CreateCompetitionForm, EditCompetitionButton } from "@/components/planning/create-competition-form";
 import { PageTransition } from "@/components/page-transition";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -136,11 +136,14 @@ function CompetitionCard({ event, canManagePlanning }: { event: Competition; can
             ))}
           </div>
           {canManagePlanning ? (
-            <Button variant="surface" size="sm" asChild>
-              <Link href={`/members?filter=competition&event=${event.id}`}>
-                Manage roster
-              </Link>
-            </Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <EditCompetitionButton event={event} />
+              <Button variant="surface" size="sm" asChild>
+                <Link href={`/members?filter=competition&event=${event.id}`}>
+                  Manage roster
+                </Link>
+              </Button>
+            </div>
           ) : (
             <Badge variant="muted">Staff managed</Badge>
           )}

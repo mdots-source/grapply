@@ -317,11 +317,11 @@ function HeroCommandScene() {
           />
           <div className="absolute inset-8 rounded-full border border-[color-mix(in_srgb,var(--accent-blue)_24%,transparent)] bg-[radial-gradient(circle,color-mix(in_srgb,var(--panel)_82%,transparent),transparent_70%)]" />
           <BeltOrbit />
-          <div aria-label="Academy status" className="absolute left-1/2 top-1/2 w-36 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[color-mix(in_srgb,var(--accent)_28%,var(--border))] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] p-3 text-center shadow-[var(--shadow)] backdrop-blur-xl sm:w-40 sm:p-4">
+          <div aria-label="Live class snapshot" className="absolute left-1/2 top-1/2 w-36 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[color-mix(in_srgb,var(--accent)_28%,var(--border))] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] p-3 text-center shadow-[var(--shadow)] backdrop-blur-xl sm:w-40 sm:p-4">
             <div className="mx-auto grid size-9 place-items-center rounded-lg bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--accent)]">
               <Radio size={18} />
             </div>
-            <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--accent)]">Live</p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--accent)]">On mat</p>
             <div className="mt-3 grid grid-cols-2 gap-2 text-left">
               <SceneMiniMetric value={activeMembers.length} label="Active" />
               <SceneMiniMetric value={academyMeta.checkedInToday} label="Today" />
@@ -337,7 +337,7 @@ function HeroCommandScene() {
             className="rounded-lg border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--accent)_9%,var(--panel))] p-3 shadow-[var(--shadow)] backdrop-blur-xl sm:p-4"
           >
             <div className="flex items-center justify-between gap-3">
-              <Badge variant="success">TV online</Badge>
+              <Badge variant="success">Live class</Badge>
               <span className="text-xs tabular-nums text-[var(--muted)]">{currentSession.time} - {currentSession.endTime}</span>
             </div>
             <div className="mt-3 grid grid-cols-4 gap-2">

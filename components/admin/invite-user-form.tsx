@@ -56,7 +56,7 @@ export function InviteUserForm() {
           className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
         >
           <option value="member">Member - view only</option>
-          <option value="coach">Trainer - planning and participants</option>
+          <option value="coach">Coach - planning and participants</option>
         </select>
       </div>
       <div className="flex items-end">

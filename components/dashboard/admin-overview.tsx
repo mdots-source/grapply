@@ -20,7 +20,7 @@ export function AdminOverview({
 }) {
   const canManageMembers = viewerRole === "owner" || viewerRole === "admin" || viewerRole === "coach";
   const canManageClub = viewerRole === "owner" || viewerRole === "admin";
-  const roleLabel = viewerRole === "coach" ? "Trainer" : viewerRole[0].toUpperCase() + viewerRole.slice(1);
+  const roleLabel = viewerRole === "coach" ? "Coach" : viewerRole[0].toUpperCase() + viewerRole.slice(1);
   const nextClass = todayClasses.find((item) => item.isNext) ?? todayClasses[0];
 
   return (

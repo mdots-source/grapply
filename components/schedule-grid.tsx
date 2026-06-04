@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, RotateCcw, Trophy } from "lucide-react";
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -43,8 +44,25 @@ type ApiClass = {
   checkedIn?: number;
 };
 
+type ApiCompetition = {
+  id: string;
+  name: string;
+  date: string;
+  city: string;
+  venue: string;
+  type: string;
+  status: string;
+};
+
 type TrainingDrawerDefaults = Partial<ClassFormValue> & {
   title?: string;
+  original?: {
+    day: string;
+    time: string;
+    name: string;
+    coach: string;
+    room: string;
+  };
 };
 
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
@@ -205,6 +223,15 @@ function isDateInWeek(date: Date, weekStart: Date) {
   return value.getTime() >= start && value.getTime() <= end.getTime();
 }
 
+function dayKeyForDate(date: Date): DayKey {
+  return dayKeys[(date.getDay() + 6) % 7];
+}
+
+function parseCalendarDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function levelTone(level: string) {
   const normalized = level.toLowerCase();
   if (normalized.includes("beginner") || normalized.includes("white")) return "border-sky-400/20 bg-sky-400/10 text-sky-200";
@@ -224,6 +251,7 @@ export function ScheduleGrid({
   canManageClasses?: boolean;
 }) {
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>(initialRows);
+  const [competitionEvents, setCompetitionEvents] = useState<ApiCompetition[]>([]);
   const [classesError, setClassesError] = useState<string | null>(null);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -244,19 +272,57 @@ export function ScheduleGrid({
     return allSessions.length > 0;
   }, [scheduleRows]);
 
-  const addClassToTimetable = (value: ClassFormValue) => {
+  const competitionsByDay = useMemo(() => {
+    const events = new Map<DayKey, ApiCompetition[]>();
+
+    for (const competition of competitionEvents) {
+      const date = parseCalendarDate(competition.date);
+      if (!date || !isDateInWeek(date, weekStart)) continue;
+      const key = dayKeyForDate(date);
+      events.set(key, [...(events.get(key) ?? []), competition]);
+    }
+
+    return events;
+  }, [competitionEvents, weekStart]);
+
+  const hasCompetitionEvents = competitionsByDay.size > 0;
+
+  const saveClassToTimetable = (value: ClassFormValue) => {
     const day = dayKeyFromLabel(value.day);
     const block = classToSessionBlock(value);
+    const original = trainingDefaults.original;
 
     setScheduleRows((current) => {
-      const rowExists = current.some((row) => row.time === value.time);
-      const rowsWithTime = rowExists ? current : [...current, emptyRow(value.time)].sort((a, b) => compareTimes(a.time, b.time));
+      const rowsWithoutOriginal = original
+        ? current.map((row) => {
+            if (normalizeScheduleValue(row.time) !== normalizeScheduleValue(original.time)) return row;
+            const originalDay = dayKeyFromLabel(original.day);
+            return {
+              ...row,
+              [originalDay]: row[originalDay].filter(
+                (item) =>
+                  item.name !== original.name ||
+                  item.coach !== original.coach ||
+                  item.room !== original.room ||
+                  normalizeScheduleValue(item.time) !== normalizeScheduleValue(original.time),
+              ),
+            };
+          })
+        : current;
+
+      const rowExists = rowsWithoutOriginal.some((row) => row.time === value.time);
+      const rowsWithTime = rowExists
+        ? rowsWithoutOriginal
+        : [...rowsWithoutOriginal, emptyRow(value.time)].sort((a, b) => compareTimes(a.time, b.time));
 
       return rowsWithTime.map((row) => {
         if (row.time !== value.time) return row;
+        const alreadyShown = row[day].some(
+          (item) => item.time === block.time && item.name === block.name && item.coach === block.coach && item.room === block.room,
+        );
         return {
           ...row,
-          [day]: [...row[day], block],
+          [day]: alreadyShown ? row[day] : [...row[day], block],
         };
       });
     });
@@ -267,8 +333,19 @@ export function ScheduleGrid({
     const requestedTime = normalizeScheduleValue(value.time);
     const row = scheduleRows.find((item) => normalizeScheduleValue(item.time) === requestedTime);
     const existingClass = row?.[day]?.[0];
+    const original = trainingDefaults.original;
 
     if (!existingClass) return null;
+    if (
+      original &&
+      dayKeyFromLabel(original.day) === day &&
+      normalizeScheduleValue(original.time) === requestedTime &&
+      existingClass.name === original.name &&
+      existingClass.coach === original.coach &&
+      existingClass.room === original.room
+    ) {
+      return null;
+    }
 
     return `${existingClass.name} already uses ${value.day} at ${value.time}. Pick another time before saving.`;
   };
@@ -282,6 +359,25 @@ export function ScheduleGrid({
       ...defaults,
     });
     setTrainingDrawerOpen(true);
+  };
+
+  const openTrainingEditor = (day: string, block: SessionBlock) => {
+    openTrainingDrawer({
+      name: block.name,
+      coach: block.coach,
+      day,
+      time: block.time,
+      mat: block.room,
+      level: block.level,
+      title: `Edit ${block.name}`,
+      original: {
+        day,
+        time: block.time,
+        name: block.name,
+        coach: block.coach,
+        room: block.room,
+      },
+    });
   };
 
   useEffect(() => {
@@ -305,6 +401,15 @@ export function ScheduleGrid({
         }
       });
 
+    fetch(`/api/competitions${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load competitions."))))
+      .then((payload: { competitions?: ApiCompetition[] }) => {
+        setCompetitionEvents(payload.competitions ?? []);
+      })
+      .catch((error: Error) => {
+        if (error.name !== "AbortError") setCompetitionEvents([]);
+      });
+
     return () => controller.abort();
   }, [activeClub?.slug, loadingClub]);
 
@@ -322,6 +427,7 @@ export function ScheduleGrid({
         day: dayLabels[index],
         canManageClasses,
         onOpenSlot: (time: string) => openTrainingDrawer({ day: dayLabels[index], time, title: `Add ${dayLabels[index]} training` }),
+        onEditBlock: (block: SessionBlock) => openTrainingEditor(dayLabels[index], block),
       },
       headerClass: "schedule-day-header",
     }));
@@ -432,6 +538,44 @@ export function ScheduleGrid({
         </div>
       </Card>
 
+      {hasCompetitionEvents && (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Trophy size={16} className="text-[var(--accent)]" />
+            <p className="text-sm font-semibold text-[var(--foreground)]">Competition events this week</p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-7">
+            {dayKeys.map((key, index) => {
+              const date = addDays(weekStart, index);
+              const events = competitionsByDay.get(key) ?? [];
+              if (!events.length) return null;
+
+              return (
+                <div key={key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+                  <p className="text-xs font-semibold text-[var(--foreground)]">
+                    {dayLabels[index]} {date.getDate()}
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {events.map((event) => (
+                      <div key={event.id} className="rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/10 p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <Badge variant="accent">
+                            <Trophy size={12} />
+                            {event.type}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-xs font-semibold leading-4 text-[var(--foreground)]">{event.name}</p>
+                        <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">{event.city || event.venue}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div>
@@ -481,13 +625,15 @@ export function ScheduleGrid({
       <Drawer open={trainingDrawerOpen} onOpenChange={setTrainingDrawerOpen}>
         <DrawerHeader onClose={() => setTrainingDrawerOpen(false)}>
           <DrawerTitle>{trainingDefaults.title ?? "Add training"}</DrawerTitle>
-          <DrawerDescription>Create a class directly from the weekly schedule.</DrawerDescription>
+          <DrawerDescription>
+            {trainingDefaults.original ? "Update this training session from the weekly schedule." : "Create a class directly from the weekly schedule."}
+          </DrawerDescription>
         </DrawerHeader>
         <div className="mt-6">
           <CreateClassForm
             forceOpen
             initialValue={trainingDefaults}
-            onCreate={addClassToTimetable}
+            onCreate={saveClassToTimetable}
             validateClass={validateClassOverlap}
             onCancel={() => setTrainingDrawerOpen(false)}
             onSaved={() => setTrainingDrawerOpen(false)}
@@ -503,6 +649,7 @@ function ScheduleCell(
     day?: string;
     canManageClasses?: boolean;
     onOpenSlot?: (time: string) => void;
+    onEditBlock?: (block: SessionBlock) => void;
   },
 ) {
   const blocks = params.value ?? [];
@@ -528,9 +675,13 @@ function ScheduleCell(
   return (
     <div className="flex h-full w-full flex-col justify-center py-2">
       {blocks.map((block) => (
-        <div
+        <button
           key={`${block.name}-${block.room}`}
-          className="grid h-[74px] grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)]"
+          type="button"
+          className="grid h-[74px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default"
+          onClick={() => params.onEditBlock?.(block)}
+          disabled={!params.canManageClasses}
+          aria-label={params.canManageClasses ? `Edit ${block.name}` : block.name}
         >
           <div className="flex min-w-0 items-center justify-between gap-2">
             <span className="font-mono text-[11px] font-bold leading-none text-[var(--accent)]">{block.time}</span>
@@ -541,7 +692,7 @@ function ScheduleCell(
             <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--muted)]">{block.coach}</p>
           </div>
           <p className="truncate text-[11px] leading-none text-[var(--muted)]">{block.room}</p>
-        </div>
+        </button>
       ))}
     </div>
   );

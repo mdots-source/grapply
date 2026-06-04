@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
-import { CreateTrainingCampForm } from "@/components/planning/create-training-camp-form";
+import { CreateTrainingCampForm, EditTrainingCampButton } from "@/components/planning/create-training-camp-form";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -159,11 +159,14 @@ function CampCard({ camp, canManagePlanning }: { camp: TrainingCamp; canManagePl
             ))}
           </div>
           {canManagePlanning ? (
-            <Button variant="surface" size="sm" asChild>
-              <Link href={`/members?filter=camp&camp=${camp.id}`}>
-                Plan roster
-              </Link>
-            </Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <EditTrainingCampButton camp={camp} />
+              <Button variant="surface" size="sm" asChild>
+                <Link href={`/members?filter=camp&camp=${camp.id}`}>
+                  Plan roster
+                </Link>
+              </Button>
+            </div>
           ) : (
             <Badge variant="muted">Staff managed</Badge>
           )}

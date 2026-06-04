@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { CheckCircle2, ExternalLink, Loader2, Medal, NotebookPen, UserPlus } from "lucide-react";
+import { useEffect, useState, type Dispatch, type FormEventHandler, type SetStateAction } from "react";
+import { CheckCircle2, ExternalLink, Loader2, Medal, NotebookPen, Pencil, UserPlus } from "lucide-react";
 import { BeltPill, formatBeltRank } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ type MemberDrawerProps = {
   mode: DrawerMode;
   member?: Student | null;
   onAddMember?: (member: Student) => void;
+  onUpdateMember?: (member: Student) => void;
   canManageMembers?: boolean;
 };
 
@@ -43,18 +44,38 @@ type ClassOption = {
   mat: string;
 };
 
-export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, canManageMembers = false }: MemberDrawerProps) {
+export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, onUpdateMember, canManageMembers = false }: MemberDrawerProps) {
   const [form, setForm] = useState(emptyForm);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (mode === "add" && open) setForm(emptyForm);
   }, [mode, open]);
 
-  const close = () => onOpenChange(false);
+  useEffect(() => {
+    if (!open) setEditing(false);
+  }, [open]);
+
+  const close = () => {
+    setEditing(false);
+    onOpenChange(false);
+  };
+
+  const startEditing = () => {
+    if (!member) return;
+    setForm({
+      name: member.name,
+      belt: member.belt,
+      stripes: member.stripes,
+      role: member.role,
+      status: member.status,
+    });
+    setEditing(true);
+  };
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      {mode === "view" && member ? (
+      {mode === "view" && member && !editing ? (
         <>
           <DrawerHeader onClose={close}>
             <DrawerTitle>Member profile</DrawerTitle>
@@ -69,7 +90,7 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
                 <BeltPill belt={member.belt} stripes={member.stripes} />
                 <span className="text-xs font-medium text-[var(--muted)]">{formatBeltRank(member.belt, member.stripes)}</span>
                 <Badge variant={member.role === "coach" ? "accent" : "default"} className="capitalize">
-                  {member.role === "coach" ? "trainer" : member.role}
+                  {member.role === "coach" ? "coach" : member.role}
                 </Badge>
                 <Badge variant={member.status === "active" ? "success" : "muted"}>{member.status}</Badge>
               </div>
@@ -93,6 +114,12 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
           {canManageMembers && <MemberActions member={member} />}
 
           <div className="mt-auto flex flex-col gap-2 pt-8">
+            {canManageMembers && (
+              <Button variant="surface" className="w-full" onClick={startEditing}>
+                <Pencil size={16} />
+                Edit member
+              </Button>
+            )}
             <Button variant="primary" className="w-full" asChild>
               <Link href={`/members/${member.id}`}>
                 Open full profile <ExternalLink size={16} />
@@ -102,6 +129,36 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
               Close
             </Button>
           </div>
+        </>
+      ) : mode === "view" && member && editing && canManageMembers ? (
+        <>
+          <DrawerHeader onClose={close}>
+            <div className="grid size-10 place-items-center rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]">
+              <Pencil size={18} />
+            </div>
+            <DrawerTitle>Edit member</DrawerTitle>
+            <DrawerDescription>Update belt, stripes, role, and roster status.</DrawerDescription>
+          </DrawerHeader>
+
+          <MemberProfileForm
+            form={form}
+            submitLabel="Save changes"
+            onChange={setForm}
+            onCancel={() => setEditing(false)}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!form.name.trim()) return;
+              onUpdateMember?.({
+                ...member,
+                name: form.name.trim(),
+                belt: form.belt,
+                stripes: form.stripes,
+                role: form.role,
+                status: form.status,
+              });
+              setEditing(false);
+            }}
+          />
         </>
       ) : canManageMembers ? (
         <>
@@ -113,8 +170,11 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
             <DrawerDescription>Add a new person to the academy roster.</DrawerDescription>
           </DrawerHeader>
 
-          <form
-            className="mt-6 space-y-5"
+          <MemberProfileForm
+            form={form}
+            submitLabel="Save member"
+            onChange={setForm}
+            onCancel={close}
             onSubmit={(event) => {
               event.preventDefault();
               if (!form.name.trim() || !onAddMember) return;
@@ -137,100 +197,118 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, ca
               });
               close();
             }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="member-name">Full name</Label>
-              <Input
-                id="member-name"
-                value={form.name}
-                onChange={(event) => setForm((value) => ({ ...value, name: event.target.value }))}
-                placeholder="Alex Rivera"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="member-belt">Belt</Label>
-              <select
-                id="member-belt"
-                value={form.belt}
-                onChange={(event) => setForm((value) => ({ ...value, belt: event.target.value as Belt }))}
-                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
-              >
-                {beltOptions.map((belt) => (
-                  <option key={belt} value={belt} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                    {beltStyles[belt].label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="member-stripes">Stripes</Label>
-              <select
-                id="member-stripes"
-                value={form.stripes}
-                onChange={(event) => setForm((value) => ({ ...value, stripes: Number(event.target.value) }))}
-                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
-              >
-                {[0, 1, 2, 3, 4].map((stripe) => (
-                  <option key={stripe} value={stripe} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                    {stripe} {stripe === 1 ? "stripe" : "stripes"}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-                <BeltPill belt={form.belt} stripes={form.stripes} />
-                <span className="text-xs text-[var(--muted)]">{formatBeltRank(form.belt, form.stripes)}</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="member-role">Role</Label>
-              <select
-                id="member-role"
-                value={form.role}
-                onChange={(event) => setForm((value) => ({ ...value, role: event.target.value as MemberRole }))}
-                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
-              >
-                <option value="member" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                  Member
-                </option>
-                <option value="coach" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                  Trainer
-                </option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="member-status">Status</Label>
-              <select
-                id="member-status"
-                value={form.status}
-                onChange={(event) => setForm((value) => ({ ...value, status: event.target.value as Student["status"] }))}
-                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
-              >
-                <option value="active" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                  Active
-                </option>
-                <option value="inactive" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                  Inactive
-                </option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2 pt-4">
-              <Button type="submit" variant="primary" className="w-full">
-                Save member
-              </Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={close}>
-                Cancel
-              </Button>
-            </div>
-          </form>
+          />
         </>
       ) : null}
     </Drawer>
+  );
+}
+
+function MemberProfileForm({
+  form,
+  submitLabel,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  form: typeof emptyForm;
+  submitLabel: string;
+  onChange: Dispatch<SetStateAction<typeof emptyForm>>;
+  onCancel: () => void;
+  onSubmit: FormEventHandler<HTMLFormElement>;
+}) {
+  return (
+    <form className="mt-6 space-y-5" onSubmit={onSubmit}>
+      <div className="space-y-2">
+        <Label htmlFor="member-name">Full name</Label>
+        <Input
+          id="member-name"
+          value={form.name}
+          onChange={(event) => onChange((value) => ({ ...value, name: event.target.value }))}
+          placeholder="Alex Rivera"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="member-belt">Belt</Label>
+        <select
+          id="member-belt"
+          value={form.belt}
+          onChange={(event) => onChange((value) => ({ ...value, belt: event.target.value as Belt }))}
+          className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
+        >
+          {beltOptions.map((belt) => (
+            <option key={belt} value={belt} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+              {beltStyles[belt].label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="member-stripes">Stripes</Label>
+        <select
+          id="member-stripes"
+          value={form.stripes}
+          onChange={(event) => onChange((value) => ({ ...value, stripes: Number(event.target.value) }))}
+          className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
+        >
+          {[0, 1, 2, 3, 4].map((stripe) => (
+            <option key={stripe} value={stripe} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+              {stripe} {stripe === 1 ? "stripe" : "stripes"}
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+          <BeltPill belt={form.belt} stripes={form.stripes} />
+          <span className="text-xs text-[var(--muted)]">{formatBeltRank(form.belt, form.stripes)}</span>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="member-role">Role</Label>
+        <select
+          id="member-role"
+          value={form.role}
+          onChange={(event) => onChange((value) => ({ ...value, role: event.target.value as MemberRole }))}
+          className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
+        >
+          <option value="member" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+            Member
+          </option>
+          <option value="coach" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+            Coach
+          </option>
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="member-status">Status</Label>
+        <select
+          id="member-status"
+          value={form.status}
+          onChange={(event) => onChange((value) => ({ ...value, status: event.target.value as Student["status"] }))}
+          className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
+        >
+          <option value="active" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+            Active
+          </option>
+          <option value="inactive" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+            Inactive
+          </option>
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-2 pt-4">
+        <Button type="submit" variant="primary" className="w-full">
+          {submitLabel}
+        </Button>
+        <Button type="button" variant="ghost" className="w-full" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }
 

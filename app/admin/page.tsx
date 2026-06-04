@@ -25,12 +25,12 @@ export default async function AdminPage() {
       user: platformUsers.find((candidate) => candidate.id === membership.userId),
     }))
     .filter((item): item is { membership: (typeof memberships)[number]; user: (typeof platformUsers)[number] } => Boolean(item.user));
-  const trainerCount = memberships.filter((membership) => membership.role === "coach").length;
+  const coachCount = memberships.filter((membership) => membership.role === "coach").length;
 
   return (
     <AppShell
       title="Team Access"
-      subtitle="Owner tools for trainers, members, roles, and organization access."
+      subtitle="Owner tools for coaches, members, roles, and organization access."
       initialSession={session}
     >
       <PageTransition>
@@ -42,7 +42,7 @@ export default async function AdminPage() {
                 <h2 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{club.name}</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">{club.location}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge variant="success">{trainerCount} trainers</Badge>
+                  <Badge variant="success">{coachCount} coaches</Badge>
                   <Badge variant="muted">{memberships.length} users</Badge>
                 </div>
               </div>
@@ -57,7 +57,7 @@ export default async function AdminPage() {
 
           <div className="grid gap-4 md:grid-cols-4">
             <AdminStat icon={Users} label="Users" value={memberships.length.toString()} />
-            <AdminStat icon={UserCog} label="Trainers" value={trainerCount.toString()} />
+            <AdminStat icon={UserCog} label="Coaches" value={coachCount.toString()} />
             <AdminStat icon={CalendarDays} label="BJJ classes" value={classes.length.toString()} />
             <AdminStat icon={ShieldCheck} label="Roles" value={roleDefinitions.length.toString()} />
           </div>
@@ -80,7 +80,7 @@ export default async function AdminPage() {
             <CardHeader>
               <div>
                 <CardTitle>Invite user</CardTitle>
-                <CardDescription>Invite a trainer or member into this academy.</CardDescription>
+                <CardDescription>Invite a coach or member into this academy.</CardDescription>
               </div>
             </CardHeader>
             <InviteUserForm />

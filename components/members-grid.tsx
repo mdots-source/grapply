@@ -118,6 +118,26 @@ export function MembersGrid({
     }
   }
 
+  async function updateMember(member: Student) {
+    setMembers((current) => current.map((item) => (item.id === member.id ? member : item)).sort(compareMemberHierarchy));
+    setSelectedMember(member);
+
+    try {
+      const response = await fetch("/api/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...member, ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}) }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; member?: Student };
+      if (payload.ok && payload.member) {
+        setMembers((current) => current.map((item) => (item.id === member.id ? payload.member! : item)).sort(compareMemberHierarchy));
+        setSelectedMember(payload.member);
+      }
+    } catch {
+      // Keep the optimistic edit visible so staff can continue working.
+    }
+  }
+
   const rowData = useMemo(() => {
     const query = search.trim().toLowerCase();
     return members
@@ -235,6 +255,7 @@ export function MembersGrid({
         mode={drawerMode}
         member={selectedMember}
         onAddMember={addMember}
+        onUpdateMember={updateMember}
         canManageMembers={canManageMembers}
       />
     </div>
@@ -329,7 +350,7 @@ function RoleCell(params: ICellRendererParams<Student>) {
   return (
     <div className="flex h-full items-center">
       <Badge variant={member.role === "coach" ? "accent" : "default"} className="capitalize">
-        {member.role === "coach" ? "trainer" : member.role}
+        {member.role === "coach" ? "coach" : member.role}
       </Badge>
     </div>
   );
