@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Megaphone, Plus, Radio, Search } from "lucide-react";
 import { TrainingPostCard } from "@/components/oss/training-post-card";
 import { CreateTrainingPostForm } from "@/components/training-feed/create-training-post-form";
+import type { PlatformRole } from "@/data/platform";
 import { typeLabels, type TrainingPost } from "@/data/training-feed";
 import { Button } from "@/components/ui/button";
 
@@ -21,13 +22,15 @@ export function TrainingFeedTimeline({
   initialPosts,
   initialCreatePost = false,
   canCreatePost = false,
-  canDeletePost = false,
+  currentRole,
+  currentUserName,
   clubSlug,
 }: {
   initialPosts: TrainingPost[];
   initialCreatePost?: boolean;
   canCreatePost?: boolean;
-  canDeletePost?: boolean;
+  currentRole: PlatformRole;
+  currentUserName: string;
   clubSlug: string;
 }) {
   const [posts, setPosts] = useState(initialPosts);
@@ -51,7 +54,7 @@ export function TrainingFeedTimeline({
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       {canCreatePost ? (
-        <CreateTrainingPostForm initialOpen={initialCreatePost} clubSlug={clubSlug} onCreate={addPost} />
+        <CreateTrainingPostForm initialOpen={initialCreatePost} clubSlug={clubSlug} defaultCoachName={currentUserName} onCreate={addPost} />
       ) : (
         <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
           <p className="text-sm font-semibold text-[var(--foreground)]">Academy updates</p>
@@ -96,8 +99,8 @@ export function TrainingFeedTimeline({
               post={post}
               index={index}
               canComment={canCreatePost}
-              canEdit={canCreatePost}
-              canDelete={canDeletePost}
+              canEdit={canManagePost(post, currentRole, currentUserName)}
+              canDelete={canManagePost(post, currentRole, currentUserName)}
               clubSlug={clubSlug}
               onDelete={removePost}
               onUpdate={updatePost}
@@ -113,8 +116,8 @@ export function TrainingFeedTimeline({
                   post={post}
                   index={index + pinned.length}
                   canComment={canCreatePost}
-                  canEdit={canCreatePost}
-                  canDelete={canDeletePost}
+                  canEdit={canManagePost(post, currentRole, currentUserName)}
+                  canDelete={canManagePost(post, currentRole, currentUserName)}
                   clubSlug={clubSlug}
                   onDelete={removePost}
                   onUpdate={updatePost}
@@ -126,6 +129,12 @@ export function TrainingFeedTimeline({
       )}
     </div>
   );
+}
+
+function canManagePost(post: TrainingPost, role: PlatformRole, userName: string) {
+  if (role === "owner" || role === "admin") return true;
+  if (role !== "coach") return false;
+  return post.coach.trim().toLowerCase() === userName.trim().toLowerCase();
 }
 
 function FeedEmptyState({

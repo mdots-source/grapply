@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
   const validation = validateTrainingPostPayload(payload);
   if (validation.error) return validation.error;
-  const post = validation.data;
+  const post = getWritableTrainingPost(validation.data, access.session.activeRole, access.session.user.name);
 
   if (isSupabaseConfigured()) {
     let clubId: string | null = null;
@@ -129,7 +129,7 @@ export async function PATCH(request: Request) {
 
   const validation = validateTrainingPostPayload(payload);
   if (validation.error) return validation.error;
-  const post = validation.data;
+  const post = getWritableTrainingPost(validation.data, access.session.activeRole, access.session.user.name);
 
   if (isSupabaseConfigured()) {
     let clubId: string | null = null;
@@ -138,8 +138,10 @@ export async function PATCH(request: Request) {
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
       const tagError = await validateSupabaseTaggedStudents(clubId, post);
       if (tagError) return tagError;
-      const [existingPost] = await selectRows("training_posts", `select=id&club_id=eq.${clubId}&id=eq.${encodeURIComponent(post.id)}&limit=1`);
+      const [existingPost] = await selectRows("training_posts", `select=id,coach&club_id=eq.${clubId}&id=eq.${encodeURIComponent(post.id)}&limit=1`);
       if (!existingPost) return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
+      const authorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, existingPost.coach);
+      if (authorError) return authorError;
 
       const [row] = await updateRows("training_posts", toTrainingPostInsert(post, clubId), `id=eq.${encodeURIComponent(post.id)}&club_id=eq.${clubId}`);
       return noStoreJson({ ok: true, source: "supabase", post: toTrainingPost(row) });
@@ -154,9 +156,12 @@ export async function PATCH(request: Request) {
   if (persistenceError) return persistenceError;
 
   const mockPosts = getMockTrainingPostsForClub(access.session.activeClub.slug);
-  if (!mockPosts.some((item) => item.id === post.id)) {
+  const mockPost = mockPosts.find((item) => item.id === post.id);
+  if (!mockPost) {
     return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
   }
+  const mockAuthorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, mockPost.coach);
+  if (mockAuthorError) return mockAuthorError;
   const mockTagError = validateMockTaggedStudents(access.session.activeClub.slug, post);
   if (mockTagError) return mockTagError;
 
@@ -166,7 +171,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
-  const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
+  const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
   if (access.error) return access.error;
 
   const id = requiredString(payload.id, "Post id", 120);
@@ -178,22 +183,39 @@ export async function DELETE(request: Request) {
     try {
       clubId = await getBackendClubId(access.session.activeClub.slug);
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
+      const [existingPost] = await selectRows("training_posts", `select=id,coach&club_id=eq.${clubId}&id=eq.${encodeURIComponent(postId)}&limit=1`);
+      if (!existingPost) return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
+      const authorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, existingPost.coach);
+      if (authorError) return authorError;
       const removed = await deleteRows("training_posts", `id=eq.${encodeURIComponent(postId)}&club_id=eq.${clubId}`);
-      if (removed.length === 0) return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
       return apiSupabaseError(error, { clubId });
     }
   }
 
-  if (!getMockTrainingPostsForClub(access.session.activeClub.slug).some((item) => item.id === postId)) {
+  const mockPost = getMockTrainingPostsForClub(access.session.activeClub.slug).find((item) => item.id === postId);
+  if (!mockPost) {
     return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
   }
+  const mockAuthorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, mockPost.coach);
+  if (mockAuthorError) return mockAuthorError;
 
   const persistenceError = requireSupabasePersistence("Training feed");
   if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", id: postId });
+}
+
+function getWritableTrainingPost(post: TrainingPost, role: string, userName: string): TrainingPost {
+  if (role !== "coach") return post;
+  return { ...post, coach: userName };
+}
+
+function getTrainingPostAuthorError(role: string, userName: string, postCoach: string) {
+  if (role !== "coach") return null;
+  if (postCoach.trim().toLowerCase() === userName.trim().toLowerCase()) return null;
+  return noStoreJson({ ok: false, error: "Coaches can only manage their own training posts." }, { status: 403 });
 }
 
 async function getAvailableTrainingPostId(clubId: string, requestedId: string) {

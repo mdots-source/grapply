@@ -14,10 +14,12 @@ const postTypes = Object.keys(typeLabels) as TrainingPostType[];
 export function CreateTrainingPostForm({
   initialOpen = false,
   clubSlug,
+  defaultCoachName,
   onCreate,
 }: {
   initialOpen?: boolean;
   clubSlug: string;
+  defaultCoachName: string;
   onCreate?: (post: TrainingPost) => void;
 }) {
   const activeClub = useActiveClub();
@@ -26,7 +28,7 @@ export function CreateTrainingPostForm({
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [form, setForm] = useState({
     type: "session" as TrainingPostType,
-    coach: "Sofia Almeida",
+    coach: defaultCoachName,
     className: "Advanced No-Gi",
     title: "Strong rounds and guard retention work",
     summary: "Competition team worked positional starts, guard recovery, and five-minute rounds.",

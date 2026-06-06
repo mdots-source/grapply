@@ -20,7 +20,6 @@ export default async function TrainingFeedPage({ searchParams }: { searchParams?
     return [];
   });
   const canCreatePost = session.activeRole !== "member";
-  const canDeletePost = session.activeRole === "owner" || session.activeRole === "admin";
 
   return (
     <AppShell
@@ -41,7 +40,8 @@ export default async function TrainingFeedPage({ searchParams }: { searchParams?
               initialPosts={trainingPosts}
               initialCreatePost={canCreatePost && params?.create === "post"}
               canCreatePost={canCreatePost}
-              canDeletePost={canDeletePost}
+              currentRole={session.activeRole}
+              currentUserName={session.user.name}
               clubSlug={session.activeClub.slug}
             />
           </>
