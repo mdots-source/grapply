@@ -8,9 +8,30 @@ import { BeltPill } from "@/components/belt-pill";
 import { LiveTicker } from "@/components/oss/live-ticker";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
-import { beltStyles, currentSession, tvCheckedInAthletes, type TvCheckedInAthlete } from "@/data/academy";
+import { beltStyles, currentSession, tvCheckedInAthletes, type TrainingCategory, type TvCheckedInAthlete } from "@/data/academy";
 import { tvTickerItems } from "@/data/academy-meta";
 import { getAppUrl } from "@/lib/app-url";
+
+export type TvSession = {
+  id: string;
+  name: string;
+  time: string;
+  endTime: string;
+  durationMinutes: number;
+  coach: string;
+  room: string;
+  trainingType: string;
+  experienceLevel: string;
+  category: TrainingCategory;
+  focus: string;
+};
+
+type TvScreenProps = {
+  session?: TvSession;
+  athletes?: TvCheckedInAthlete[];
+  tickerItems?: string[];
+  organizationId?: string;
+};
 
 const VISIBLE_COUNT = 6;
 const ROTATION_MS = 4200;
@@ -31,11 +52,16 @@ function formatRosterWindow(total: number) {
   return `${VISIBLE_COUNT} of ${total} active`;
 }
 
-export function TvScreen() {
+export function TvScreen({
+  session = currentSession,
+  athletes: initialAthletes = tvCheckedInAthletes,
+  tickerItems = tvTickerItems,
+  organizationId,
+}: TvScreenProps) {
   const [now, setNow] = useState(() => new Date());
   const [rotationIndex, setRotationIndex] = useState(0);
 
-  const athletes = tvCheckedInAthletes;
+  const athletes = initialAthletes.length > 0 ? initialAthletes : tvCheckedInAthletes;
 
   useEffect(() => {
     const clock = setInterval(() => setNow(new Date()), 1000);
@@ -67,7 +93,12 @@ export function TvScreen() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100vh-64px)] max-w-[1800px] flex-col">
-          <SessionHeader now={now} checkedInCount={athletes.length} />
+          <SessionHeader
+            now={now}
+            checkedInCount={athletes.length}
+            session={session}
+            organizationId={organizationId}
+          />
 
           <section className="mt-5 flex flex-1 flex-col">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -103,7 +134,7 @@ export function TvScreen() {
           </section>
 
           <div className="mt-4">
-            <LiveTicker items={tvTickerItems} />
+            <LiveTicker items={tickerItems} />
           </div>
         </div>
       </div>
@@ -111,8 +142,21 @@ export function TvScreen() {
   );
 }
 
-function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: number }) {
+function SessionHeader({
+  now,
+  checkedInCount,
+  session,
+  organizationId,
+}: {
+  now: Date;
+  checkedInCount: number;
+  session: TvSession;
+  organizationId?: string;
+}) {
   const liveTime = formatLiveClock(now);
+  const checkInHref = organizationId
+    ? `/${organizationId}/schedule?checkIn=${encodeURIComponent(session.id)}`
+    : `/login?session=${encodeURIComponent(session.id)}`;
 
   return (
     <header className="rounded-[22px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-6">
@@ -125,9 +169,9 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
                 Live training
               </Badge>
               <div className="flex flex-wrap gap-2">
-                <Badge>{currentSession.trainingType}</Badge>
-                <Badge variant="default">{currentSession.experienceLevel}</Badge>
-                <Badge className="border-violet-400/25 bg-violet-400/10 text-violet-200">{currentSession.category}</Badge>
+                <Badge>{session.trainingType}</Badge>
+                <Badge variant="default">{session.experienceLevel}</Badge>
+                <Badge className="border-violet-400/25 bg-violet-400/10 text-violet-200">{session.category}</Badge>
               </div>
             </div>
             <motion.div
@@ -144,27 +188,27 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
           </div>
 
           <div>
-            <h1 className="text-4xl font-black leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">{currentSession.name}</h1>
+            <h1 className="text-4xl font-black leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">{session.name}</h1>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-zinc-400 md:text-base">
               <span className="inline-flex items-center gap-2">
                 <MapPin size={16} className="text-[var(--accent)]" />
-                {currentSession.room}
+                {session.room}
               </span>
-              <span>Coach {currentSession.coach}</span>
+              <span>Coach {session.coach}</span>
               <span className="inline-flex items-center gap-2">
                 <Clock size={16} className="text-[var(--accent-blue)]" />
-                {currentSession.time} to {currentSession.endTime}
+                {session.time} to {session.endTime}
               </span>
               <span className="inline-flex items-center gap-2">
                 <Timer size={16} className="text-[var(--accent)]" />
-                {currentSession.durationMinutes} min
+                {session.durationMinutes} min
               </span>
             </div>
           </div>
 
           <div className="max-w-3xl rounded-2xl border border-white/10 bg-black/30 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Today&apos;s focus</p>
-            <p className="mt-2 text-lg font-semibold leading-relaxed text-zinc-100">{currentSession.focus}</p>
+            <p className="mt-2 text-lg font-semibold leading-relaxed text-zinc-100">{session.focus}</p>
           </div>
         </div>
 
@@ -183,7 +227,7 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
               />
               <div className="rounded-2xl bg-white p-4">
                 <QRCodeSVG
-                  value={getAppUrl(`/login?session=${currentSession.id}`)}
+                  value={getAppUrl(checkInHref)}
                   size={148}
                   bgColor="#ffffff"
                   fgColor="#050507"
@@ -191,11 +235,11 @@ function SessionHeader({ now, checkedInCount }: { now: Date; checkedInCount: num
                 />
               </div>
             </div>
-            <p className="mt-4 text-center text-sm text-zinc-400">Join {currentSession.name} on the academy floor</p>
+            <p className="mt-4 text-center text-sm text-zinc-400">Join {session.name} on the academy floor</p>
           </motion.div>
           <div className="grid grid-cols-2 gap-3">
             <StatTile label="Checked in" value={checkedInCount.toString()} />
-            <StatTile label="Mat" value={currentSession.room} />
+            <StatTile label="Mat" value={session.room} />
           </div>
         </div>
       </div>
