@@ -144,6 +144,9 @@ export async function PATCH(request: Request) {
 
       const [existing] = await selectRows("club_classes", `select=*&id=eq.${encodeURIComponent(data.id)}&club_id=eq.${clubId}&limit=1`);
       if (!existing) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
+      if (!canManageClass(access.session.activeRole, access.session.user.name, existing)) {
+        return noStoreJson({ ok: false, error: "Coaches can only update classes assigned to them." }, { status: 403 });
+      }
 
       const nextClass = {
         day: data.day ?? existing.day,
@@ -195,6 +198,9 @@ export async function PATCH(request: Request) {
   const mockClasses = getMockClasses(access.session.activeClub.slug);
   const existing = mockClasses.find((item) => item.id === data.id);
   if (!existing) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
+  if (!canManageClass(access.session.activeRole, access.session.user.name, existing)) {
+    return noStoreJson({ ok: false, error: "Coaches can only update classes assigned to them." }, { status: 403 });
+  }
 
   const nextClass = {
     day: data.day ?? existing.day,
@@ -240,6 +246,12 @@ export async function DELETE(request: Request) {
       clubId = await getBackendClubId(access.session.activeClub.slug);
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
 
+      const [existing] = await selectRows("club_classes", `select=*&id=eq.${encodeURIComponent(payload.id)}&club_id=eq.${clubId}&limit=1`);
+      if (!existing) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
+      if (!canManageClass(access.session.activeRole, access.session.user.name, existing)) {
+        return noStoreJson({ ok: false, error: "Coaches can only delete classes assigned to them." }, { status: 403 });
+      }
+
       const [existingCheckIn] = await selectRows(
         "class_checkins",
         `select=id&club_id=eq.${clubId}&class_id=eq.${encodeURIComponent(payload.id)}&limit=1`,
@@ -264,6 +276,9 @@ export async function DELETE(request: Request) {
 
   const mockClass = getMockClasses(access.session.activeClub.slug).find((item) => item.id === payload.id);
   if (!mockClass) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
+  if (!canManageClass(access.session.activeRole, access.session.user.name, mockClass)) {
+    return noStoreJson({ ok: false, error: "Coaches can only delete classes assigned to them." }, { status: 403 });
+  }
 
   return noStoreJson({ ok: true, source: "mock", id: payload.id });
 }
@@ -292,6 +307,12 @@ function getMockClassOverlap(clubSlug: string | undefined, normalizedDay: string
 function getWritableClassPayload(data: ValidatedClassPayload, role: string, userName: string): ValidatedClassPayload {
   if (role !== "coach") return data;
   return { ...data, coach: userName };
+}
+
+function canManageClass(role: string, userName: string, classRow: { coach?: string | null }) {
+  if (role === "owner" || role === "admin") return true;
+  if (role !== "coach") return false;
+  return normalizeClassField(classRow.coach) === normalizeClassField(userName);
 }
 
 function normalizeClassField(value: unknown) {
