@@ -40,8 +40,13 @@ export async function GET() {
   const stravaConfig = getStravaConfig();
   const tableChecks = supabaseConfigured ? await Promise.all(criticalTables.map((check) => checkTable(check, requestId))) : [];
   const failedTables = tableChecks.filter((check) => check.status !== "ok");
-  const ok = supabaseConfigured && failedTables.length === 0 && emailDeliveryConfigured && stravaConfigured && appUrlConfigured;
-  const status = ok ? "ok" : supabaseConfigured ? "degraded" : "unconfigured";
+  const criticalOk = supabaseConfigured && failedTables.length === 0 && appUrlConfigured;
+  const warnings = [
+    ...(!emailDeliveryConfigured ? ["emailDelivery:missing-config"] : []),
+    ...(!stravaConfigured ? ["stravaOAuth:missing-config"] : []),
+  ];
+  const ok = criticalOk;
+  const status = criticalOk ? (warnings.length ? "ok-with-warnings" : "ok") : supabaseConfigured ? "degraded" : "unconfigured";
   const latencyMs = Date.now() - startedAt;
 
   if (production) {
@@ -52,6 +57,7 @@ export async function GET() {
         requestId,
         runtime: "production",
         latencyMs,
+        warnings,
         checks: {
           supabaseRest: supabaseConfigured ? (failedTables.length ? "degraded" : "ok") : "missing-config",
           emailDelivery: emailDeliveryConfigured ? "ok" : "missing-config",
@@ -59,7 +65,7 @@ export async function GET() {
           appUrl: appUrlConfigured ? "ok" : "missing-config",
         },
       },
-      { status: ok ? 200 : 503 },
+      { status: criticalOk ? 200 : 503 },
       { requestId, source: "health" },
     );
   }
@@ -81,6 +87,7 @@ export async function GET() {
       hasPublicAppUrl: Boolean(process.env.NEXT_PUBLIC_APP_URL),
       publicAppUrl: process.env.NEXT_PUBLIC_APP_URL ?? null,
       latencyMs,
+      warnings,
       checks: {
         supabaseRest: supabaseConfigured ? (failedTables.length ? "degraded" : "ok") : "missing-config",
         emailDelivery: emailDeliveryConfigured ? "ok" : "missing-config",
@@ -89,7 +96,7 @@ export async function GET() {
         tables: tableChecks,
       },
     },
-    { status: ok ? 200 : 503 },
+    { status: criticalOk ? 200 : 503 },
     { requestId, source: "health" },
   );
 }
