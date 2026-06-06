@@ -4,6 +4,7 @@ export const authCookieNames = {
   accessToken: "grapply-access-token",
   refreshToken: "grapply-refresh-token",
   activeClub: "grapply-active-club",
+  stravaState: "grapply-strava-state",
 } as const;
 
 const cookieOptions = {
@@ -40,9 +41,36 @@ export function clearAuthCookies(response: NextResponse) {
   response.cookies.delete(authCookieNames.activeClub);
 }
 
+export function clearActiveClubCookie(response: NextResponse) {
+  response.cookies.delete(authCookieNames.activeClub);
+}
+
 export function setActiveClubCookie(response: NextResponse, slug: string) {
   response.cookies.set(authCookieNames.activeClub, slug, {
     ...cookieOptions,
     maxAge: 60 * 60 * 24 * 90,
   });
+}
+
+export function setStravaStateCookie(response: NextResponse, nonce: string) {
+  response.cookies.set(authCookieNames.stravaState, nonce, {
+    ...cookieOptions,
+    maxAge: 60 * 10,
+  });
+}
+
+export function clearStravaStateCookie(response: NextResponse) {
+  response.cookies.delete(authCookieNames.stravaState);
+}
+
+export function getCookieValue(request: Request, name: string) {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) return null;
+
+  for (const cookie of cookieHeader.split(";")) {
+    const [rawName, ...rawValue] = cookie.trim().split("=");
+    if (rawName === name) return decodeURIComponent(rawValue.join("="));
+  }
+
+  return null;
 }

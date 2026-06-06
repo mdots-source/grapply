@@ -1,0 +1,54 @@
+# Grapply Production Environment
+
+Required for the live demo backend:
+
+```text
+NEXT_PUBLIC_APP_URL=https://grapply.me
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+```
+
+Required for outbound invite and welcome emails:
+
+```text
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=Grapply <notifications@grapply.me>
+```
+
+Email delivery uses Resend. Verify `grapply.me` in Resend first, then add the DNS records Resend provides for SPF, DKIM, and DMARC. `RESEND_FROM_EMAIL` must use a verified sender on that domain, for example `Grapply <noreply@grapply.me>`. When either Resend env var is missing, invite, welcome, magic link, and password reset emails stay queued in `email_outbox` and the admin email panel disables manual sending.
+
+Supabase Auth should allow the production app URL and callbacks:
+
+```text
+SITE_URL=https://grapply.me
+REDIRECT_URLS=https://grapply.me/auth/callback,https://grapply.me/login,https://grapply.me/register
+```
+
+Required for Strava integration:
+
+```text
+STRAVA_CLIENT_ID=
+STRAVA_CLIENT_SECRET=
+STRAVA_REDIRECT_URI=https://grapply.me/api/strava/callback
+```
+
+Required for GitHub production summary notifications:
+
+```text
+GITHUB_WEBHOOK_SECRET=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+Manual billing is the current product model. Stripe checkout and webhooks are intentionally out of scope for this phase.
+
+Backend health and error traceability:
+
+```text
+GET /api/health/backend
+```
+
+The health check reports Supabase table access, email delivery, Strava OAuth configuration, the public HTTPS app URL, and the `app_error_events` observability table. Backend/Supabase failures return `X-Request-Id` and are recorded in `app_error_events` when Supabase is reachable. If `RESEND_API_KEY`, Strava credentials, or `NEXT_PUBLIC_APP_URL` are missing, the backend status is degraded until the production env is complete.
+
+RLS and role expectations are documented in `docs/security-rls.md`.

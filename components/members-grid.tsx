@@ -7,7 +7,7 @@ import {
   type ICellRendererParams,
   type RowClickedEvent,
 } from "ag-grid-community";
-import { Plus, Search, UserPlus } from "lucide-react";
+import { AlertTriangle, Loader2, Plus, RefreshCw, Search, UserPlus } from "lucide-react";
 import { MemberDrawer } from "@/components/member-drawer";
 import { BeltPill, formatBeltRank } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -16,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AgGridHost } from "@/components/ag-grid-host";
 import { useActiveClub } from "@/components/use-active-club";
-import { compareMemberHierarchy, students as seedMembers, type Student } from "@/data/academy";
+import { compareMemberHierarchy, type Student } from "@/data/academy";
 import { getMemberProfileExtra } from "@/data/member-profiles";
+import { formatApiError, readApiJson } from "@/lib/api-client";
 
 export type RosterFilter = "all" | "active" | "promotion" | "inactive" | "trial" | "follow-up";
 type DrawerMode = "view" | "add";
@@ -35,19 +36,34 @@ function matchesFilter(member: Student, filter: RosterFilter) {
 }
 
 export function MembersGrid({
+  initialMembers,
+  initialMembersError = null,
+  initialClubSlug,
   initialAdd = false,
   initialFilter = "all",
   initialMemberId,
   canManageMembers = false,
+  canUseStaffActions = false,
+  canDeleteMembers = false,
 }: {
+  initialMembers?: Student[];
+  initialMembersError?: string | null;
+  initialClubSlug?: string;
   initialAdd?: boolean;
   initialFilter?: RosterFilter;
   initialMemberId?: string;
   canManageMembers?: boolean;
+  canUseStaffActions?: boolean;
+  canDeleteMembers?: boolean;
 }) {
   const activeClub = useActiveClub();
-  const [members, setMembers] = useState<Student[]>(seedMembers);
-  const [membersError, setMembersError] = useState<string | null>(null);
+  const resolvedClubSlug = activeClub?.slug ?? initialClubSlug;
+  const hasInitialMembers = Array.isArray(initialMembers);
+  const [members, setMembers] = useState<Student[]>(() => [...(initialMembers ?? [])].sort(compareMemberHierarchy));
+  const [loadingMembers, setLoadingMembers] = useState(!hasInitialMembers && !initialMembersError);
+  const [membersReloadKey, setMembersReloadKey] = useState(0);
+  const [membersError, setMembersError] = useState<string | null>(initialMembersError);
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(initialAdd);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(initialAdd ? "add" : "view");
@@ -70,21 +86,36 @@ export function MembersGrid({
     let cancelled = false;
 
     async function loadMembers() {
+      if (hasInitialMembers && membersReloadKey === 0 && resolvedClubSlug === initialClubSlug) {
+        setLoadingMembers(false);
+        return;
+      }
+
+      setLoadingMembers(true);
       setMembersError(null);
+
+      if (!resolvedClubSlug) {
+        if (!cancelled) {
+          setMembers([]);
+          setMembersError("Choose an academy to load the roster.");
+          setLoadingMembers(false);
+        }
+        return;
+      }
 
       try {
         const params = new URLSearchParams();
-        if (activeClub?.slug) params.set("club", activeClub.slug);
+        params.set("club", resolvedClubSlug);
         const response = await fetch(`/api/members${params.size ? `?${params}` : ""}`, { cache: "no-store" });
-        if (!response.ok) throw new Error("Could not refresh members.");
-        const payload = (await response.json()) as { members?: Student[] };
+        const payload = await readApiJson<{ members?: Student[] }>(response, "Could not refresh members.");
         if (cancelled) return;
         if (Array.isArray(payload.members)) {
           setMembers(payload.members);
         }
       } catch (error) {
         if (!cancelled) setMembersError(error instanceof Error ? error.message : "Could not refresh members.");
-        // Keep the seeded roster visible if the roster cannot refresh.
+      } finally {
+        if (!cancelled) setLoadingMembers(false);
       }
     }
 
@@ -92,7 +123,7 @@ export function MembersGrid({
     return () => {
       cancelled = true;
     };
-  }, [activeClub?.slug]);
+  }, [hasInitialMembers, initialClubSlug, membersReloadKey, resolvedClubSlug]);
 
   useEffect(() => {
     if (!initialMemberId || drawerOpen) return;
@@ -101,41 +132,74 @@ export function MembersGrid({
   }, [drawerOpen, initialMemberId, members, openMemberDrawer]);
 
   async function addMember(member: Student) {
+    setMutationError(null);
     setMembers((current) => [...current, member].sort(compareMemberHierarchy));
 
     try {
       const response = await fetch("/api/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...member, ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}) }),
+        body: JSON.stringify({ ...member, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
       });
-      const payload = (await response.json()) as { ok?: boolean; member?: Student };
+      const payload = await readApiJson<{ ok?: boolean; member?: Student; error?: string; requestId?: string }>(response, "Could not add member.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Could not add member.", payload.requestId));
       if (payload.ok && payload.member) {
         setMembers((current) => current.map((item) => (item.id === member.id ? payload.member! : item)).sort(compareMemberHierarchy));
       }
-    } catch {
-      // The optimistic member stays in the roster so the coach can keep working.
+    } catch (error) {
+      setMembers((current) => current.filter((item) => item.id !== member.id));
+      setMutationError(error instanceof Error ? error.message : "Could not add member.");
     }
   }
 
   async function updateMember(member: Student) {
+    setMutationError(null);
+    const previousMember = members.find((item) => item.id === member.id) ?? null;
     setMembers((current) => current.map((item) => (item.id === member.id ? member : item)).sort(compareMemberHierarchy));
     setSelectedMember(member);
 
     try {
       const response = await fetch("/api/members", {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...member, ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}) }),
+        body: JSON.stringify({ ...member, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
       });
-      const payload = (await response.json()) as { ok?: boolean; member?: Student };
+      const payload = await readApiJson<{ ok?: boolean; member?: Student; error?: string; requestId?: string }>(response, "Could not update member.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Could not update member.", payload.requestId));
       if (payload.ok && payload.member) {
         setMembers((current) => current.map((item) => (item.id === member.id ? payload.member! : item)).sort(compareMemberHierarchy));
         setSelectedMember(payload.member);
       }
-    } catch {
-      // Keep the optimistic edit visible so staff can continue working.
+    } catch (error) {
+      if (previousMember) {
+        setMembers((current) => current.map((item) => (item.id === member.id ? previousMember : item)).sort(compareMemberHierarchy));
+        setSelectedMember(previousMember);
+      }
+      setMutationError(error instanceof Error ? error.message : "Could not update member.");
     }
+  }
+
+  async function deleteMember(member: Student) {
+    setMutationError(null);
+    const response = await fetch("/api/members", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: member.id, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
+    });
+    const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Could not delete member.");
+    if (!payload.ok) {
+      const message = formatApiError(payload.error ?? "Could not delete member.", payload.requestId);
+      setMutationError(message);
+      throw new Error(message);
+    }
+    setMembers((current) => current.filter((item) => item.id !== member.id));
+    setSelectedMember(null);
+  }
+
+  function updateMemberLocally(member: Student) {
+    setMutationError(null);
+    setMembers((current) => current.map((item) => (item.id === member.id ? member : item)).sort(compareMemberHierarchy));
+    setSelectedMember(member);
   }
 
   const rowData = useMemo(() => {
@@ -214,9 +278,18 @@ export function MembersGrid({
             )}
           </div>
         </div>
-        {membersError && <p className="border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)]">{membersError}</p>}
+        {membersError && (
+          <RosterNotice
+            tone="error"
+            message={membersError}
+            onRetry={resolvedClubSlug ? () => setMembersReloadKey((value) => value + 1) : undefined}
+          />
+        )}
+        {mutationError && <RosterNotice tone="error" message={mutationError} />}
 
-        {rowData.length > 0 ? (
+        {loadingMembers ? (
+          <MembersLoadingState />
+        ) : rowData.length > 0 ? (
           <AgGridHost className="oss-members-grid ag-theme-quartz h-[520px] w-full">
             <AgGridReact<Student>
               rowData={rowData}
@@ -256,8 +329,57 @@ export function MembersGrid({
         member={selectedMember}
         onAddMember={addMember}
         onUpdateMember={updateMember}
+        onLocalMemberChange={updateMemberLocally}
+        onDeleteMember={deleteMember}
+        clubSlug={resolvedClubSlug}
         canManageMembers={canManageMembers}
+        canUseStaffActions={canUseStaffActions}
+        canAwardPromotions={canManageMembers}
+        canDeleteMembers={canDeleteMembers}
       />
+    </div>
+  );
+}
+
+function RosterNotice({
+  message,
+  tone,
+  onRetry,
+}: {
+  message: string;
+  tone: "error" | "info";
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-[var(--border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-2 text-sm text-[var(--foreground)]">
+        {tone === "error" ? (
+          <AlertTriangle size={16} className="shrink-0 text-[var(--accent-coral)]" />
+        ) : (
+          <span className="size-2 shrink-0 rounded-full bg-[var(--accent)]" />
+        )}
+        <span className="leading-5">{message}</span>
+      </div>
+      {onRetry && (
+        <Button type="button" variant="surface" size="sm" onClick={onRetry}>
+          <RefreshCw size={14} />
+          Try again
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function MembersLoadingState() {
+  return (
+    <div className="grid min-h-[420px] place-items-center px-6 py-10">
+      <div className="text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--accent)]">
+          <Loader2 size={26} strokeWidth={1.6} className="animate-spin" />
+        </div>
+        <h3 className="mt-5 text-lg font-semibold text-[var(--foreground)]">Loading roster</h3>
+        <p className="mt-2 text-sm text-[var(--muted)]">Getting the latest members from this academy.</p>
+      </div>
     </div>
   );
 }

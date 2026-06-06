@@ -123,7 +123,7 @@ jobs:
                 });
 
                 title = `#${pr.number}: ${pr.title}`;
-                summary = pr.body?.trim() || headMessage || "No PR description provided.";
+                summary = pr.body?.trim() || headMessage || "No release notes provided.";
                 detailsUrl = pr.html_url;
                 stats = `${pr.changed_files} files changed | +${pr.additions} | -${pr.deletions}`;
                 touchedAreas = files.map((file) => `${filePrefix(file.status)} ${file.filename}`);
@@ -167,7 +167,7 @@ jobs:
 
               summary = [
                 commitTitles.length ? commitTitles.join("\n") : `- ${truncate(headMessage || after, 110)}`,
-                impactAreas.length ? `\nImpact areas: ${impactAreas.join(", ")}` : "",
+                impactAreas.length ? `\nAreas: ${impactAreas.join(", ")}` : "",
               ].join("").trim();
             }
 
@@ -183,7 +183,7 @@ jobs:
               escapeHtml(truncate(summary, 1200)),
               "",
               "<b>Touched areas</b>",
-              escapeHtml(fileLines.length ? fileLines.join("\n") : "- No file details provided"),
+              escapeHtml(fileLines.length ? fileLines.join("\n") : "- No files listed"),
               "",
               `<a href="${escapeHtml(detailsUrl)}">View changes</a>`,
             ].join("\n").slice(0, 3900);

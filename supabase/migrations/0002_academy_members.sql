@@ -39,7 +39,7 @@ create policy "club members can read academy members"
 on public.academy_members for select
 using (public.current_user_club_role(club_id) is not null);
 
-create policy "admins and coaches can manage academy members"
+create policy "owners and admins can manage academy members"
 on public.academy_members for all
-using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
-with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+using (public.current_user_club_role(club_id) in ('owner', 'admin'))
+with check (public.current_user_club_role(club_id) in ('owner', 'admin'));

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { ArrowDown, ArrowUp, Flame, Minus, Trophy } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Flame, Loader2, Minus, Trophy } from "lucide-react";
 import { StatCard } from "@/components/oss/stat-card";
 import { BeltPill } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
@@ -13,31 +13,79 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgGridHost } from "@/components/ag-grid-host";
 import { useActiveClub } from "@/components/use-active-club";
-import { beltStyles, students as seedStudents, type Belt, type Student } from "@/data/academy";
+import { beltStyles, type Belt } from "@/data/academy";
 import { rankingHighlights, rankMovement } from "@/data/rankings-meta";
+import type { PlatformRole } from "@/data/platform";
+import type { RankedMember } from "@/lib/backend-data";
+import { readApiJson } from "@/lib/api-client";
+import { getWorkspaceHref } from "@/lib/workspace-url";
 
-type RankedStudent = Student & { rank: number };
+type RankedStudent = RankedMember;
 
 type BeltFilter = "all" | Belt;
 
-export function RankingsGrid() {
+export function RankingsGrid({
+  viewerRole,
+  initialRankings,
+  initialRankingsError = null,
+  initialClubSlug,
+}: {
+  viewerRole: PlatformRole;
+  initialRankings?: RankedStudent[];
+  initialRankingsError?: string | null;
+  initialClubSlug?: string;
+}) {
   const activeClub = useActiveClub();
-  const [students, setStudents] = useState<Student[]>(seedStudents);
+  const resolvedClubSlug = activeClub?.slug ?? initialClubSlug;
+  const hasInitialRankings = Array.isArray(initialRankings);
+  const [students, setStudents] = useState<RankedStudent[]>(initialRankings ?? []);
+  const [loadingRankings, setLoadingRankings] = useState(!hasInitialRankings && !initialRankingsError);
+  const [rankingsError, setRankingsError] = useState<string | null>(initialRankingsError);
   const [beltFilter, setBeltFilter] = useState<BeltFilter>("all");
   const [search, setSearch] = useState("");
+  const isMemberView = viewerRole === "member";
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (activeClub?.slug) params.set("club", activeClub.slug);
-    fetch(`/api/members${params.size ? `?${params}` : ""}`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((payload: { members?: Student[] }) => {
-        if (payload.members?.length) {
-          setStudents(payload.members);
+    let cancelled = false;
+
+    async function loadRankings() {
+      if (hasInitialRankings && resolvedClubSlug === initialClubSlug) {
+        setLoadingRankings(false);
+        return;
+      }
+
+      setLoadingRankings(true);
+      setRankingsError(null);
+
+      if (!resolvedClubSlug) {
+        if (!cancelled) {
+          setStudents([]);
+          setRankingsError("Choose an academy to load rankings.");
+          setLoadingRankings(false);
         }
-      })
-      .catch(() => undefined);
-  }, [activeClub?.slug]);
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams();
+        params.set("club", resolvedClubSlug);
+        const response = await fetch(`/api/rankings?${params}`, { cache: "no-store" });
+        const payload = await readApiJson<{ rankings?: RankedStudent[] }>(response, "Could not load rankings.");
+        if (cancelled) return;
+        setStudents(Array.isArray(payload.rankings) ? payload.rankings : []);
+      } catch (error) {
+        if (!cancelled) setRankingsError(error instanceof Error ? error.message : "Could not load rankings.");
+      } finally {
+        if (!cancelled) setLoadingRankings(false);
+      }
+    }
+
+    void loadRankings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasInitialRankings, initialClubSlug, resolvedClubSlug]);
 
   const ranked = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -51,9 +99,7 @@ export function RankingsGrid() {
       );
     });
 
-    return [...filtered]
-      .sort((a, b) => b.points - a.points)
-      .map((student, index) => ({ ...student, rank: index + 1 }));
+    return [...filtered].sort((a, b) => a.rank - b.rank);
   }, [beltFilter, search, students]);
 
   const summary = useMemo(() => {
@@ -85,6 +131,7 @@ export function RankingsGrid() {
         flex: 1.4,
         minWidth: 260,
         cellRenderer: AthleteCell,
+        cellRendererParams: { clubSlug: resolvedClubSlug },
         sortable: true,
       },
       {
@@ -130,7 +177,7 @@ export function RankingsGrid() {
         cellClass: "font-mono text-[var(--muted)]",
       },
     ],
-    [],
+    [resolvedClubSlug],
   );
 
   const beltTabs: { id: BeltFilter; label: string }[] = [
@@ -144,28 +191,32 @@ export function RankingsGrid() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {rankingHighlights.map((h, i) => (
-          <StatCard
-            key={h.id}
-            label={h.label}
-            value={h.name}
-            icon={Flame}
-            trend={`${h.value} · ${h.detail}`}
-            tone={i === 0 ? "accent" : "blue"}
-            index={i}
-          />
-        ))}
-      </div>
+      {!isMemberView && (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {rankingHighlights.map((h, i) => (
+            <StatCard
+              key={h.id}
+              label={h.label}
+              value={h.name}
+              icon={Flame}
+              trend={`${h.value} · ${h.detail}`}
+              tone={i === 0 ? "accent" : "blue"}
+              index={i}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-4">
-          <p className="text-xs text-[var(--muted)]">Leader</p>
+          <p className="text-xs text-[var(--muted)]">{isMemberView ? "Your position" : "Leader"}</p>
           <p className="mt-2 text-xl font-semibold text-[var(--foreground)]">{summary.top?.name ?? "—"}</p>
-          <p className="mt-1 font-mono text-sm text-[var(--accent)]">{summary.top?.points ?? 0} pts</p>
+          <p className="mt-1 font-mono text-sm text-[var(--accent)]">
+            {summary.top ? `#${summary.top.rank} · ${summary.top.points} pts` : "0 pts"}
+          </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-[var(--muted)]">Athletes ranked</p>
+          <p className="text-xs text-[var(--muted)]">{isMemberView ? "Profiles visible" : "Athletes ranked"}</p>
           <p className="mt-2 text-2xl font-semibold">{summary.count}</p>
         </Card>
         <Card className="p-4">
@@ -185,6 +236,18 @@ export function RankingsGrid() {
         <TabsContent>
           <Card className="overflow-hidden p-0">
             <div className="border-b border-[var(--border)] p-4">
+              {loadingRankings && (
+                <div className="mb-3 flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--muted)]">
+                  <Loader2 size={14} className="animate-spin" />
+                  Loading rankings...
+                </div>
+              )}
+              {rankingsError && (
+                <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-[var(--foreground)]">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0 text-rose-500" />
+                  <span>{rankingsError}</span>
+                </div>
+              )}
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -209,7 +272,7 @@ export function RankingsGrid() {
                 headerHeight={46}
                 suppressCellFocus
                 rowClass="cursor-pointer"
-                overlayNoRowsTemplate='<span class="text-[var(--muted)]">No athletes match this filter.</span>'
+                overlayNoRowsTemplate={loadingRankings ? '<span class="text-[var(--muted)]">Loading rankings...</span>' : '<span class="text-[var(--muted)]">No athletes match this filter.</span>'}
               />
             </AgGridHost>
           </Card>
@@ -237,12 +300,14 @@ function RankCell(params: ICellRendererParams<RankedStudent>) {
 }
 
 function AthleteCell(params: ICellRendererParams<RankedStudent>) {
+  const activeClub = useActiveClub();
+  const clubSlug = activeClub?.slug ?? (params as ICellRendererParams<RankedStudent> & { clubSlug?: string }).clubSlug;
   const student = params.data;
   if (!student) return null;
 
   return (
     <Link
-      href={`/members/${student.id}`}
+      href={getWorkspaceHref(`/members/${student.id}`, clubSlug)}
       className="flex h-full items-center gap-3 py-2"
       onClick={(event) => event.stopPropagation()}
     >

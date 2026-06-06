@@ -52,6 +52,7 @@ create table public.club_classes (
   time text not null,
   mat text not null,
   level text not null,
+  duration_minutes integer not null default 60 check (duration_minutes between 15 and 240),
   checked_in integer not null default 0,
   created_at timestamptz not null default now()
 );
@@ -59,6 +60,7 @@ create table public.club_classes (
 create table public.strava_connections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.app_users(id) on delete cascade,
+  club_id uuid not null references public.clubs(id) on delete cascade,
   athlete_id text not null,
   access_token text not null,
   refresh_token text not null,
@@ -66,14 +68,33 @@ create table public.strava_connections (
   scopes text[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (user_id),
-  unique (athlete_id)
+  unique (user_id, club_id),
+  unique (athlete_id, club_id)
+);
+
+create table public.club_billing_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  plan text not null default 'starter' check (plan in ('starter', 'growth', 'pro', 'enterprise')),
+  status text not null default 'trialing' check (status in ('trialing', 'active', 'past_due', 'canceled', 'incomplete')),
+  billing_email text,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  trial_ends_at timestamptz,
+  current_period_ends_at timestamptz,
+  seats_included integer not null default 50 check (seats_included > 0),
+  member_limit integer not null default 250 check (member_limit > 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (club_id)
 );
 
 create index club_memberships_user_id_idx on public.club_memberships(user_id);
 create index club_memberships_club_id_idx on public.club_memberships(club_id);
 create index club_classes_club_id_idx on public.club_classes(club_id);
 create index strava_connections_user_id_idx on public.strava_connections(user_id);
+create index strava_connections_club_id_idx on public.strava_connections(club_id);
+create index club_billing_subscriptions_club_id_idx on public.club_billing_subscriptions(club_id);
 
 create or replace function public.touch_updated_at()
 returns trigger
@@ -90,12 +111,18 @@ before update on public.strava_connections
 for each row
 execute function public.touch_updated_at();
 
+create trigger touch_club_billing_subscriptions_updated_at
+before update on public.club_billing_subscriptions
+for each row
+execute function public.touch_updated_at();
+
 alter table public.app_users enable row level security;
 alter table public.clubs enable row level security;
 alter table public.club_memberships enable row level security;
 alter table public.role_definitions enable row level security;
 alter table public.club_classes enable row level security;
 alter table public.strava_connections enable row level security;
+alter table public.club_billing_subscriptions enable row level security;
 
 create or replace function public.current_app_user_id()
 returns uuid
@@ -159,11 +186,29 @@ on public.club_classes for all
 using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
 with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
 
-create policy "users can read own strava connection"
+create policy "users can read own club strava connection"
 on public.strava_connections for select
-using (user_id = public.current_app_user_id());
+using (
+  user_id = public.current_app_user_id()
+  and public.current_user_club_role(club_id) is not null
+);
 
-create policy "users can manage own strava connection"
+create policy "users can manage own club strava connection"
 on public.strava_connections for all
-using (user_id = public.current_app_user_id())
-with check (user_id = public.current_app_user_id());
+using (
+  user_id = public.current_app_user_id()
+  and public.current_user_club_role(club_id) is not null
+)
+with check (
+  user_id = public.current_app_user_id()
+  and public.current_user_club_role(club_id) is not null
+);
+
+create policy "owners can read club billing"
+on public.club_billing_subscriptions for select
+using (public.current_user_club_role(club_id) = 'owner');
+
+create policy "owners can manage club billing"
+on public.club_billing_subscriptions for all
+using (public.current_user_club_role(club_id) = 'owner')
+with check (public.current_user_club_role(club_id) = 'owner');

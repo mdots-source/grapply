@@ -81,7 +81,7 @@ export const promotions = [
   {
     id: "p3",
     student: "Eli Morgan",
-    detail: "Beginner streak achievement unlocked",
+    detail: "Beginner streak achievement earned",
     awardedBy: "Noah Keller",
     when: "Yesterday",
     type: "achievement" as const,

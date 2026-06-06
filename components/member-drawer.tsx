@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type Dispatch, type FormEventHandler, type SetStateAction } from "react";
-import { CheckCircle2, ExternalLink, Loader2, Medal, NotebookPen, Pencil, UserPlus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Medal, NotebookPen, Pencil, Trash2, UserPlus } from "lucide-react";
 import { BeltPill, formatBeltRank } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActiveClub } from "@/components/use-active-club";
 import { beltStyles, type Belt, type MemberRole, type Student } from "@/data/academy";
+import { formatApiError, readApiJson } from "@/lib/api-client";
+import { getWorkspaceHref } from "@/lib/workspace-url";
 
 type DrawerMode = "view" | "add";
 
@@ -22,10 +24,21 @@ type MemberDrawerProps = {
   member?: Student | null;
   onAddMember?: (member: Student) => void;
   onUpdateMember?: (member: Student) => void;
+  onLocalMemberChange?: (member: Student) => void;
+  onDeleteMember?: (member: Student) => Promise<void> | void;
   canManageMembers?: boolean;
+  canUseStaffActions?: boolean;
+  canAwardPromotions?: boolean;
+  canDeleteMembers?: boolean;
+  clubSlug?: string;
 };
 
 const beltOptions: Belt[] = ["white", "blue", "purple", "brown", "black"];
+
+function getNextBelt(belt: Belt) {
+  const currentIndex = beltOptions.indexOf(belt);
+  return currentIndex >= 0 ? beltOptions[currentIndex + 1] ?? null : null;
+}
 
 const emptyForm = {
   name: "",
@@ -44,16 +57,40 @@ type ClassOption = {
   mat: string;
 };
 
-export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, onUpdateMember, canManageMembers = false }: MemberDrawerProps) {
+export function MemberDrawer({
+  open,
+  onOpenChange,
+  mode,
+  member,
+  onAddMember,
+  onUpdateMember,
+  onLocalMemberChange,
+  onDeleteMember,
+  canManageMembers = false,
+  canUseStaffActions = false,
+  canAwardPromotions = false,
+  canDeleteMembers = false,
+  clubSlug,
+}: MemberDrawerProps) {
+  const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode === "add" && open) setForm(emptyForm);
   }, [mode, open]);
 
   useEffect(() => {
-    if (!open) setEditing(false);
+    if (!open) {
+      setEditing(false);
+      setDeleteConfirm(false);
+      setDeleteError(null);
+      setDeletePending(false);
+    }
   }, [open]);
 
   const close = () => {
@@ -111,17 +148,58 @@ export function MemberDrawer({ open, onOpenChange, mode, member, onAddMember, on
             ))}
           </div>
 
-          {canManageMembers && <MemberActions member={member} />}
+          {canUseStaffActions && (
+            <MemberActions
+              member={member}
+              canAwardPromotions={canAwardPromotions}
+              onLocalMemberChange={onLocalMemberChange}
+              clubSlug={resolvedClubSlug}
+            />
+          )}
 
           <div className="mt-auto flex flex-col gap-2 pt-8">
+            {deleteError && (
+              <div className="flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+                <AlertTriangle size={15} />
+                <span>{deleteError}</span>
+              </div>
+            )}
             {canManageMembers && (
               <Button variant="surface" className="w-full" onClick={startEditing}>
                 <Pencil size={16} />
                 Edit member
               </Button>
             )}
+            {canDeleteMembers && onDeleteMember && (
+              <Button
+                type="button"
+                variant={deleteConfirm ? "primary" : "outline"}
+                className="w-full"
+                disabled={deletePending}
+                onClick={async () => {
+                  if (!deleteConfirm) {
+                    setDeleteConfirm(true);
+                    setDeleteError(null);
+                    return;
+                  }
+                  setDeletePending(true);
+                  setDeleteError(null);
+                  try {
+                    await onDeleteMember(member);
+                    close();
+                  } catch (error) {
+                    setDeleteError(error instanceof Error ? error.message : "Could not delete member.");
+                  } finally {
+                    setDeletePending(false);
+                  }
+                }}
+              >
+                {deletePending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                {deleteConfirm ? "Confirm delete" : "Delete member"}
+              </Button>
+            )}
             <Button variant="primary" className="w-full" asChild>
-              <Link href={`/members/${member.id}`}>
+              <Link href={getWorkspaceHref(`/members/${member.id}`, resolvedClubSlug)}>
                 Open full profile <ExternalLink size={16} />
               </Link>
             </Button>
@@ -312,21 +390,37 @@ function MemberProfileForm({
   );
 }
 
-function MemberActions({ member }: { member: Student }) {
+function MemberActions({
+  member,
+  canAwardPromotions,
+  onLocalMemberChange,
+  clubSlug,
+}: {
+  member: Student;
+  canAwardPromotions: boolean;
+  onLocalMemberChange?: (member: Student) => void;
+  clubSlug?: string;
+}) {
   const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classId, setClassId] = useState("");
   const [note, setNote] = useState("Looked sharp in positional rounds.");
-  const [promotionType, setPromotionType] = useState<"stripe" | "belt" | "milestone">("stripe");
+  const [promotionType, setPromotionType] = useState<"stripe" | "belt" | "achievement">("stripe");
   const [loading, setLoading] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const nextBelt = getNextBelt(member.belt);
+  const nextStripe = Math.min(member.stripes + 1, 4);
+  const promotionBlocked =
+    (promotionType === "stripe" && member.stripes >= 4) ||
+    (promotionType === "belt" && !nextBelt);
 
   useEffect(() => {
     let alive = true;
     const params = new URLSearchParams();
-    if (activeClub?.slug) params.set("club", activeClub.slug);
+    if (resolvedClubSlug) params.set("club", resolvedClubSlug);
     fetch(`/api/classes${params.size ? `?${params}` : ""}`)
-      .then((response) => response.json())
+      .then((response) => readApiJson<{ classes?: ClassOption[]; error?: string; requestId?: string }>(response, "Could not load classes."))
       .then((payload: { classes?: ClassOption[] }) => {
         if (!alive) return;
         const nextClasses = payload.classes ?? [];
@@ -334,12 +428,12 @@ function MemberActions({ member }: { member: Student }) {
         setClassId((value) => value || nextClasses[0]?.id || "");
       })
       .catch(() => {
-        if (alive) setMessage("Could not load classes.");
+        if (alive) setMessage({ tone: "error", text: "Could not load classes." });
       });
     return () => {
       alive = false;
     };
-  }, [activeClub?.slug]);
+  }, [resolvedClubSlug]);
 
   async function submitAction(action: "check-in" | "note" | "promotion") {
     setLoading(action);
@@ -350,20 +444,34 @@ function MemberActions({ member }: { member: Student }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(getPayload(action)),
       });
-      const payload = (await response.json()) as { ok?: boolean; error?: string };
-      if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Action failed.");
-      setMessage(action === "check-in" ? "Check-in saved." : action === "note" ? "Coach note saved." : "Award saved.");
+      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Action failed.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Action failed.", payload.requestId));
+      if (action === "promotion") syncPromotionLocally();
+      setMessage({
+        tone: "success",
+        text: action === "check-in" ? "Check-in saved." : action === "note" ? "Coach note saved." : "Award saved.",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Action failed.");
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Action failed." });
     } finally {
       setLoading(null);
+    }
+  }
+
+  function syncPromotionLocally() {
+    if (!onLocalMemberChange) return;
+    if (promotionType === "stripe" && member.stripes < 4) {
+      onLocalMemberChange({ ...member, stripes: nextStripe });
+    }
+    if (promotionType === "belt" && nextBelt) {
+      onLocalMemberChange({ ...member, belt: nextBelt, stripes: 0 });
     }
   }
 
   function getPayload(action: "check-in" | "note" | "promotion") {
     if (action === "check-in") {
       return {
-        ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}),
+        ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}),
         classId,
         memberId: member.id,
         source: "manual",
@@ -373,27 +481,26 @@ function MemberActions({ member }: { member: Student }) {
 
     if (action === "note") {
       return {
-        ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}),
+        ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}),
         memberId: member.id,
-        coachName: "Current coach",
         body: note,
         visibility: "staff",
       };
     }
 
     return {
-      ...(activeClub?.slug ? { clubSlug: activeClub.slug } : {}),
+      ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}),
       memberId: member.id,
       type: promotionType,
       awardedByName: "Current coach",
-      belt: promotionType === "belt" ? member.belt : null,
-      stripes: promotionType === "stripe" ? Math.min(member.stripes + 1, 4) : null,
+      belt: promotionType === "belt" ? nextBelt : null,
+      stripes: promotionType === "stripe" ? nextStripe : promotionType === "belt" ? 0 : null,
       detail:
         promotionType === "stripe"
-          ? `${member.name} earned the next stripe.`
+          ? `${member.name} earned stripe ${nextStripe} on ${beltStyles[member.belt].label} belt.`
           : promotionType === "belt"
-            ? `${member.name} was awarded a belt promotion.`
-            : `${member.name} hit a training milestone.`,
+            ? `${member.name} was promoted from ${beltStyles[member.belt].label} to ${nextBelt ? beltStyles[nextBelt].label : "next"} belt.`
+          : `${member.name} hit a training achievement.`,
     };
   }
 
@@ -424,6 +531,7 @@ function MemberActions({ member }: { member: Student }) {
             Check in
           </Button>
         </div>
+        {classes.length === 0 && <p className="text-xs text-[var(--muted)]">Create a class in Schedule before checking members in.</p>}
       </div>
 
       <div className="space-y-2">
@@ -441,33 +549,51 @@ function MemberActions({ member }: { member: Student }) {
         </Button>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="promotion-type">Award</Label>
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-          <select
-            id="promotion-type"
-            value={promotionType}
-            onChange={(event) => setPromotionType(event.target.value as "stripe" | "belt" | "milestone")}
-            className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
-          >
-            <option value="stripe" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-              Stripe
-            </option>
-            <option value="belt" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-              Belt
-            </option>
-            <option value="milestone" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-              Milestone
-            </option>
-          </select>
-          <Button type="button" variant="surface" disabled={loading === "promotion"} onClick={() => submitAction("promotion")}>
-            {loading === "promotion" ? <Loader2 size={16} className="animate-spin" /> : <Medal size={16} />}
-            Record
-          </Button>
+      {canAwardPromotions && (
+        <div className="space-y-2">
+          <Label htmlFor="promotion-type">Award</Label>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <select
+              id="promotion-type"
+              value={promotionType}
+              onChange={(event) => setPromotionType(event.target.value as "stripe" | "belt" | "achievement")}
+              className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
+            >
+              <option value="stripe" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                Stripe{member.stripes < 4 ? ` (${nextStripe}/4)` : " (maxed)"}
+              </option>
+              <option value="belt" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                Belt{nextBelt ? ` (${beltStyles[nextBelt].label})` : " (black belt)"}
+              </option>
+              <option value="achievement" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                Achievement
+              </option>
+            </select>
+            <Button type="button" variant="surface" disabled={promotionBlocked || loading === "promotion"} onClick={() => submitAction("promotion")}>
+              {loading === "promotion" ? <Loader2 size={16} className="animate-spin" /> : <Medal size={16} />}
+              Record
+            </Button>
+          </div>
+          {promotionBlocked && (
+            <p className="text-xs text-[var(--muted)]">
+              {promotionType === "stripe" ? "This member already has 4 stripes. Use a belt promotion instead." : "Black belt is the highest belt in this workflow."}
+            </p>
+          )}
         </div>
-      </div>
+      )}
 
-      {message && <p className="text-xs text-[var(--muted)]">{message}</p>}
+      {message && (
+        <div
+          className={
+            message.tone === "success"
+              ? "flex items-start gap-2 rounded-xl border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs text-[var(--foreground)]"
+              : "flex items-start gap-2 rounded-xl border border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10 px-3 py-2 text-xs text-[var(--foreground)]"
+          }
+        >
+          {message.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+          <span>{message.text}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -46,7 +46,7 @@ const productScreens = [
     label: "Members",
     icon: Users,
     title: "Member workspace",
-    copy: "Belt, role, focus, attendance, hours, points, and coach context in one premium athlete view.",
+    copy: "Belt, role, focus, attendance, hours, points, and coach notes in one view.",
   },
   {
     id: "schedule",
@@ -59,15 +59,15 @@ const productScreens = [
     id: "rankings",
     label: "Rankings",
     icon: Trophy,
-    title: "Competitive progression",
-    copy: "Points, wins, streaks, and leaderboard energy that make training feel game-like.",
+    title: "Rankings",
+    copy: "Points, wins, streaks, and leaderboard standings for members.",
   },
   {
     id: "tv",
     label: "TV mode",
     icon: MonitorPlay,
     title: "Live academy display",
-    copy: "A mat-side screen for live check-ins, athlete cards, session focus, and academy atmosphere.",
+    copy: "A mat-side screen for check-ins, athlete cards, and session focus.",
   },
   {
     id: "roles",
@@ -89,12 +89,12 @@ const beltOrbitItems = [
 const features = [
   { icon: Users, title: "Member management", copy: "Profiles, belts, stripes, attendance, status, training hours, and focus areas." },
   { icon: CalendarDays, title: "Class schedule", copy: "Classes, rooms, coaches, levels, and daily flow in one clean operational surface." },
-  { icon: Award, title: "Belt system", copy: "Progression, promotion watch, stripes, and emotional moments around rank." },
+  { icon: Award, title: "Belt system", copy: "Progression, promotion watch, stripes, and rank history." },
   { icon: UserCog, title: "Coach/admin roles", copy: "Permissions and workspace roles for owners, admins, coaches, and members." },
-  { icon: MonitorPlay, title: "Academy TV display", copy: "A live screen that makes the room feel active, modern, and connected." },
-  { icon: MessageCircle, title: "Training feed", copy: "Session recaps, announcements, milestones, and academy memory." },
-  { icon: Medal, title: "Competitions & camps", copy: "Rosters, deadlines, travel details, events, and team culture." },
-  { icon: Network, title: "Integration-ready", copy: "Strava-ready scaffolding and a product direction for future academy integrations." },
+  { icon: MonitorPlay, title: "Academy TV display", copy: "A live screen for check-ins, session focus, and current attendance." },
+  { icon: MessageCircle, title: "Training feed", copy: "Session recaps, announcements, milestones, and member updates." },
+  { icon: Medal, title: "Competitions & camps", copy: "Rosters, deadlines, travel details, and event planning." },
+  { icon: Network, title: "Integrations", copy: "Strava scaffolding and room for future academy integrations." },
 ];
 
 const pricingPlans = [
@@ -103,7 +103,7 @@ const pricingPlans = [
     price: "$100",
     suffix: "/mo",
     accent: beltStyles.white.hex,
-    description: "For small academies that need the core operating layer.",
+    description: "For small academies that need the core tools.",
     cta: "Book demo",
     featured: false,
     items: ["Member directory", "Schedule management", "Rankings", "Basic dashboard", "Mock TV preview", "Email support"],
@@ -113,7 +113,7 @@ const pricingPlans = [
     price: "$200",
     suffix: "/mo",
     accent: beltStyles.blue.hex,
-    description: "For academies ready to run richer daily operations.",
+    description: "For academies that need more daily tools.",
     cta: "Book demo",
     featured: true,
     items: ["Everything in White Belt", "Advanced academy dashboard", "TV display mode", "Training activity feed", "Priority support", "Product preview/demo setup"],
@@ -123,20 +123,20 @@ const pricingPlans = [
     price: "$400",
     suffix: "/mo",
     accent: beltStyles.purple.hex,
-    description: "For serious teams building a connected academy culture.",
+    description: "For teams managing roles, events, and member activity.",
     cta: "Book demo",
     featured: false,
-    items: ["Everything in Blue Belt", "Coach/admin roles", "Competitions and camps", "Advanced permissions", "Custom academy setup", "Priority roadmap input"],
+    items: ["Everything in Blue Belt", "Coach/admin roles", "Competitions and camps", "Advanced permissions", "Custom academy setup", "Priority feature input"],
   },
   {
     name: "Black Belt",
     price: "Custom",
     suffix: "",
     accent: beltStyles.black.hex,
-    description: "For larger academies, networks, and serious operators.",
+    description: "For larger academies and multi-club teams.",
     cta: "Talk to us",
     featured: false,
-    items: ["Multi-club support", "Custom onboarding", "Advanced permissions", "Integrations", "Custom reports", "Dedicated support", "Roadmap partnership"],
+    items: ["Multi-club support", "Custom onboarding", "Advanced permissions", "Integrations", "Custom reports", "Dedicated support", "Feature planning support"],
   },
 ];
 
@@ -171,7 +171,7 @@ function Header() {
           </span>
           <span className="min-w-0">
             <span className="block text-sm font-black tracking-[0.18em]">Grapply</span>
-            <span className="block truncate text-xs text-[var(--muted)]">Jiu-Jitsu Academy OS</span>
+            <span className="block truncate text-xs text-[var(--muted)]">Jiu-Jitsu Academy</span>
           </span>
         </Link>
 
@@ -212,10 +212,10 @@ function Hero() {
             BJJ academy workspace
           </Badge>
           <h1 className="max-w-3xl text-4xl font-semibold leading-[1.03] tracking-normal sm:text-6xl lg:text-7xl">
-            Run your Jiu-Jitsu academy like a high-performance fight team.
+            Run your Jiu-Jitsu academy from one workspace.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-8 text-[var(--muted)] sm:text-lg">
-            Members, classes, rankings, roles, training activity, and live academy displays in one premium operating system.
+            Members, classes, rankings, roles, training activity, and live academy displays in one workspace.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <a href="#demo" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
@@ -389,9 +389,9 @@ function OutcomeStrip() {
     <section className="border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]">
       <div className="mx-auto grid max-w-7xl gap-3 px-4 py-5 sm:px-6 md:grid-cols-3 lg:px-8">
         {[
-          ["More attendance", "Streaks, live visibility, and member momentum make training feel active every week."],
-          ["Stronger culture", "The room sees who is training, competing, improving, and showing up."],
-          ["Premium identity", "Your academy looks modern on TV, mobile, and the front-desk workflow."],
+          ["More attendance", "Streaks, check-ins, and member activity stay visible every week."],
+          ["Team visibility", "The room sees who is training, competing, improving, and showing up."],
+          ["Cleaner workflows", "TV, mobile, and front-desk screens use the same member data."],
         ].map(([title, copy]) => (
           <motion.div key={title} whileHover={{ y: -3 }} className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-4">
             <h2 className="text-base font-semibold">{title}</h2>
@@ -475,9 +475,9 @@ function LiveAcademySection() {
       <div className="mx-auto grid max-w-7xl gap-7 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8">
         <div>
           <Kicker icon={Flame}>Attendance & community</Kicker>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Students show up when the academy feels alive.</h2>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Track attendance and member activity.</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-            Grapply makes attendance visible, streaks feel earned, and everyday training moments feel like part of the academy identity.
+            Grapply keeps attendance, streaks, and training updates visible to the team.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {communityHighlights.map((item) => (
@@ -492,7 +492,7 @@ function LiveAcademySection() {
         <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Weekly room energy</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Weekly attendance</p>
               <h3 className="mt-2 text-2xl font-semibold">312 visits this week</h3>
             </div>
             <Badge variant="success">+12%</Badge>
@@ -538,9 +538,9 @@ function TvShowcaseSection() {
       <TvPanel />
       <div>
         <Kicker icon={Radio}>TV screen</Kicker>
-        <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">A mat-side display that makes the room feel connected.</h2>
+        <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">A mat-side display for live classes.</h2>
         <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-          Students check in, appear on screen, see teammates training, and feel the academy moving in real time. It is part operations, part culture engine.
+          Students check in, appear on screen, and see the current session details in real time.
         </p>
         <div className="mt-6 grid gap-3">
           {["Live check-ins on the academy screen", "Session focus and coach context", "Athlete cards with belt color and training momentum"].map((item) => (
@@ -590,7 +590,7 @@ function FeatureSection() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <Kicker icon={Zap}>Features</Kicker>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Everything that makes the academy feel alive.</h2>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Core tools for daily academy work.</h2>
         </div>
         <div className="mt-7 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           {features.map((feature) => {
@@ -617,9 +617,9 @@ function ControlRoomSection() {
       <ControlRoomVisual />
       <div>
         <Kicker icon={Gamepad2}>Academy control room</Kicker>
-        <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">A game-like operating layer for the mats.</h2>
+        <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Daily class data in one place.</h2>
         <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-          Grapply turns the routines of a BJJ academy into a live system: classes, rankings, belts, competition prep, and TV moments all orbit the same academy identity.
+          Grapply connects classes, rankings, belts, competition prep, and TV display data.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {["Floating class schedule", "Belt progression orbit", "Live leaderboard", "Athlete check-in cards"].map((item) => (
@@ -687,7 +687,7 @@ function CompetitionSection() {
       <div className="grid gap-7 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
         <div className="lg:sticky lg:top-24">
           <Kicker icon={Medal}>Competitions & camps</Kicker>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Competition culture belongs inside the academy OS.</h2>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Competition planning belongs next to training.</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
             Rosters, deadlines, travel details, and team moments stay connected to the same athletes, rankings, and training feed.
           </p>
@@ -719,7 +719,7 @@ function PricingSection() {
         <div className="max-w-3xl">
           <Kicker icon={CreditCard}>Pricing</Kicker>
           <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-5xl">Pricing that follows the belt system.</h2>
-          <p className="mt-4 text-sm leading-7 text-[var(--muted)]">Start with the core operating system, then grow into TV, roles, feed, competitions, and custom network support.</p>
+          <p className="mt-4 text-sm leading-7 text-[var(--muted)]">Start with members and scheduling, then add TV, roles, feed, competitions, and network support.</p>
         </div>
         <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {pricingPlans.map((plan) => (
@@ -760,15 +760,15 @@ function CredibilitySection() {
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="grid gap-5 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-5 sm:p-7 lg:grid-cols-[0.86fr_1.14fr] lg:items-center">
         <div>
-          <Kicker icon={Sparkles}>MVP demo available now</Kicker>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">Built around real BJJ workflows, with no invented testimonials.</h2>
+          <Kicker icon={Sparkles}>Demo available now</Kicker>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">Built around real BJJ workflows.</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-            Grapply is designed for academy owners, coaches, and teams who want a cleaner operating system for members, belts, classes, rankings, and mat-side displays.
+            Grapply is built for academy owners, coaches, and teams managing members, belts, classes, rankings, and mat-side displays.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            ["Owners", "Cleaner operations and a premium academy identity."],
+            ["Owners", "Cleaner member, schedule, and role management."],
             ["Coaches", "Context before class: attendance, focus, promotions, prep."],
             ["Members", "Visible progression, rankings, and academy moments."],
           ].map(([title, copy]) => (
@@ -791,15 +791,15 @@ function FinalCta() {
           <Badge variant="accent" className="mb-4">
             Demo
           </Badge>
-          <h2 className="max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">Ready to see your academy as a modern fight team OS?</h2>
+          <h2 className="max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">See how Grapply fits your academy.</h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-            Book a product walkthrough and see how Grapply can make your academy feel modern, alive, and easier to operate.
+            Book a walkthrough and see the member, schedule, ranking, and TV workflows.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <a href="mailto:demo@grapply.app?subject=Grapply%20demo%20request" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5">
               Book demo <ArrowRight size={16} />
             </a>
-            <Link href="/dashboard" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
+            <Link href="/clubs" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-6 text-sm font-semibold transition hover:bg-[var(--surface-hover)]">
               Open MVP preview
             </Link>
           </div>

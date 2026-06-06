@@ -3,29 +3,50 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  AlertTriangle,
   MapPin,
   Mountain,
-  Tent,
   Users,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
-import { CreateTrainingCampForm, EditTrainingCampButton } from "@/components/planning/create-training-camp-form";
+import { CreateTrainingCampForm, DeleteTrainingCampButton, EditTrainingCampButton } from "@/components/planning/create-training-camp-form";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { resolveStudentsByIds } from "@/lib/members";
-import { getTrainingCampsData } from "@/lib/backend-data";
+import { getTrainingCampsData, getVisibleMembersData } from "@/lib/backend-data";
 import { requireWorkspaceRole } from "@/lib/workspace-access";
+import { getWorkspaceHref } from "@/lib/workspace-url";
+import type { Student } from "@/data/academy";
 import type { TrainingCamp } from "@/data/training-camps";
 
 export default async function TrainingCampsPage() {
-  const session = await requireWorkspaceRole(["owner", "admin", "coach"], "/training-camps");
-  const trainingCamps = await getTrainingCampsData();
-  const totalTravelers = new Set(trainingCamps.flatMap((camp) => camp.registered_students)).size;
-  const nextCamp = trainingCamps[0];
+  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/training-camps");
+  let loadError: string | null = null;
+  const viewer = {
+    userId: session.user.id,
+    userEmail: session.user.email,
+    role: session.activeRole,
+  };
+  const [trainingCamps, members] = await Promise.all([
+    getTrainingCampsData(session.activeClub.slug, viewer).catch((error) => {
+      loadError = error instanceof Error ? error.message : "Could not load training camps.";
+      return [];
+    }),
+    getVisibleMembersData({
+      clubSlug: session.activeClub.slug,
+      userId: session.user.id,
+      userEmail: session.user.email,
+      role: session.activeRole,
+    }).catch(() => {
+      loadError ??= "Could not load camp roster.";
+      return [];
+    }),
+  ]);
   const canManagePlanning = session.activeRole !== "member";
+  const canDeletePlanning = session.activeRole === "owner" || session.activeRole === "admin";
+  const organizationId = session.activeClub.slug;
 
   return (
     <AppShell
@@ -34,52 +55,40 @@ export default async function TrainingCampsPage() {
       initialSession={session}
     >
       <PageTransition>
-        {!nextCamp ? (
-          <Card className="flex min-h-[360px] flex-col items-center justify-center border-dashed p-8 text-center">
-            <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent-blue)]">
-              <Mountain size={26} />
-            </div>
-            <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">No training camps yet</h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-              Add camps for this club when coaches start planning travel, rooms, payments, and rosters.
-            </p>
-          </Card>
+        {loadError ? (
+          <PlanningErrorState
+            title="Training camps are unavailable"
+            message={loadError}
+            canManagePlanning={canManagePlanning}
+            organizationId={organizationId}
+          />
+        ) : trainingCamps.length === 0 ? (
+          <div className="space-y-5">
+            <Card className="flex min-h-[320px] flex-col items-center justify-center border-dashed p-8 text-center">
+              <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent-blue)]">
+                <Mountain size={26} />
+              </div>
+              <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">No training camps yet</h2>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+                Add camps for this club when coaches start planning travel, rooms, payments, and rosters.
+              </p>
+            </Card>
+            {canManagePlanning && <CreateTrainingCampForm clubSlug={organizationId} />}
+          </div>
         ) : (
         <div className="space-y-5">
-          <section>
-            <Card className="overflow-hidden p-0">
-              <div className="border-b border-[var(--border)] p-5">
-                <Badge variant="accent">Next camp</Badge>
-                <div className="mt-4">
-                  <div>
-                    <h2 className="text-3xl font-semibold text-[var(--foreground)]">{nextCamp.name}</h2>
-                    <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
-                      <span className="inline-flex items-center gap-1.5">
-                        <CalendarDays size={15} /> {nextCamp.date} – {nextCamp.endDate}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MapPin size={15} /> {nextCamp.city}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Tent size={15} /> {nextCamp.type}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="grid gap-3 p-5 sm:grid-cols-3">
-                <Metric label="Athletes interested" value={totalTravelers.toString()} />
-                <Metric label="Upcoming camps" value={trainingCamps.length.toString()} />
-                <Metric label="Registration deadline" value={nextCamp.registration_deadline} />
-              </div>
-            </Card>
-          </section>
-
-          {canManagePlanning && <CreateTrainingCampForm />}
+          {canManagePlanning && <CreateTrainingCampForm clubSlug={organizationId} />}
 
           <section id="camp-list" className="scroll-mt-6 grid gap-4 xl:grid-cols-2">
             {trainingCamps.map((camp) => (
-              <CampCard key={camp.id} camp={camp} canManagePlanning={canManagePlanning} />
+              <CampCard
+                key={camp.id}
+                camp={camp}
+                members={members}
+                organizationId={organizationId}
+                canManagePlanning={canManagePlanning}
+                canDeletePlanning={canDeletePlanning}
+              />
             ))}
           </section>
         </div>
@@ -89,17 +98,45 @@ export default async function TrainingCampsPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function PlanningErrorState({
+  title,
+  message,
+  canManagePlanning,
+  organizationId,
+}: {
+  title: string;
+  message: string;
+  canManagePlanning: boolean;
+  organizationId: string;
+}) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <p className="text-xs text-[var(--muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{value}</p>
+    <div className="space-y-5">
+      <Card className="flex min-h-[320px] flex-col items-center justify-center border-dashed p-8 text-center">
+        <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent-coral)]">
+          <AlertTriangle size={26} />
+        </div>
+        <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">{title}</h2>
+        <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">{message}</p>
+      </Card>
+      {canManagePlanning && <CreateTrainingCampForm clubSlug={organizationId} />}
     </div>
   );
 }
 
-function CampCard({ camp, canManagePlanning }: { camp: TrainingCamp; canManagePlanning: boolean }) {
-  const roster = resolveStudentsByIds(camp.registered_students);
+function CampCard({
+  camp,
+  members,
+  organizationId,
+  canManagePlanning,
+  canDeletePlanning,
+}: {
+  camp: TrainingCamp;
+  members: Student[];
+  organizationId: string;
+  canManagePlanning: boolean;
+  canDeletePlanning: boolean;
+}) {
+  const roster = resolveClubRoster(camp.registered_students, members);
   const spotsLeft = camp.spotsTotal - camp.registered_students.length;
   const fewSpotsLeft = spotsLeft <= 4;
 
@@ -160,9 +197,10 @@ function CampCard({ camp, canManagePlanning }: { camp: TrainingCamp; canManagePl
           </div>
           {canManagePlanning ? (
             <div className="flex flex-wrap justify-end gap-2">
-              <EditTrainingCampButton camp={camp} />
+              <EditTrainingCampButton camp={camp} clubSlug={organizationId} />
+              {canDeletePlanning && <DeleteTrainingCampButton camp={camp} clubSlug={organizationId} />}
               <Button variant="surface" size="sm" asChild>
-                <Link href={`/members?filter=camp&camp=${camp.id}`}>
+                <Link href={getWorkspaceHref(`/members?filter=camp&camp=${camp.id}`, organizationId)}>
                   Plan roster
                 </Link>
               </Button>
@@ -174,4 +212,9 @@ function CampCard({ camp, canManagePlanning }: { camp: TrainingCamp; canManagePl
       </div>
     </Card>
   );
+}
+
+function resolveClubRoster(memberIds: string[], members: Student[]) {
+  const membersById = new Map(members.map((member) => [member.id, member]));
+  return memberIds.map((id) => membersById.get(id)).filter((member): member is Student => Boolean(member));
 }

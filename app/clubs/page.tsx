@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, Building2, CheckCircle2, DoorOpen, Lock, Plus, Shield, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
@@ -24,6 +25,11 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
 
   if (!user) {
     return null;
+  }
+
+  if (!accessDenied && memberships.length === 1) {
+    const clubSlug = memberships[0].club.slug;
+    redirect(`/clubs/select?club=${clubSlug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`);
   }
 
   return (
@@ -80,7 +86,6 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {memberships.map((membership) => {
-                const canOpenWorkspace = membership.role === "owner" || membership.role === "admin" || membership.role === "coach";
                 const canManageTeam = membership.role === "owner" || membership.role === "admin";
                 const scopedReturnTo = scopeWorkspaceReturnTo(workspaceReturnTo, membership.club.slug);
 
@@ -108,19 +113,12 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
                     </div>
 
                     <div className="flex flex-wrap gap-2 border-t border-[var(--border)] p-5">
-                      {canOpenWorkspace ? (
-                        <Button variant="primary" asChild>
-                          <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(scopedReturnTo)}`}>
-                            Open academy
-                            <ArrowRight size={16} />
-                          </a>
-                        </Button>
-                      ) : (
-                        <div className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--muted)]">
-                          <Lock size={14} />
-                          Manager access required
-                        </div>
-                      )}
+                      <Button variant="primary" asChild>
+                        <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(scopedReturnTo)}`}>
+                          Open academy
+                          <ArrowRight size={16} />
+                        </a>
+                      </Button>
                       {canManageTeam && (
                         <Button variant="surface" asChild>
                           <a href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(`/${membership.club.slug}/admin`)}`}>Manage team</a>

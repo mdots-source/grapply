@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, type Dispatch, type SetStateAction } from "react";
-import { Loader2, Trophy } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Trash2, Trophy } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActiveClub } from "@/components/use-active-club";
 import type { Competition } from "@/data/competitions";
+import { formatApiError, readApiJson } from "@/lib/api-client";
 
 type CompetitionFormState = {
   name: string;
@@ -18,6 +20,7 @@ type CompetitionFormState = {
   deadline: string;
   notes: string;
 };
+type FormMessageState = { tone: "success" | "error"; text: string };
 
 const emptyCompetitionForm: CompetitionFormState = {
   name: "New team tournament",
@@ -33,11 +36,13 @@ function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `competition-${Date.now()}`;
 }
 
-export function CreateCompetitionForm() {
+export function CreateCompetitionForm({ clubSlug }: { clubSlug?: string }) {
   const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
   const [form, setForm] = useState(emptyCompetitionForm);
 
   return (
@@ -47,7 +52,7 @@ export function CreateCompetitionForm() {
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">Competition planning</p>
             <p className="mt-1 text-xs text-[var(--muted)]">Create a tournament plan, then manage the athlete roster.</p>
-            {message && <p className="mt-3 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold">{message}</p>}
+            {message && <FormMessage message={message} className="mt-3" />}
           </div>
           <Button variant="primary" onClick={() => setOpen(true)}>
             <Trophy size={16} />
@@ -82,9 +87,10 @@ export function CreateCompetitionForm() {
               type: form.type,
               prep: 0,
             };
-            await saveCompetition(competition, activeClub?.slug);
-            setMessage("Competition plan saved.");
+            await saveCompetition(competition, resolvedClubSlug, "POST");
+            setMessage({ tone: "success", text: "Competition plan saved." });
             setOpen(false);
+            router.refresh();
           }}
           setLoading={setLoading}
           setMessage={setMessage}
@@ -94,11 +100,13 @@ export function CreateCompetitionForm() {
   );
 }
 
-export function EditCompetitionButton({ event }: { event: Competition }) {
+export function EditCompetitionButton({ event, clubSlug }: { event: Competition; clubSlug?: string }) {
   const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
   const [form, setForm] = useState<CompetitionFormState>({
     name: event.name,
     date: event.date,
@@ -138,10 +146,12 @@ export function EditCompetitionButton({ event }: { event: Competition }) {
                 notes: form.notes,
                 type: form.type,
               },
-              activeClub?.slug,
+              resolvedClubSlug,
+              "PATCH",
             );
-            setMessage("Competition updated.");
+            setMessage({ tone: "success", text: "Competition updated." });
             setOpen(false);
+            router.refresh();
           }}
           setLoading={setLoading}
           setMessage={setMessage}
@@ -151,14 +161,59 @@ export function EditCompetitionButton({ event }: { event: Competition }) {
   );
 }
 
-async function saveCompetition(competition: Competition, clubSlug?: string) {
+export function DeleteCompetitionButton({ event, clubSlug }: { event: Competition; clubSlug?: string }) {
+  const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  async function deleteCompetition() {
+    if (!confirming) {
+      setConfirming(true);
+      setMessage({ tone: "error", text: "Click delete again to confirm." });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/competitions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: event.id, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
+      });
+      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Competition delete failed.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Competition delete failed.", payload.requestId));
+      setConfirming(false);
+      router.refresh();
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Competition delete failed." });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button type="button" variant={confirming ? "primary" : "outline"} size="sm" disabled={loading} onClick={deleteCompetition}>
+        {loading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+        {confirming ? "Confirm delete" : "Delete"}
+      </Button>
+      {message && <FormMessage message={message} className="max-w-56" />}
+    </div>
+  );
+}
+
+async function saveCompetition(competition: Competition, clubSlug?: string, method: "POST" | "PATCH" = "POST") {
   const response = await fetch("/api/competitions", {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...competition, ...(clubSlug ? { clubSlug } : {}) }),
   });
-  const payload = (await response.json()) as { ok?: boolean; error?: string };
-  if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Competition save failed.");
+  const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Competition save failed.");
+  if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Competition save failed.", payload.requestId));
 }
 
 function CompetitionDrawerForm({
@@ -173,12 +228,12 @@ function CompetitionDrawerForm({
 }: {
   form: CompetitionFormState;
   loading: boolean;
-  message: string | null;
+  message: FormMessageState | null;
   onChange: Dispatch<SetStateAction<CompetitionFormState>>;
   onCancel: () => void;
   onSubmit: () => Promise<void>;
   setLoading: (value: boolean) => void;
-  setMessage: (value: string | null) => void;
+  setMessage: (value: FormMessageState | null) => void;
 }) {
   return (
     <form
@@ -191,7 +246,7 @@ function CompetitionDrawerForm({
         try {
           await onSubmit();
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : "Competition save failed.");
+          setMessage({ tone: "error", text: error instanceof Error ? error.message : "Competition save failed." });
         } finally {
           setLoading(false);
         }
@@ -221,7 +276,7 @@ function CompetitionDrawerForm({
         />
       </div>
 
-      {message && <p className="text-xs text-[var(--muted)]">{message}</p>}
+      {message && <FormMessage message={message} />}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
@@ -240,6 +295,21 @@ function Field({ id, label, value, onChange }: { id: string; label: string; valu
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} required />
+    </div>
+  );
+}
+
+function FormMessage({ message, className = "" }: { message: FormMessageState; className?: string }) {
+  return (
+    <div
+      className={`${className} flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-semibold text-[var(--foreground)] ${
+        message.tone === "success"
+          ? "border-[var(--status-success)]/25 bg-[var(--status-success)]/10"
+          : "border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10"
+      }`}
+    >
+      {message.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+      <span>{message.text}</span>
     </div>
   );
 }

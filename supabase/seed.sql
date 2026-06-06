@@ -29,7 +29,7 @@ on conflict (id) do update set
   primary_coach = excluded.primary_coach;
 
 insert into public.role_definitions (role, label, description, permissions) values
-  ('owner', 'Owner', 'Full control over club settings, billing, roles, integrations, and all academy operations.', array['manage_club', 'manage_roles', 'manage_billing', 'manage_integrations', 'manage_classes', 'view_members']),
+  ('owner', 'Owner', 'Full control over club settings, manual billing contact, roles, integrations, and all academy operations.', array['manage_club', 'manage_roles', 'manage_billing', 'manage_integrations', 'manage_classes', 'view_members']),
   ('admin', 'Admin', 'Runs daily operations: members, schedules, classes, posts, and reports.', array['manage_roles', 'manage_classes', 'manage_members', 'publish_feed', 'view_reports']),
   ('coach', 'Coach', 'Manages class check-ins, coach notes, attendance, and promotion recommendations.', array['manage_classes', 'coach_notes', 'recommend_promotions', 'view_members']),
   ('member', 'Member', 'Can view assigned club, schedule, profile, attendance, rankings, and connected activity.', array['view_schedule', 'view_profile', 'connect_strava'])
@@ -37,6 +37,28 @@ on conflict (role) do update set
   label = excluded.label,
   description = excluded.description,
   permissions = excluded.permissions;
+
+insert into public.club_billing_subscriptions (
+  club_id,
+  plan,
+  status,
+  billing_email,
+  trial_ends_at,
+  current_period_ends_at,
+  seats_included,
+  member_limit
+) values
+  ('00000000-0000-0000-0000-000000000201', 'growth', 'trialing', 'billing@grapply.app', '2026-07-05T00:00:00Z', null, 12, 250),
+  ('00000000-0000-0000-0000-000000000202', 'starter', 'active', 'billing@alpine-grappling.example', null, '2026-07-01T00:00:00Z', 6, 120),
+  ('00000000-0000-0000-0000-000000000203', 'starter', 'incomplete', 'billing@harbor-nogi.example', '2026-06-20T00:00:00Z', null, 4, 80)
+on conflict (club_id) do update set
+  plan = excluded.plan,
+  status = excluded.status,
+  billing_email = excluded.billing_email,
+  trial_ends_at = excluded.trial_ends_at,
+  current_period_ends_at = excluded.current_period_ends_at,
+  seats_included = excluded.seats_included,
+  member_limit = excluded.member_limit;
 
 insert into public.club_memberships (id, user_id, club_id, role, invited_by, joined_at) values
   ('00000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000201', 'owner', null, '2025-01-08'),
@@ -55,16 +77,16 @@ on conflict (user_id, club_id) do update set
   invited_by = excluded.invited_by,
   joined_at = excluded.joined_at;
 
-insert into public.club_classes (id, club_id, name, coach, day, time, mat, level, checked_in) values
-  ('00000000-0000-0000-0000-000000000401', '00000000-0000-0000-0000-000000000201', 'Dawn Patrol Gi', 'Sofia Almeida', 'Mon', '06:30', 'Mat A', 'blue / purple / brown / black', 18),
-  ('00000000-0000-0000-0000-000000000402', '00000000-0000-0000-0000-000000000201', 'Lunch No-Gi', 'Lina Okafor', 'Tue', '12:00', 'Mat B', 'white / blue / purple', 22),
-  ('00000000-0000-0000-0000-000000000403', '00000000-0000-0000-0000-000000000201', 'Kids Competition', 'Noah Keller', 'Wed', '17:30', 'Mat A', 'white / blue', 14),
-  ('00000000-0000-0000-0000-000000000404', '00000000-0000-0000-0000-000000000201', 'Advanced No-Gi', 'Sofia Almeida', 'Thu', '19:00', 'Main Mat', 'purple / brown / black', 31),
-  ('00000000-0000-0000-0000-000000000405', '00000000-0000-0000-0000-000000000202', 'Gi Fundamentals', 'Noah Keller', 'Tue', '18:00', 'Mat 1', 'white / blue', 16),
-  ('00000000-0000-0000-0000-000000000406', '00000000-0000-0000-0000-000000000203', 'No-Gi Wrestling Entries', 'Lina Okafor', 'Sat', '10:30', 'Main Mat', 'blue / purple / brown / black', 12),
-  ('00000000-0000-0000-0000-000000000407', '00000000-0000-0000-0000-000000000202', 'Takedown Lab', 'Ana Costa', 'Thu', '19:30', 'Mat 2', 'blue / purple / brown', 18),
-  ('00000000-0000-0000-0000-000000000408', '00000000-0000-0000-0000-000000000203', 'Women Only Fundamentals', 'Lina Okafor', 'Wed', '18:30', 'Main Mat', 'white / blue', 19),
-  ('00000000-0000-0000-0000-000000000409', '00000000-0000-0000-0000-000000000201', 'Sunday Open Mat', 'Maya Ribeiro', 'Sun', '11:00', 'Main Mat', 'all belts', 27)
+insert into public.club_classes (id, club_id, name, coach, day, time, mat, level, duration_minutes, checked_in) values
+  ('00000000-0000-0000-0000-000000000401', '00000000-0000-0000-0000-000000000201', 'Dawn Patrol Gi', 'Sofia Almeida', 'Mon', '06:30', 'Mat A', 'blue / purple / brown / black', 60, 18),
+  ('00000000-0000-0000-0000-000000000402', '00000000-0000-0000-0000-000000000201', 'Lunch No-Gi', 'Lina Okafor', 'Tue', '12:00', 'Mat B', 'white / blue / purple', 60, 22),
+  ('00000000-0000-0000-0000-000000000403', '00000000-0000-0000-0000-000000000201', 'Kids Competition', 'Noah Keller', 'Wed', '17:30', 'Mat A', 'white / blue', 60, 14),
+  ('00000000-0000-0000-0000-000000000404', '00000000-0000-0000-0000-000000000201', 'Advanced No-Gi', 'Sofia Almeida', 'Thu', '19:00', 'Main Mat', 'purple / brown / black', 90, 31),
+  ('00000000-0000-0000-0000-000000000405', '00000000-0000-0000-0000-000000000202', 'Gi Fundamentals', 'Noah Keller', 'Tue', '18:00', 'Mat 1', 'white / blue', 60, 16),
+  ('00000000-0000-0000-0000-000000000406', '00000000-0000-0000-0000-000000000203', 'No-Gi Wrestling Entries', 'Lina Okafor', 'Sat', '10:30', 'Main Mat', 'blue / purple / brown / black', 75, 12),
+  ('00000000-0000-0000-0000-000000000407', '00000000-0000-0000-0000-000000000202', 'Takedown Lab', 'Ana Costa', 'Thu', '19:30', 'Mat 2', 'blue / purple / brown', 60, 18),
+  ('00000000-0000-0000-0000-000000000408', '00000000-0000-0000-0000-000000000203', 'Women Only Fundamentals', 'Lina Okafor', 'Wed', '18:30', 'Main Mat', 'white / blue', 60, 19),
+  ('00000000-0000-0000-0000-000000000409', '00000000-0000-0000-0000-000000000201', 'Sunday Open Mat', 'Maya Ribeiro', 'Sun', '11:00', 'Main Mat', 'all belts', 120, 27)
 on conflict (id) do update set
   club_id = excluded.club_id,
   name = excluded.name,
@@ -73,6 +95,7 @@ on conflict (id) do update set
   time = excluded.time,
   mat = excluded.mat,
   level = excluded.level,
+  duration_minutes = excluded.duration_minutes,
   checked_in = excluded.checked_in;
 
 insert into public.academy_members (
@@ -127,18 +150,86 @@ on conflict (id) do update set
   avatar_url = excluded.avatar_url,
   profile = excluded.profile;
 
-insert into public.strava_connections (user_id, athlete_id, access_token, refresh_token, expires_at, scopes) values
-  ('00000000-0000-0000-0000-000000000101', '12345678', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
-  ('00000000-0000-0000-0000-000000000105', '44009112', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
-  ('00000000-0000-0000-0000-000000000106', '55110223', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
-  ('00000000-0000-0000-0000-000000000109', '88234501', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
-  ('00000000-0000-0000-0000-000000000110', '99012345', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all'])
-on conflict (user_id) do update set
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000101' where id = 'st-003';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000102' where id = 'st-001';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000103' where id = 'st-004';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000105' where id = 'st-005';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000106' where id = 'st-010';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000107' where id = 'st-011';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000108' where id = 'st-012';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000109' where id = 'st-013';
+update public.academy_members set user_id = '00000000-0000-0000-0000-000000000110' where id = 'st-014';
+
+insert into public.strava_connections (user_id, club_id, athlete_id, access_token, refresh_token, expires_at, scopes) values
+  ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000201', '12345678', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
+  ('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000201', '44009112', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
+  ('00000000-0000-0000-0000-000000000106', '00000000-0000-0000-0000-000000000201', '55110223', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
+  ('00000000-0000-0000-0000-000000000109', '00000000-0000-0000-0000-000000000201', '88234501', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all']),
+  ('00000000-0000-0000-0000-000000000110', '00000000-0000-0000-0000-000000000201', '99012345', 'demo-access-token', 'demo-refresh-token', 1893456000, array['read', 'profile:read_all', 'activity:read_all'])
+on conflict (user_id, club_id) do update set
   athlete_id = excluded.athlete_id,
   access_token = excluded.access_token,
   refresh_token = excluded.refresh_token,
   expires_at = excluded.expires_at,
   scopes = excluded.scopes;
+
+insert into public.strava_activities (
+  user_id,
+  club_id,
+  activity_id,
+  name,
+  sport_type,
+  start_date,
+  distance_meters,
+  moving_time_seconds,
+  elapsed_time_seconds,
+  elevation_gain_meters,
+  average_heartrate,
+  suffer_score,
+  raw
+) values
+  (
+    '00000000-0000-0000-0000-000000000101',
+    '00000000-0000-0000-0000-000000000201',
+    'demo-strava-9001',
+    'No-Gi conditioning intervals',
+    'Workout',
+    '2026-06-03T18:30:00Z',
+    0,
+    2700,
+    3000,
+    0,
+    142,
+    52,
+    '{"source":"seed","note":"Demo Strava conditioning synced to Grapply"}'::jsonb
+  ),
+  (
+    '00000000-0000-0000-0000-000000000101',
+    '00000000-0000-0000-0000-000000000201',
+    'demo-strava-9002',
+    'Zone 2 recovery run',
+    'Run',
+    '2026-06-04T07:10:00Z',
+    6200,
+    1890,
+    2010,
+    42,
+    136,
+    38,
+    '{"source":"seed","note":"Demo aerobic work before evening class"}'::jsonb
+  )
+on conflict (user_id, club_id, activity_id) do update set
+  name = excluded.name,
+  sport_type = excluded.sport_type,
+  start_date = excluded.start_date,
+  distance_meters = excluded.distance_meters,
+  moving_time_seconds = excluded.moving_time_seconds,
+  elapsed_time_seconds = excluded.elapsed_time_seconds,
+  elevation_gain_meters = excluded.elevation_gain_meters,
+  average_heartrate = excluded.average_heartrate,
+  suffer_score = excluded.suffer_score,
+  raw = excluded.raw,
+  synced_at = now();
 -- product seed generated from data/*.ts
 insert into public.competitions (id, club_id, name, date_text, location, city, venue, registered_member_ids, registration_deadline, status, notes, type, prep) values
   ('ibjjf-la-open', '00000000-0000-0000-0000-000000000201', 'IBJJF Los Angeles Open', 'June 28, 2026', 'Los Angeles, CA', 'Los Angeles, CA', 'Long Beach Convention Center', array['st-001', 'st-002', 'st-003', 'st-005', 'st-007'], 'June 20, 2026', 'Registration open', 'Registration closes in 8 days. Gi and No-Gi divisions available.', 'Gi / No-Gi', 82),
@@ -158,8 +249,8 @@ insert into public.training_posts (id, club_id, type, pinned, class_name, coach,
   ('tf-1', '00000000-0000-0000-0000-000000000201', 'session', true, 'Advanced No-Gi', 'Sofia Almeida', 'Today', '19:00', 'Guard retention into back attacks', 'Eight five-minute rounds with positional starts from headquarters. Competition team logged 44 exchanges with strong back attack finishes.', 31, '{"name":"Maya Ribeiro","note":"9 rounds · highest intensity"}'::jsonb, 'Turtle to back chain — 14 successful finishes recorded on the floor.', null, array['Maya Ribeiro', 'Camille Duran', 'Noah Keller'], 48, 12, 94),
   ('tf-2', '00000000-0000-0000-0000-000000000201', 'promotion', false, null, 'Sofia Almeida', 'Today', '11:18', 'Noah Keller — 4th stripe on Black Belt', 'Awarded after consistent competition prep and leadership in advanced rounds.', null, null, null, array['Black belt stripe milestone'], array['Noah Keller'], 86, 24, 91),
   ('tf-3', '00000000-0000-0000-0000-000000000201', 'competition', false, null, 'Lina Okafor', 'Yesterday', '16:40', 'IBJJF LA Open — team weigh-in complete', 'All registered athletes cleared weight. Final rules review scheduled Saturday 11:00.', 5, null, null, null, array['Maya Ribeiro', 'Sofia Almeida', 'Camille Duran'], 32, 8, 78),
-  ('tf-4', '00000000-0000-0000-0000-000000000201', 'open-mat', false, 'Sunday Open Mat', 'Lina Okafor', 'Sunday', '12:00', 'Recovery flow + 90-minute open mat', 'All belts welcome. Flow rounds followed by free sparring — 28 check-ins, great community energy.', 28, null, 'Best exchange: purple belt sweep to mount transition drill.', null, null, 41, 15, 72),
-  ('tf-5', '00000000-0000-0000-0000-000000000201', 'milestone', false, null, 'Noah Keller', 'Yesterday', '09:15', 'Eli Morgan — beginner streak unlocked', 'Three consecutive fundamentals classes with improved escape scores.', null, null, null, array['3-class beginner streak', 'Attendance +22%'], array['Eli Morgan'], 55, 9, 68),
+  ('tf-4', '00000000-0000-0000-0000-000000000201', 'open-mat', false, 'Sunday Open Mat', 'Lina Okafor', 'Sunday', '12:00', 'Recovery flow + 90-minute open mat', 'All belts welcome. Flow rounds followed by free sparring with 28 check-ins.', 28, null, 'Best exchange: purple belt sweep to mount transition drill.', null, null, 41, 15, 72),
+  ('tf-5', '00000000-0000-0000-0000-000000000201', 'milestone', false, null, 'Noah Keller', 'Yesterday', '09:15', 'Eli Morgan — beginner streak earned', 'Three consecutive fundamentals classes with improved escape scores.', null, null, null, array['3-class beginner streak', 'Attendance +22%'], array['Eli Morgan'], 55, 9, 68),
   ('tf-6', '00000000-0000-0000-0000-000000000201', 'announcement', false, null, 'Sofia Almeida', 'This week', '08:00', 'Friday schedule change', 'Fight Night Rounds moves to Main Mat at 19:30 for competition prep week.', null, null, null, null, null, 19, 4, 54)
 on conflict (id) do update set type=excluded.type, pinned=excluded.pinned, class_name=excluded.class_name, coach=excluded.coach, date_text=excluded.date_text, time_text=excluded.time_text, title=excluded.title, summary=excluded.summary, attendance=excluded.attendance, top_participant=excluded.top_participant, sparring_highlight=excluded.sparring_highlight, achievements=excluded.achievements, tagged_students=excluded.tagged_students, reactions=excluded.reactions, comments=excluded.comments, heat=excluded.heat;
 
@@ -173,24 +264,40 @@ insert into public.dashboard_events (id, club_id, category, title, body, actor, 
   ('a4', '00000000-0000-0000-0000-000000000201', 'coach_action', 'Sent re-engagement message to inactive members', null, 'Noah Keller', '{}'::jsonb, 'Yesterday'),
   ('p1', '00000000-0000-0000-0000-000000000201', 'promotion', 'Received 4th stripe on Black Belt', 'Noah Keller', 'Sofia Almeida', '{"type":"stripe","student":"Noah Keller"}'::jsonb, '2 hours ago'),
   ('p2', '00000000-0000-0000-0000-000000000201', 'promotion', 'Moved to #2 in academy rankings', 'Maya Ribeiro', 'System', '{"type":"ranking","student":"Maya Ribeiro"}'::jsonb, 'Yesterday'),
-  ('p3', '00000000-0000-0000-0000-000000000201', 'promotion', 'Beginner streak achievement unlocked', 'Eli Morgan', 'Noah Keller', '{"type":"achievement","student":"Eli Morgan"}'::jsonb, 'Yesterday'),
+  ('p3', '00000000-0000-0000-0000-000000000201', 'promotion', 'Beginner streak achievement earned', 'Eli Morgan', 'Noah Keller', '{"type":"achievement","student":"Eli Morgan"}'::jsonb, 'Yesterday'),
   ('p4', '00000000-0000-0000-0000-000000000201', 'promotion', 'Promoted to Purple Belt', 'Camille Duran', 'Sofia Almeida', '{"type":"belt","student":"Camille Duran"}'::jsonb, '3 days ago')
 on conflict (id) do update set category=excluded.category, title=excluded.title, body=excluded.body, actor=excluded.actor, meta=excluded.meta, occurred_at_text=excluded.occurred_at_text;
 
 insert into public.club_settings (club_id, key, value) values
   ('00000000-0000-0000-0000-000000000201', 'appearance', '{"theme":"dark","accent":"purple"}'::jsonb),
-  ('00000000-0000-0000-0000-000000000201', 'brand', '{"name":"Grapply Jiu-Jitsu Academy","shortName":"Grapply"}'::jsonb),
-  ('00000000-0000-0000-0000-000000000201', 'integrations', '{"strava":true,"supabase":true}'::jsonb)
+  (
+    '00000000-0000-0000-0000-000000000201',
+    'brand',
+    '{
+      "academyName":"Grapply Jiu-Jitsu Academy",
+      "location":"San Diego, CA",
+      "description":"Premium Brazilian Jiu-Jitsu academy focused on fundamentals, competition rounds, and visible member progression.",
+      "logoLabel":"GJ",
+      "mats":"Main Mat, Mat A, Mat B",
+      "classTypes":"Gi, No-Gi, Fundamentals, Competition, Youth, Open Mat",
+      "primaryColor":"#7c3aed",
+      "accentColor":"#22c55e"
+    }'::jsonb
+  ),
+  ('00000000-0000-0000-0000-000000000201', 'coaches', '[{"name":"Sofia Almeida","role":"Head coach","focus":"Competition / Advanced No-Gi","mat":"Main Mat"},{"name":"Lina Okafor","role":"Coach","focus":"No-Gi basics / Wrestling","mat":"Mat B"},{"name":"Noah Keller","role":"Coach","focus":"Youth / Competition rounds","mat":"Mat A"}]'::jsonb),
+  ('00000000-0000-0000-0000-000000000201', 'integrations', '{"strava":true,"supabase":true}'::jsonb),
+  ('00000000-0000-0000-0000-000000000201', 'tv', '{"displayName":"Grapply Live Mat","showActiveAthletes":true,"liveCheckInQr":true,"rotatingAthleteCards":true,"liveActivityTicker":true,"showCoachAndMat":true}'::jsonb)
 on conflict (club_id, key) do update set value=excluded.value;
 
-insert into public.class_checkins (club_id, class_id, member_id, checked_in_by, source, notes) values
-  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000404', 'st-001', '00000000-0000-0000-0000-000000000101', 'kiosk', 'Competition round checked in'),
-  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000404', 'st-014', '00000000-0000-0000-0000-000000000101', 'manual', 'Takedown lab lead'),
-  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000402', 'st-010', '00000000-0000-0000-0000-000000000102', 'strava', 'Conditioning synced'),
-  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000409', 'st-013', '00000000-0000-0000-0000-000000000101', 'qr', 'Open mat QR')
-on conflict (class_id, member_id) do update set
+insert into public.class_checkins (club_id, class_id, member_id, checked_in_by, source, checked_in_date, notes) values
+  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000404', 'st-001', '00000000-0000-0000-0000-000000000101', 'kiosk', current_date, 'Competition round checked in'),
+  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000404', 'st-014', '00000000-0000-0000-0000-000000000101', 'manual', current_date, 'Takedown lab lead'),
+  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000402', 'st-010', '00000000-0000-0000-0000-000000000102', 'strava', current_date, 'Conditioning synced'),
+  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000409', 'st-013', '00000000-0000-0000-0000-000000000101', 'qr', current_date, 'Open mat QR')
+on conflict (class_id, member_id, checked_in_date) do update set
   checked_in_by = excluded.checked_in_by,
   source = excluded.source,
+  checked_in_at = now(),
   notes = excluded.notes;
 
 insert into public.coach_notes (club_id, member_id, coach_user_id, coach_name, body, visibility) values
@@ -202,7 +309,7 @@ insert into public.coach_notes (club_id, member_id, coach_user_id, coach_name, b
 insert into public.member_promotions (club_id, member_id, awarded_by, awarded_by_name, type, belt, stripes, detail) values
   ('00000000-0000-0000-0000-000000000201', 'st-002', '00000000-0000-0000-0000-000000000101', 'Sofia Almeida', 'stripe', 'black', 4, 'Received 4th stripe on Black Belt'),
   ('00000000-0000-0000-0000-000000000201', 'st-007', '00000000-0000-0000-0000-000000000101', 'Sofia Almeida', 'belt', 'purple', 0, 'Promoted to Purple Belt'),
-  ('00000000-0000-0000-0000-000000000201', 'st-004', '00000000-0000-0000-0000-000000000105', 'Diego Alvarez', 'achievement', 'white', 3, 'Beginner streak achievement unlocked');
+  ('00000000-0000-0000-0000-000000000201', 'st-004', '00000000-0000-0000-0000-000000000105', 'Diego Alvarez', 'achievement', 'white', 3, 'Beginner streak achievement earned');
 
 insert into public.club_invites (club_id, email, role, invited_by, status) values
   ('00000000-0000-0000-0000-000000000201', 'coach-invite@grapply.app', 'coach', '00000000-0000-0000-0000-000000000101', 'pending'),

@@ -1,23 +1,28 @@
 import { NextResponse } from "next/server";
-import { setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
-import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
+import { setActiveClubCookie, setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
+import { isMockAuthFallbackAllowed, isProductionRuntime } from "@/lib/auth-mode";
 import { clubMemberships, clubs, getDemoSafeRole, platformUsers } from "@/data/platform";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
+import { noStoreJson, readJsonObject } from "@/lib/api-json";
+import { getAuthEmailError, normalizeAuthEmail } from "@/lib/auth-validation";
 import { getRequestUrl } from "@/lib/request-origin";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
-import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
+import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   const isFormSubmit = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
-  const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await request.json();
-  const returnTo = isFormSubmit ? normalizeWorkspaceReturnTo(String(payload.returnTo ?? "")) : null;
-  const email = String(payload?.email ?? "").trim().toLowerCase();
+  const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await readJsonObject(request);
+  const returnTo = normalizeWorkspaceReturnTo(String(payload.returnTo ?? ""));
+  const email = normalizeAuthEmail(payload?.email);
   const password = String(payload?.password ?? "");
+  const inviteToken = String(payload?.inviteToken ?? "").trim();
 
-  if (!email || !password) {
-    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "Email and password are required."), 303);
-    return NextResponse.json({ ok: false, error: "Email and password are required." }, { status: 400 });
+  const emailError = getAuthEmailError(email);
+  if (emailError || !password) {
+    const error = emailError ?? "Password is required.";
+    if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", error, inviteToken), 303);
+    return noStoreJson({ ok: false, error }, { status: 400 });
   }
 
   if (isSupabaseConfigured()) {
@@ -26,15 +31,15 @@ export async function POST(request: Request) {
       const user = users[0];
 
       if (!user) {
-        if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "No account found for that email."), 303);
-        return NextResponse.json({ ok: false, source: "supabase", error: "User not found." }, { status: 404 });
+        if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "No account found for that email."), 303);
+        return noStoreJson({ ok: false, source: "supabase", error: "User not found." }, { status: 404 });
       }
 
       let session;
       try {
         session = await signInWithPassword(email, password);
       } catch (error) {
-        if (password !== "demo123") throw error;
+        if (password !== "demo123" || !isMockAuthFallbackAllowed()) throw error;
         const authUser = await createAuthUser({ email, password, name: user.name });
         session = await signInWithPassword(email, password);
         await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/app_users?id=eq.${user.id}`, {
@@ -48,48 +53,82 @@ export async function POST(request: Request) {
         }).catch(() => {});
       }
 
-      const redirectTo = returnTo ? await getSupabasePostAuthDestination(user.id, returnTo) : null;
-      const response = redirectTo
-        ? NextResponse.redirect(getRequestUrl(redirectTo, request), 303)
-        : NextResponse.json({
+      const redirectTo = inviteToken
+        ? `/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`
+        : returnTo ? await getSupabasePostAuthDestination(user.id, returnTo) : null;
+      const response = isFormSubmit && redirectTo
+        ? noStoreRedirect(getRequestUrl(redirectTo, request), 303)
+        : noStoreJson({
             ok: true,
             source: "supabase",
             user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar_url },
             ...(redirectTo ? { redirectTo } : {}),
           });
       setAuthCookies(response, session);
+      setDestinationActiveClubCookie(response, redirectTo);
       return response;
     } catch (error) {
       const mockUser = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
       if (isMockAuthFallbackAllowed() && mockUser && password === "demo123") {
-        return createMockLoginResponse(request, mockUser, returnTo);
+        return createMockLoginResponse(request, mockUser, returnTo, isFormSubmit);
       }
-      if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", getAuthErrorMessage(error)), 303);
-      return NextResponse.json({ ok: false, source: "supabase", error: String(error) }, { status: 400 });
+      if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", getAuthErrorMessage(error), inviteToken), 303);
+      return authFailureJson(error, "Login failed. Check your email and password.", 400);
     }
   }
 
   if (!isMockAuthFallbackAllowed()) {
-    const error = "Supabase backend is not configured on this deployment. Use the demo button or add SUPABASE_SERVICE_ROLE_KEY.";
-    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", error), 303);
-    return NextResponse.json({ ok: false, source: "supabase", error }, { status: 500 });
+    const error = "Supabase backend is not configured on this deployment. Add SUPABASE_SERVICE_ROLE_KEY before accepting real logins.";
+    if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", error), 303);
+    return noStoreJson({ ok: false, source: "supabase", error }, { status: 500 });
   }
 
   const user = platformUsers.find((candidate) => candidate.email.toLowerCase() === email);
   if (!user) {
-    if (isFormSubmit) return NextResponse.redirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "No account found for that email."), 303);
-    return NextResponse.json({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
+    if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/login", returnTo ?? "/schedule", "No account found for that email."), 303);
+    return noStoreJson({ ok: false, source: "mock", error: "User not found." }, { status: 404 });
   }
-  return createMockLoginResponse(request, user, returnTo);
+  return createMockLoginResponse(request, user, returnTo, isFormSubmit);
 }
 
-function createMockLoginResponse(request: Request, user: (typeof platformUsers)[number], returnTo: string | null) {
+function createMockLoginResponse(request: Request, user: (typeof platformUsers)[number], returnTo: string | null, isFormSubmit: boolean) {
   const redirectTo = returnTo ? getMockPostAuthDestination(user.id, returnTo) : null;
-  const response = redirectTo
-    ? NextResponse.redirect(getRequestUrl(redirectTo, request), 303)
-    : NextResponse.json({ ok: true, source: "mock", user });
+  const response = isFormSubmit && redirectTo
+    ? noStoreRedirect(getRequestUrl(redirectTo, request), 303)
+    : noStoreJson({ ok: true, source: "mock", user, ...(redirectTo ? { redirectTo } : {}) });
   setMockAuthCookie(response, user.id);
+  setDestinationActiveClubCookie(response, redirectTo);
   return response;
+}
+
+function authFailureJson(error: unknown, fallback: string, status = 400) {
+  const requestId = crypto.randomUUID();
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[grapply:auth:${requestId}]`, message);
+  const response = noStoreJson(
+    {
+      ok: false,
+      source: "supabase",
+      error: isProductionRuntime() ? fallback : getAuthErrorMessage(error),
+      requestId,
+    },
+    { status },
+  );
+  response.headers.set("X-Request-Id", requestId);
+  response.headers.set("X-Grapply-Error-Source", "auth");
+  return response;
+}
+
+function noStoreRedirect(url: URL, status?: number) {
+  const response = NextResponse.redirect(url, status);
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+function setDestinationActiveClubCookie(response: NextResponse, destination: string | null) {
+  if (!destination) return;
+  const route = splitOrganizationWorkspacePath(new URL(destination, "https://grapply.local").pathname);
+  if (route?.organizationId) setActiveClubCookie(response, route.organizationId);
 }
 
 async function getSupabasePostAuthDestination(userId: string, returnTo: string) {
@@ -120,10 +159,11 @@ function clubsPath(returnTo: string) {
   return `/clubs?returnTo=${encodeURIComponent(normalizeWorkspaceReturnTo(returnTo))}`;
 }
 
-function authErrorUrl(request: Request, path: string, returnTo: string, error: string) {
+function authErrorUrl(request: Request, path: string, returnTo: string, error: string, inviteToken?: string) {
   const url = getRequestUrl(path, request);
   url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
   url.searchParams.set("error", error);
+  if (inviteToken) url.searchParams.set("invite", inviteToken);
   return url;
 }
 

@@ -6,17 +6,26 @@ import {
   Award,
   Calendar,
   Flame,
+  Loader2,
   Megaphone,
   MessageCircle,
+  Pencil,
   Radio,
+  Save,
   Sparkles,
+  Trash2,
   Trophy,
   Users,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { typeLabels, type TrainingPost } from "@/data/training-feed";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useActiveClub } from "@/components/use-active-club";
+import { typeLabels, type TrainingPost, type TrainingPostType } from "@/data/training-feed";
+import { formatApiError, readApiJson } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 const typeIcons = {
@@ -28,17 +37,104 @@ const typeIcons = {
   "open-mat": Flame,
 };
 
-export function TrainingPostCard({ post, index = 0, canComment = false }: { post: TrainingPost; index?: number; canComment?: boolean }) {
+export function TrainingPostCard({
+  post,
+  index = 0,
+  canComment = false,
+  canEdit = false,
+  canDelete = false,
+  clubSlug,
+  onDelete,
+  onUpdate,
+}: {
+  post: TrainingPost;
+  index?: number;
+  canComment?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  clubSlug: string;
+  onDelete?: (postId: string) => void;
+  onUpdate?: (post: TrainingPost) => void;
+}) {
   const Icon = typeIcons[post.type];
+  const activeClub = useActiveClub();
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [localNotes, setLocalNotes] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(() => toEditForm(post));
 
   function addDiscussionNote() {
     const note = draft.trim();
     if (!note) return;
     setLocalNotes((current) => [note, ...current]);
     setDraft("");
+  }
+
+  async function deletePost() {
+    setDeleting(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/training-feed", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: post.id, clubSlug: activeClub?.slug ?? clubSlug }),
+      });
+      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Post delete failed.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Post delete failed.", payload.requestId));
+      onDelete?.(post.id);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Post delete failed.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function savePost() {
+    const attendance = editForm.attendance.trim() ? Number(editForm.attendance) : undefined;
+    const coach = editForm.coach.trim();
+    const title = editForm.title.trim();
+    const summary = editForm.summary.trim();
+    if (!coach || !title || !summary) {
+      setMessage("Coach, title, and summary are required.");
+      return;
+    }
+    if (attendance !== undefined && (!Number.isInteger(attendance) || attendance < 0 || attendance > 10000)) {
+      setMessage("Attendance must be a whole number between 0 and 10000.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const updatedPost: TrainingPost = {
+        ...post,
+        type: editForm.type,
+        coach,
+        className: editForm.className.trim() || undefined,
+        title,
+        summary,
+        attendance,
+      };
+      const response = await fetch("/api/training-feed", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...updatedPost, clubSlug: activeClub?.slug ?? clubSlug }),
+      });
+      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string; post?: TrainingPost }>(response, "Post update failed.");
+      if (!payload.ok || !payload.post) throw new Error(formatApiError(payload.error ?? "Post update failed.", payload.requestId));
+      onUpdate?.(payload.post);
+      setEditForm(toEditForm(payload.post));
+      setEditing(false);
+      setMessage("Post updated.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Post update failed.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -79,7 +175,41 @@ export function TrainingPostCard({ post, index = 0, canComment = false }: { post
               </p>
             </div>
           </div>
-          <p className="mt-4 text-sm leading-7 text-[var(--muted)]">{post.summary}</p>
+          {editing ? (
+            <div className="mt-5 space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor={`post-type-${post.id}`}>Type</Label>
+                  <select
+                    id={`post-type-${post.id}`}
+                    value={editForm.type}
+                    onChange={(event) => setEditForm((value) => ({ ...value, type: event.target.value as TrainingPostType }))}
+                    className="flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
+                  >
+                    {Object.entries(typeLabels).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <EditField id={`post-coach-${post.id}`} label="Coach" value={editForm.coach} onChange={(coach) => setEditForm((value) => ({ ...value, coach }))} />
+                <EditField id={`post-class-${post.id}`} label="Class" value={editForm.className} onChange={(className) => setEditForm((value) => ({ ...value, className }))} />
+                <EditField id={`post-attendance-${post.id}`} label="Attendance" value={editForm.attendance} onChange={(attendance) => setEditForm((value) => ({ ...value, attendance }))} />
+              </div>
+              <EditField id={`post-title-${post.id}`} label="Title" value={editForm.title} onChange={(title) => setEditForm((value) => ({ ...value, title }))} />
+              <div className="space-y-1.5">
+                <Label htmlFor={`post-summary-${post.id}`}>Summary</Label>
+                <textarea
+                  id={`post-summary-${post.id}`}
+                  value={editForm.summary}
+                  onChange={(event) => setEditForm((value) => ({ ...value, summary: event.target.value }))}
+                  rows={4}
+                  className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm leading-7 text-[var(--muted)]">{post.summary}</p>
+          )}
 
           {(post.topParticipant || post.sparringHighlight) && (
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -120,7 +250,44 @@ export function TrainingPostCard({ post, index = 0, canComment = false }: { post
           <p className="text-xs text-[var(--muted)]">
             {post.className ? `${post.className} update` : `${typeLabels[post.type]} update`}
           </p>
-          {canComment && (
+          <div className="flex gap-2">
+          {canEdit && (
+            <Button
+              type="button"
+              variant={editing ? "primary" : "surface"}
+              size="sm"
+              className="gap-1.5"
+              disabled={saving}
+              onClick={() => {
+                if (editing) void savePost();
+                else {
+                  setEditForm(toEditForm(post));
+                  setMessage(null);
+                  setEditing(true);
+                }
+              }}
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : editing ? <Save size={14} /> : <Pencil size={14} />}
+              {editing ? "Save" : "Edit"}
+            </Button>
+          )}
+          {editing && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={saving}
+              onClick={() => {
+                setEditForm(toEditForm(post));
+                setEditing(false);
+                setMessage(null);
+              }}
+            >
+              <X size={14} />
+              Cancel
+            </Button>
+          )}
+          {canComment && !editing && (
             <div className="flex gap-2">
             <Button
               variant="ghost"
@@ -133,7 +300,15 @@ export function TrainingPostCard({ post, index = 0, canComment = false }: { post
             </Button>
             </div>
           )}
+          </div>
+          {canDelete && (
+            <Button type="button" variant="outline" size="sm" disabled={deleting} onClick={deletePost}>
+              {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              Delete
+            </Button>
+          )}
         </div>
+        {message && <p className="px-5 pb-4 text-xs text-[var(--muted)]">{message}</p>}
         {canComment && discussionOpen && (
           <div className="border-t border-[var(--border)] bg-[var(--surface)]/55 px-5 py-4">
             <p className="text-sm font-semibold text-[var(--foreground)]">Discussion</p>
@@ -163,5 +338,25 @@ export function TrainingPostCard({ post, index = 0, canComment = false }: { post
         )}
       </Card>
     </motion.div>
+  );
+}
+
+function toEditForm(post: TrainingPost) {
+  return {
+    type: post.type,
+    coach: post.coach,
+    className: post.className ?? "",
+    title: post.title,
+    summary: post.summary,
+    attendance: post.attendance == null ? "" : String(post.attendance),
+  };
+}
+
+function EditField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} />
+    </div>
   );
 }
