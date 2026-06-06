@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
   const validation = validateClassPayload(payload, "create");
   if (validation.error) return validation.error;
-  const data = validation.data;
+  const data = getWritableClassPayload(validation.data, access.session.activeRole, access.session.user.name);
   const className = data.name ?? "";
   const coach = data.coach ?? "";
   const day = data.day ?? "";
@@ -132,7 +132,7 @@ export async function PATCH(request: Request) {
 
   const validation = validateClassPayload(payload, "update");
   if (validation.error) return validation.error;
-  const data = validation.data;
+  const data = getWritableClassPayload(validation.data, access.session.activeRole, access.session.user.name);
 
   if (isSupabaseConfigured()) {
     if (!isUuid(data.id)) return noStoreJson({ ok: false, error: "Class id must be a valid id." }, { status: 400 });
@@ -287,6 +287,11 @@ function getMockClassOverlap(clubSlug: string | undefined, normalizedDay: string
         timeToMinutes(normalizedTime) + durationMinutes,
       ),
   );
+}
+
+function getWritableClassPayload(data: ValidatedClassPayload, role: string, userName: string): ValidatedClassPayload {
+  if (role !== "coach") return data;
+  return { ...data, coach: userName };
 }
 
 function normalizeClassField(value: unknown) {
