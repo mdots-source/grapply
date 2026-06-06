@@ -147,7 +147,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
-  const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
+  const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
   if (access.error) return access.error;
 
   const id = requiredString(payload.id, "Note id");
@@ -161,8 +161,12 @@ export async function DELETE(request: Request) {
     try {
       clubId = await getBackendClubId(access.session.activeClub.slug);
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
+      const [existing] = await selectRows("coach_notes", `select=*&id=eq.${encodeURIComponent(noteId)}&club_id=eq.${clubId}&limit=1`);
+      if (!existing) return noStoreJson({ ok: false, error: "Note not found in this club." }, { status: 404 });
+      if (access.session.activeRole === "coach" && existing.coach_user_id !== access.session.user.id) {
+        return noStoreJson({ ok: false, error: "Coaches can only delete their own notes." }, { status: 403 });
+      }
       const removed = await deleteRows("coach_notes", `id=eq.${encodeURIComponent(noteId)}&club_id=eq.${clubId}`);
-      if (removed.length === 0) return noStoreJson({ ok: false, error: "Note not found in this club." }, { status: 404 });
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
       return apiSupabaseError(error, { clubId });
