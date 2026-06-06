@@ -1,6 +1,6 @@
 import type { TrainingCamp } from "@/data/training-camps";
 import { getClubRoster } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -85,6 +85,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Training camps");
+  if (persistenceError) return persistenceError;
+
   const mockCamps = getMockTrainingCampsForClub(access.session.activeClub.slug);
   if (mockCamps.some((item) => item.id === camp.id)) {
     return noStoreJson({ ok: false, error: "A camp with this id already exists in this club." }, { status: 409 });
@@ -124,6 +127,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Training camps");
+  if (persistenceError) return persistenceError;
+
   const mockCamps = getMockTrainingCampsForClub(access.session.activeClub.slug);
   if (!mockCamps.some((item) => item.id === camp.id)) {
     return noStoreJson({ ok: false, error: "Camp not found in this club." }, { status: 404 });
@@ -160,6 +166,9 @@ export async function DELETE(request: Request) {
   if (!getMockTrainingCampsForClub(access.session.activeClub.slug).some((item) => item.id === campId)) {
     return noStoreJson({ ok: false, error: "Camp not found in this club." }, { status: 404 });
   }
+
+  const persistenceError = requireSupabasePersistence("Training camps");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", id: campId });
 }

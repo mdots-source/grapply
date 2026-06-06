@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiAccess, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -76,6 +76,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Training goals");
+  if (persistenceError) return persistenceError;
+
   return noStoreJson({ ok: true, source: "mock", goal });
 }
 
@@ -127,6 +130,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Training goals");
+  if (persistenceError) return persistenceError;
+
   return noStoreJson({ ok: true, source: "mock", goal: { id: goalId, ...goal } });
 }
 
@@ -154,6 +160,9 @@ export async function DELETE(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Training goals");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", id: goalId });
 }

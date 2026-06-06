@@ -1,5 +1,5 @@
 import { inviteEmailBody, queueEmail } from "@/lib/email/outbox";
-import { apiSupabaseError, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { getRequestUrl } from "@/lib/request-origin";
@@ -106,6 +106,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Club invites");
+  if (persistenceError) return persistenceError;
+
   return noStoreJson({ ok: true, source: "mock", invite: data });
 }
 
@@ -157,6 +160,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Club invites");
+  if (persistenceError) return persistenceError;
+
   return noStoreJson({ ok: true, source: "mock", invite: data });
 }
 
@@ -190,6 +196,9 @@ export async function DELETE(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Club invites");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", id: inviteId });
 }

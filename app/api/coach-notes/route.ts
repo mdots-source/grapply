@@ -1,5 +1,5 @@
 import { getClubRoster } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { deleteRows, insertRow, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
@@ -76,6 +76,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Coach notes");
+  if (persistenceError) return persistenceError;
+
   const mockClubId = getMockClubId(access.session.activeClub.slug);
   const mockMember = getClubRoster(mockClubId).find((member) => member.id === memberId);
   if (!mockMember) return noStoreJson({ ok: false, error: "Member not found in this club." }, { status: 404 });
@@ -135,6 +138,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Coach notes");
+  if (persistenceError) return persistenceError;
+
   return noStoreJson({ ok: false, source: "mock", error: "Coach notes are not persisted in mock mode." }, { status: 404 });
 }
 
@@ -162,6 +168,9 @@ export async function DELETE(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Coach notes");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: false, source: "mock", error: "Coach notes are not persisted in mock mode." }, { status: 404 });
 }

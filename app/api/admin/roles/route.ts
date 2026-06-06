@@ -1,5 +1,5 @@
 import { clubMemberships, clubs, roleDefinitions } from "@/data/platform";
-import { apiSupabaseError, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { queueEmail, staffNotificationEmailBody } from "@/lib/email/outbox";
@@ -79,6 +79,9 @@ export async function PATCH(request: Request) {
   }
 
   if (!isUuid(data.membershipId)) {
+    const persistenceError = requireSupabasePersistence("Role management");
+    if (persistenceError) return persistenceError;
+
     if (isSupabaseConfigured()) {
       return noStoreJson({ ok: false, error: "Membership id must be a valid id." }, { status: 400 });
     }
@@ -144,6 +147,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Role management");
+  if (persistenceError) return persistenceError;
+
   return noStoreJson({ ok: true, source: "mock", membership: data });
 }
 
@@ -158,6 +164,9 @@ export async function DELETE(request: Request) {
   const membershipIdValue = membershipId.value ?? "";
 
   if (!isUuid(membershipIdValue)) {
+    const persistenceError = requireSupabasePersistence("Role management");
+    if (persistenceError) return persistenceError;
+
     if (isSupabaseConfigured()) {
       return noStoreJson({ ok: false, error: "Membership id must be a valid id." }, { status: 400 });
     }
@@ -222,6 +231,9 @@ export async function DELETE(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Role management");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", membershipId: membershipIdValue });
 }

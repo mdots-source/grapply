@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiAccess } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { fetchStravaActivities, isStravaConfigured, refreshStravaToken, StravaApiError, STRAVA_SCOPES, type StravaActivity } from "@/lib/strava";
@@ -44,6 +44,9 @@ export async function POST(request: Request) {
   if (access.error) return access.error;
 
   if (!isSupabaseConfigured() || !isUuid(access.session.user.id)) {
+    const persistenceError = requireSupabasePersistence("Strava activity sync");
+    if (persistenceError) return persistenceError;
+
     return noStoreJson({ ok: true, source: "mock", synced: 0, activities: [] });
   }
 

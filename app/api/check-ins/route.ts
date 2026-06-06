@@ -1,5 +1,5 @@
 import { clubClasses, getClubRoster } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -110,6 +110,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Check-ins");
+  if (persistenceError) return persistenceError;
+
   const mockClubId = getMockClubId(access.session.activeClub.slug);
   const mockClass = clubClasses.find((item) => item.clubId === mockClubId && item.id === data.classId);
   if (!mockClass) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
@@ -186,6 +189,9 @@ export async function DELETE(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Check-ins");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", id: checkInId });
 }

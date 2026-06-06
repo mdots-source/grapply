@@ -1,6 +1,6 @@
 import type { NextResponse } from "next/server";
 import { clubClasses } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { deleteRows, isSupabaseConfigured, insertRow, selectRows, updateRows } from "@/lib/supabase/server";
@@ -109,6 +109,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Schedule CRUD");
+  if (persistenceError) return persistenceError;
+
   const mockOverlap = getMockClassOverlap(access.session.activeClub.slug, normalizedDay, normalizedTime, durationMinutes, data.mat ?? "Main Mat");
 
   if (mockOverlap) {
@@ -186,6 +189,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Schedule CRUD");
+  if (persistenceError) return persistenceError;
+
   const mockClasses = getMockClasses(access.session.activeClub.slug);
   const existing = mockClasses.find((item) => item.id === data.id);
   if (!existing) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
@@ -252,6 +258,9 @@ export async function DELETE(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Schedule CRUD");
+  if (persistenceError) return persistenceError;
 
   const mockClass = getMockClasses(access.session.activeClub.slug).find((item) => item.id === payload.id);
   if (!mockClass) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });

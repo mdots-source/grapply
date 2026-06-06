@@ -1,6 +1,6 @@
 import type { TrainingPost } from "@/data/training-feed";
 import { getClubRoster } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -108,6 +108,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Training feed");
+  if (persistenceError) return persistenceError;
+
   const mockPosts = getMockTrainingPostsForClub(access.session.activeClub.slug);
   if (mockPosts.some((item) => item.id === post.id)) {
     return noStoreJson({ ok: false, error: "A post with this id already exists in this club." }, { status: 409 });
@@ -147,6 +150,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Training feed");
+  if (persistenceError) return persistenceError;
+
   const mockPosts = getMockTrainingPostsForClub(access.session.activeClub.slug);
   if (!mockPosts.some((item) => item.id === post.id)) {
     return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
@@ -183,6 +189,9 @@ export async function DELETE(request: Request) {
   if (!getMockTrainingPostsForClub(access.session.activeClub.slug).some((item) => item.id === postId)) {
     return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
   }
+
+  const persistenceError = requireSupabasePersistence("Training feed");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", id: postId });
 }

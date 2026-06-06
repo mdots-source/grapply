@@ -76,6 +76,19 @@ export function apiSupabaseError(
   return response;
 }
 
+export function requireSupabasePersistence(feature: string) {
+  if (!isProductionRuntime()) return null;
+
+  return noStoreJson(
+    {
+      ok: false,
+      source: "supabase",
+      error: `${feature} requires the Supabase backend in production.`,
+    },
+    { status: 503 },
+  );
+}
+
 function apiAccessError(error: string, status: 401 | 403) {
   const requestId = crypto.randomUUID();
   console.warn(`[grapply:access:${requestId}]`, error);

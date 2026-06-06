@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiAccess } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { deleteRows, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -19,12 +19,18 @@ async function disconnectStrava(request: Request) {
   if (access.error) return access.error;
 
   if (!isSupabaseConfigured()) {
+    const persistenceError = requireSupabasePersistence("Strava connections");
+    if (persistenceError) return persistenceError;
+
     return noStoreJson({ ok: true, source: "mock", status: "not_connected" });
   }
 
   let clubId: string | null = null;
   try {
     if (!isUuid(access.session.user.id)) {
+      const persistenceError = requireSupabasePersistence("Strava connections");
+      if (persistenceError) return persistenceError;
+
       return noStoreJson({ ok: true, source: "mock", status: "not_connected" });
     }
 

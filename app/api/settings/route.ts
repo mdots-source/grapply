@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
@@ -60,6 +60,9 @@ export async function POST(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Club settings");
+  if (persistenceError) return persistenceError;
 
   return noStoreJson({ ok: true, source: "mock", setting: { key: validation.key, value: validation.value } });
 }
