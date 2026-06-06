@@ -5,7 +5,7 @@ import { requireWorkspaceRole } from "@/lib/workspace-access";
 
 export default async function SettingsPage({ searchParams }: { searchParams?: Promise<{ strava?: string }> }) {
   const params = await searchParams;
-  const session = await requireWorkspaceRole(["owner", "admin"], "/settings");
+  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/settings");
 
   return (
     <AppShell title="Settings" subtitle="Appearance, integrations, and academy preferences for the active club." initialSession={session}>

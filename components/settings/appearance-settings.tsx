@@ -26,12 +26,14 @@ export function AppearanceSettings({
   value,
   dirty = false,
   saving = false,
+  canSaveWorkspace = true,
   onChange,
   onSave,
 }: {
   value: AppearanceSetting;
   dirty?: boolean;
   saving?: boolean;
+  canSaveWorkspace?: boolean;
   onChange?: (value: AppearanceSetting) => void;
   onSave?: () => void;
 }) {
@@ -108,11 +110,17 @@ export function AppearanceSettings({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-[var(--muted)]">Local theme changes apply immediately; saving stores the club default in Supabase.</p>
-        <Button type="button" variant="primary" disabled={!dirty || saving} onClick={onSave}>
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-          {dirty ? "Save appearance" : "Appearance saved"}
-        </Button>
+        <p className="text-xs text-[var(--muted)]">
+          {canSaveWorkspace
+            ? "Local theme changes apply immediately; saving stores the club default in Supabase."
+            : "Local theme changes apply immediately. Club defaults are managed by owners and admins."}
+        </p>
+        {canSaveWorkspace && (
+          <Button type="button" variant="primary" disabled={!dirty || saving} onClick={onSave}>
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {dirty ? "Save appearance" : "Appearance saved"}
+          </Button>
+        )}
       </div>
     </Card>
   );

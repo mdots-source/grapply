@@ -254,7 +254,7 @@ export function SettingsTabs({
   const tvDirty = JSON.stringify(tvSettings) !== JSON.stringify(savedTvSettings);
   const appearanceDirty = JSON.stringify(appearance) !== JSON.stringify(savedAppearance);
   const coachesDirty = JSON.stringify(coaches) !== JSON.stringify(savedCoaches);
-  const hasPendingChanges = brandDirty || tvDirty || appearanceDirty || coachesDirty;
+  const hasPendingChanges = canManageSettings && (brandDirty || tvDirty || appearanceDirty || coachesDirty);
   const mats = useMemo(() => splitList(brand.mats), [brand.mats]);
   const classTypes = useMemo(() => splitList(brand.classTypes), [brand.classTypes]);
   const logoText = brand.logoLabel.trim() || initials(brand.academyName) || "G";
@@ -536,6 +536,7 @@ export function SettingsTabs({
             value={appearance}
             dirty={appearanceDirty}
             saving={saving === "appearance"}
+            canSaveWorkspace={canManageSettings}
             onChange={setAppearance}
             onSave={() => saveSetting("appearance", appearance)}
           />
