@@ -1,6 +1,6 @@
 import { getBackendClubId, getMockClubId, getRequestedClubSlug } from "@/lib/backend";
-import { academyMeta } from "@/data/academy-meta";
-import { compareMemberHierarchy, type Student } from "@/data/academy";
+import { academyMeta, tvTickerItems } from "@/data/academy-meta";
+import { compareMemberHierarchy, currentSession, tvCheckedInAthletes, type Student, type TrainingCategory, type TvCheckedInAthlete } from "@/data/academy";
 import { dashboardStats } from "@/data/dashboard";
 import { clubClasses, clubs, getClubRoster, platformUsers, type ClubClass } from "@/data/platform";
 import { getMockCompetitionsForClub, getMockTrainingCampsForClub, getMockTrainingPostsForClub } from "@/lib/mock-club-content";
@@ -20,6 +20,24 @@ type ViewerScope = {
 };
 
 export type RankedMember = Student & { rank: number };
+
+export type TvDisplayData = {
+  session: {
+    id: string;
+    name: string;
+    time: string;
+    endTime: string;
+    durationMinutes: number;
+    coach: string;
+    room: string;
+    trainingType: string;
+    experienceLevel: string;
+    category: TrainingCategory;
+    focus: string;
+  };
+  athletes: TvCheckedInAthlete[];
+  tickerItems: string[];
+};
 
 export type DashboardData = {
   meta: Omit<typeof academyMeta, "liveClass"> & {
@@ -51,6 +69,70 @@ export async function getClassesData(clubSlug?: string | null) {
   } catch (error) {
     throw new Error(`Could not load classes from Supabase: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+export async function getTvDisplayData(clubSlug?: string | null): Promise<TvDisplayData> {
+  const requestedClubSlug = await getRequestedClubSlug(clubSlug);
+  const [classes, members] = await Promise.all([
+    getClassesData(requestedClubSlug),
+    getMembersData(requestedClubSlug),
+  ]);
+  const activeMembers = members.filter((member) => member.status === "active");
+  const liveClass = pickLiveClass(classes);
+
+  let liveAthletes = activeMembers.slice(0, 12).map((member, index) => ({
+    ...member,
+    checkedInMinutes: [47, 41, 52, 22, 38, 18, 29, 14, 34, 26, 19, 12][index] ?? 12,
+  }));
+
+  if (isSupabaseConfigured() && liveClass) {
+    try {
+      const clubId = await getBackendClubId(requestedClubSlug);
+      if (clubId) {
+        const today = new Date().toISOString().slice(0, 10);
+        const checkIns = await selectRows(
+          "class_checkins",
+          `select=*&club_id=eq.${clubId}&class_id=eq.${encodeURIComponent(liveClass.id)}&checked_in_date=eq.${today}&order=checked_in_at.asc`,
+        );
+        const checkedInMemberIds = new Set(checkIns.map((checkIn) => checkIn.member_id));
+        const checkInTimeByMemberId = new Map(checkIns.map((checkIn) => [checkIn.member_id, checkIn.checked_in_at]));
+        const checkedInMembers = activeMembers.filter((member) => checkedInMemberIds.has(member.id));
+
+        if (checkedInMembers.length > 0) {
+          liveAthletes = checkedInMembers.map((member) => ({
+            ...member,
+            checkedInMinutes: getCheckedInMinutes(checkInTimeByMemberId.get(member.id)),
+          }));
+        }
+      }
+    } catch {
+      // TV mode should keep displaying the club roster if live check-in history is temporarily unavailable.
+    }
+  }
+
+  if (liveAthletes.length === 0) {
+    liveAthletes = tvCheckedInAthletes.slice(0, 6);
+  }
+
+  return {
+    session: liveClass
+      ? {
+          id: liveClass.id,
+          name: liveClass.name,
+          time: liveClass.time,
+          endTime: addMinutesToTime(liveClass.time, liveClass.durationMinutes ?? currentSession.durationMinutes),
+          durationMinutes: liveClass.durationMinutes ?? currentSession.durationMinutes,
+          coach: liveClass.coach,
+          room: liveClass.mat,
+          trainingType: liveClass.level,
+          experienceLevel: getExperienceLevel(liveClass.level),
+          category: getTrainingCategory(liveClass.level),
+          focus: `${liveClass.name} rounds and coach-led technical work`,
+        }
+      : currentSession,
+    athletes: liveAthletes,
+    tickerItems: buildTvTickerItems(requestedClubSlug, liveClass, liveAthletes),
+  };
 }
 
 export async function getDashboardData(clubSlug?: string | null, viewer?: ViewerScope): Promise<DashboardData> {
@@ -423,4 +505,73 @@ function filterMockTrainingPostsForViewer(posts: TrainingPost[], clubSlug: strin
         topParticipant: post.topParticipant && allowedNames.has(post.topParticipant.name) ? post.topParticipant : undefined,
       };
     });
+}
+
+const weekdayByIndex = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+function pickLiveClass(classes: ClubClass[]) {
+  if (classes.length === 0) return null;
+  const now = new Date();
+  const today = weekdayByIndex[now.getDay()];
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayClasses = classes
+    .filter((item) => item.day === today)
+    .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+  const liveClass = todayClasses.find((item) => {
+    const start = timeToMinutes(item.time);
+    const end = start + (item.durationMinutes ?? 60);
+    return currentMinutes >= start && currentMinutes <= end;
+  });
+  if (liveClass) return liveClass;
+  return todayClasses.find((item) => timeToMinutes(item.time) >= currentMinutes) ?? todayClasses[0] ?? classes[0];
+}
+
+function buildTvTickerItems(clubSlug: string, liveClass: ClubClass | null, athletes: TvCheckedInAthlete[]) {
+  if (!liveClass) return tvTickerItems;
+  const topAthlete = athletes[0];
+  return [
+    `${liveClass.name} live now - ${liveClass.mat}`,
+    `Coach ${liveClass.coach} - ${liveClass.level}`,
+    `${athletes.length} athletes ready on the TV floor`,
+    topAthlete ? `${topAthlete.name} - ${topAthlete.belt} belt - ${topAthlete.focus}` : `${clubSlug} roster is ready`,
+    ...tvTickerItems.slice(0, 3),
+  ];
+}
+
+function getExperienceLevel(level: string) {
+  const normalized = level.toLowerCase();
+  if (normalized.includes("advanced") || normalized.includes("black") || normalized.includes("brown")) return "Advanced";
+  if (normalized.includes("fundamental") || normalized.includes("white")) return "Fundamentals";
+  if (normalized.includes("competition")) return "Competition";
+  return "All levels";
+}
+
+function getTrainingCategory(level: string): TrainingCategory {
+  const normalized = level.toLowerCase();
+  if (normalized.includes("competition")) return "Competition Team";
+  if (normalized.includes("no-gi")) return "No-Gi";
+  if (normalized.includes("open")) return "Open Mat";
+  if (normalized.includes("advanced")) return "Advanced";
+  if (normalized.includes("beginner") || normalized.includes("fundamental") || normalized.includes("white")) return "Fundamentals";
+  return "Intermediate";
+}
+
+function addMinutesToTime(time: string, minutes: number) {
+  const total = timeToMinutes(time) + minutes;
+  const hours = Math.floor(total / 60) % 24;
+  const mins = total % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+function getCheckedInMinutes(checkedInAt?: string) {
+  if (!checkedInAt) return 1;
+  const checkedInTime = new Date(checkedInAt).getTime();
+  if (!Number.isFinite(checkedInTime)) return 1;
+  return Math.max(1, Math.floor((Date.now() - checkedInTime) / 60000));
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 0;
+  return hours * 60 + minutes;
 }
