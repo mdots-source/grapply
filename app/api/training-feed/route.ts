@@ -10,6 +10,7 @@ import { toTrainingPost, toTrainingPostInsert } from "@/lib/supabase/mappers";
 
 const validPostTypes = new Set(["session", "promotion", "competition", "announcement", "milestone", "open-mat"]);
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$|^[0-1]?\d:[0-5]\d\s?(AM|PM)$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -98,8 +99,9 @@ export async function POST(request: Request) {
       if (tagError) return tagError;
       const postId = await getAvailableTrainingPostId(clubId, post.id);
       if (!postId) return noStoreJson({ ok: false, error: "A post with this id already exists in this club." }, { status: 409 });
+      const coachUserId = await getTrainingPostCoachUserId(clubId, access.session.activeRole, access.session.user.id, post.coach);
 
-      const row = await insertRow("training_posts", toTrainingPostInsert({ ...post, id: postId }, clubId));
+      const row = await insertTrainingPostWithAuthorFallback({ ...post, id: postId }, clubId, coachUserId);
       return noStoreJson({ ok: true, source: "supabase", post: toTrainingPost(row) });
     } catch (error) {
       const postError = getTrainingPostSupabaseValidationError(error);
@@ -138,12 +140,13 @@ export async function PATCH(request: Request) {
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
       const tagError = await validateSupabaseTaggedStudents(clubId, post);
       if (tagError) return tagError;
-      const [existingPost] = await selectRows("training_posts", `select=id,coach&club_id=eq.${clubId}&id=eq.${encodeURIComponent(post.id)}&limit=1`);
+      const [existingPost] = await selectRows("training_posts", `select=*&club_id=eq.${clubId}&id=eq.${encodeURIComponent(post.id)}&limit=1`);
       if (!existingPost) return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
-      const authorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, existingPost.coach);
+      const authorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.id, access.session.user.name, existingPost);
       if (authorError) return authorError;
+      const coachUserId = await getTrainingPostCoachUserId(clubId, access.session.activeRole, access.session.user.id, post.coach);
 
-      const [row] = await updateRows("training_posts", toTrainingPostInsert(post, clubId), `id=eq.${encodeURIComponent(post.id)}&club_id=eq.${clubId}`);
+      const [row] = await updateTrainingPostWithAuthorFallback(post, clubId, coachUserId);
       return noStoreJson({ ok: true, source: "supabase", post: toTrainingPost(row) });
     } catch (error) {
       const postError = getTrainingPostSupabaseValidationError(error);
@@ -160,7 +163,7 @@ export async function PATCH(request: Request) {
   if (!mockPost) {
     return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
   }
-  const mockAuthorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, mockPost.coach);
+  const mockAuthorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.id, access.session.user.name, mockPost);
   if (mockAuthorError) return mockAuthorError;
   const mockTagError = validateMockTaggedStudents(access.session.activeClub.slug, post);
   if (mockTagError) return mockTagError;
@@ -183,9 +186,9 @@ export async function DELETE(request: Request) {
     try {
       clubId = await getBackendClubId(access.session.activeClub.slug);
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
-      const [existingPost] = await selectRows("training_posts", `select=id,coach&club_id=eq.${clubId}&id=eq.${encodeURIComponent(postId)}&limit=1`);
+      const [existingPost] = await selectRows("training_posts", `select=*&club_id=eq.${clubId}&id=eq.${encodeURIComponent(postId)}&limit=1`);
       if (!existingPost) return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
-      const authorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, existingPost.coach);
+      const authorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.id, access.session.user.name, existingPost);
       if (authorError) return authorError;
       const removed = await deleteRows("training_posts", `id=eq.${encodeURIComponent(postId)}&club_id=eq.${clubId}`);
       return noStoreJson({ ok: true, source: "supabase", removed });
@@ -198,7 +201,7 @@ export async function DELETE(request: Request) {
   if (!mockPost) {
     return noStoreJson({ ok: false, error: "Post not found in this club." }, { status: 404 });
   }
-  const mockAuthorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.name, mockPost.coach);
+  const mockAuthorError = getTrainingPostAuthorError(access.session.activeRole, access.session.user.id, access.session.user.name, mockPost);
   if (mockAuthorError) return mockAuthorError;
 
   const persistenceError = requireSupabasePersistence("Training feed");
@@ -212,10 +215,53 @@ function getWritableTrainingPost(post: TrainingPost, role: string, userName: str
   return { ...post, coach: userName };
 }
 
-function getTrainingPostAuthorError(role: string, userName: string, postCoach: string) {
+function getTrainingPostAuthorError(role: string, userId: string, userName: string, post: { coach: string; coach_user_id?: string | null }) {
   if (role !== "coach") return null;
-  if (postCoach.trim().toLowerCase() === userName.trim().toLowerCase()) return null;
+  if (post.coach_user_id && isUuid(userId) && post.coach_user_id === userId) return null;
+  if (post.coach.trim().toLowerCase() === userName.trim().toLowerCase()) return null;
   return noStoreJson({ ok: false, error: "Coaches can only manage their own training posts." }, { status: 403 });
+}
+
+async function getTrainingPostCoachUserId(clubId: string, role: string, userId: string, coachName: string) {
+  if (role === "coach") return isUuid(userId) ? userId : null;
+
+  const users = await selectRows("app_users", `select=id&name=eq.${encodeURIComponent(coachName)}&limit=10`);
+  if (!users.length) return null;
+
+  const userIds = users.map((user) => user.id);
+  const [membership] = await selectRows(
+    "club_memberships",
+    `select=user_id&club_id=eq.${clubId}&user_id=in.(${userIds.map(encodeURIComponent).join(",")})&limit=1`,
+  );
+  return membership?.user_id ?? null;
+}
+
+async function insertTrainingPostWithAuthorFallback(post: TrainingPost, clubId: string, coachUserId: string | null) {
+  try {
+    return await insertRow("training_posts", toTrainingPostInsert(post, clubId, coachUserId));
+  } catch (error) {
+    if (!isMissingTrainingPostAuthorColumn(error)) throw error;
+    return insertRow("training_posts", toTrainingPostInsert(post, clubId, null, { includeCoachUserId: false }));
+  }
+}
+
+async function updateTrainingPostWithAuthorFallback(post: TrainingPost, clubId: string, coachUserId: string | null) {
+  const query = `id=eq.${encodeURIComponent(post.id)}&club_id=eq.${clubId}`;
+  try {
+    return await updateRows("training_posts", toTrainingPostInsert(post, clubId, coachUserId), query);
+  } catch (error) {
+    if (!isMissingTrainingPostAuthorColumn(error)) throw error;
+    return updateRows("training_posts", toTrainingPostInsert(post, clubId, null, { includeCoachUserId: false }), query);
+  }
+}
+
+function isMissingTrainingPostAuthorColumn(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("coach_user_id") && (
+    message.includes("PGRST204") ||
+    message.includes("Could not find") ||
+    message.includes("does not exist")
+  );
 }
 
 async function getAvailableTrainingPostId(clubId: string, requestedId: string) {
@@ -294,6 +340,10 @@ function validateTrainingPostPayload(payload: Record<string, unknown>): { data: 
       ...(taggedStudents.value ? { taggedStudents: taggedStudents.value } : {}),
     },
   };
+}
+
+function isUuid(value: string) {
+  return uuidPattern.test(value);
 }
 
 type FieldResult<T> = { value: T; error?: never } | { value?: never; error: string };
