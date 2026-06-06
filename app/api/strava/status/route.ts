@@ -31,6 +31,14 @@ export async function GET(request: Request) {
       if (!connection) {
         return noStoreJson({ source: "supabase", status: "not_connected", athleteId: null });
       }
+      const activityRows = await selectRows(
+        "strava_activities",
+        `select=id,synced_at&user_id=eq.${access.session.user.id}&club_id=eq.${clubId}&order=synced_at.desc&limit=100`,
+      );
+      const activitySummary = {
+        savedActivities: activityRows.length,
+        lastSyncedAt: activityRows[0]?.synced_at ?? null,
+      };
 
       if (!isStravaConfigured()) {
         return noStoreJson({
@@ -40,6 +48,7 @@ export async function GET(request: Request) {
           scopes: connection.scopes ?? [],
           expiresAt: connection.expires_at,
           refreshed: false,
+          ...activitySummary,
           error: "Strava is connected in the database, but OAuth credentials are missing on this deployment.",
         });
       }
@@ -52,6 +61,7 @@ export async function GET(request: Request) {
           scopes: connection.scopes ?? [],
           expiresAt: connection.expires_at,
           refreshed: false,
+          ...activitySummary,
         });
       }
 
@@ -79,6 +89,7 @@ export async function GET(request: Request) {
         scopes: connection.scopes ?? [],
         expiresAt: connection.expires_at,
         refreshed,
+        ...activitySummary,
       });
     } catch (error) {
       if (error instanceof StravaApiError) return stravaProviderError(error);

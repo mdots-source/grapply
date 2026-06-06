@@ -41,6 +41,8 @@ type StravaStatus = {
   scopes?: string[];
   expiresAt?: number | null;
   refreshed?: boolean;
+  savedActivities?: number;
+  lastSyncedAt?: string | null;
   error?: string;
 };
 type StravaActivitySummary = {
@@ -50,6 +52,7 @@ type StravaActivitySummary = {
   startDate: string;
   distanceMeters: number | null;
   movingTimeSeconds: number | null;
+  syncedAt?: string | null;
 };
 type BrandSettings = {
   academyName: string;
@@ -442,8 +445,14 @@ export function SettingsTabs({
       });
       const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string; synced?: number; activities?: StravaActivitySummary[]; refreshed?: boolean }>(response, "Strava sync failed.");
       if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Strava sync failed.", payload.requestId));
-      setStravaActivities(payload.activities ?? []);
-      setStravaStatus((current) => current ? { ...current, refreshed: Boolean(payload.refreshed) } : current);
+      const activities = payload.activities ?? [];
+      setStravaActivities(activities);
+      setStravaStatus((current) => current ? {
+        ...current,
+        refreshed: Boolean(payload.refreshed),
+        savedActivities: activities.length,
+        lastSyncedAt: activities[0]?.syncedAt ?? new Date().toISOString(),
+      } : current);
       setMessage({ tone: "success", text: `Synced ${payload.synced ?? 0} Strava activities for ${resolvedClubName ?? "this club"}.` });
     } catch (error) {
       setMessage({ tone: "error", text: error instanceof Error ? error.message : "Strava sync failed." });
@@ -766,6 +775,13 @@ export function SettingsTabs({
                     : "Connect athlete activity so coaches can see training volume beside mat attendance."}
                 </p>
                 {stravaStatus?.refreshed && <p className="mt-1 text-xs text-[var(--accent)]">Token refreshed automatically.</p>}
+                {stravaStatus?.status === "connected" && (
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {stravaStatus.lastSyncedAt
+                      ? `Last sync ${formatActivityDate(stravaStatus.lastSyncedAt)} · ${stravaStatus.savedActivities ?? stravaActivities.length} saved activities.`
+                      : `${stravaStatus.savedActivities ?? stravaActivities.length} saved activities. Sync to pull the latest workouts.`}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 {stravaStatus?.status === "connected" && (
@@ -796,7 +812,7 @@ export function SettingsTabs({
               <div className="mt-4 border-t border-[var(--border)] pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Recent synced activity</p>
-                  <Badge variant="muted">{stravaActivities.length} saved</Badge>
+                  <Badge variant="muted">{stravaStatus?.savedActivities ?? stravaActivities.length} saved</Badge>
                 </div>
                 {stravaActivities.length > 0 ? (
                   <div className="mt-3 grid gap-2">
