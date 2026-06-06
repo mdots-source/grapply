@@ -144,11 +144,17 @@ export async function POST(request: Request) {
         membershipRole: invite.role,
       });
 
-      await updateRows(
-        "club_invites",
-        { status: "accepted", accepted_at: new Date().toISOString() },
-        `id=eq.${invite.id}`,
-      );
+      const acceptedInvite = await markInviteAccepted(invite.id);
+      if (!acceptedInvite) {
+        const destinationUrl = getRequestUrl(destination, request);
+        destinationUrl.searchParams.set("invite", "already-accepted");
+        const response = isFormSubmit
+          ? noStoreRedirect(destinationUrl, 303)
+          : noStoreJson({ ok: true, source: "supabase", user, club, membership, redirectTo: destinationUrl.pathname + destinationUrl.search });
+        setAuthCookies(response, session);
+        setActiveClubCookie(response, club.slug);
+        return response;
+      }
 
       await queueWelcomeEmail(request, {
         clubId: club.id,
@@ -357,6 +363,15 @@ function getInviteDestination(returnTo: string, clubSlug: string, role: string |
 
 function isInviteMembershipRole(role: string): role is "admin" | "coach" | "member" {
   return role === "admin" || role === "coach" || role === "member";
+}
+
+async function markInviteAccepted(inviteId: string) {
+  const [acceptedInvite] = await updateRows(
+    "club_invites",
+    { status: "accepted", accepted_at: new Date().toISOString() },
+    `id=eq.${encodeURIComponent(inviteId)}&status=eq.pending`,
+  );
+  return acceptedInvite ?? null;
 }
 
 function authErrorUrl(request: Request, path: string, returnTo: string, error: string, inviteToken?: string) {
