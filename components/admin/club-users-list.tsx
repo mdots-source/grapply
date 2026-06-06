@@ -29,6 +29,7 @@ export function ClubUsersList({ users, currentRole, clubSlug }: { users: ClubUse
   const [visibleUsers, setVisibleUsers] = useState(users);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+  const [confirmRemoval, setConfirmRemoval] = useState<string | null>(null);
   const [pendingRole, setPendingRole] = useState<string | null>(null);
 
   async function updateRole(user: ClubUser, role: PlatformRole) {
@@ -46,6 +47,7 @@ export function ClubUsersList({ users, currentRole, clubSlug }: { users: ClubUse
       if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Could not update role.", payload.requestId));
 
       setVisibleUsers((current) => current.map((item) => (item.membershipId === user.membershipId ? { ...item, role } : item)));
+      setConfirmRemoval(null);
       setMessage({ tone: "success", text: `${user.name} is now ${roleLabel(role)}.` });
     } catch (error) {
       setMessage({ tone: "error", text: error instanceof Error ? error.message : "Could not update role." });
@@ -55,6 +57,12 @@ export function ClubUsersList({ users, currentRole, clubSlug }: { users: ClubUse
   }
 
   async function removeUser(user: ClubUser) {
+    if (confirmRemoval !== user.membershipId) {
+      setConfirmRemoval(user.membershipId);
+      setMessage({ tone: "error", text: `Confirm removing ${user.name} from this academy.` });
+      return;
+    }
+
     setPendingRemoval(user.membershipId);
     setMessage(null);
 
@@ -68,6 +76,7 @@ export function ClubUsersList({ users, currentRole, clubSlug }: { users: ClubUse
       if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Could not remove access.", payload.requestId));
 
       setVisibleUsers((current) => current.filter((item) => item.membershipId !== user.membershipId));
+      setConfirmRemoval(null);
       setMessage({ tone: "success", text: `${roleLabel(user.role)} access removed for ${user.name}.` });
     } catch (error) {
       setMessage({ tone: "error", text: error instanceof Error ? error.message : "Could not remove access." });
@@ -90,10 +99,16 @@ export function ClubUsersList({ users, currentRole, clubSlug }: { users: ClubUse
           <span>{message.text}</span>
         </div>
       )}
+      {visibleUsers.length === 0 && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--muted)]">
+          No users have access to this academy yet. Invite coaches or members to build the club workspace.
+        </div>
+      )}
       {visibleUsers.map((user) => {
         const canManage = canManageUserAccess(currentRole, user);
         const canRemove = canManage && user.role !== "owner";
         const roleOptions = getAssignableRoleOptions(currentRole, user);
+        const confirmingRemoval = confirmRemoval === user.membershipId;
 
         return (
           <div key={user.membershipId} className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -137,7 +152,7 @@ export function ClubUsersList({ users, currentRole, clubSlug }: { users: ClubUse
               {canRemove && (
                 <Button type="button" variant="outline" size="sm" disabled={pendingRemoval === user.membershipId} onClick={() => removeUser(user)}>
                   <Trash2 size={14} />
-                  {pendingRemoval === user.membershipId ? "Removing" : "Remove"}
+                  {pendingRemoval === user.membershipId ? "Removing" : confirmingRemoval ? "Confirm remove" : "Remove"}
                 </Button>
               )}
             </div>
