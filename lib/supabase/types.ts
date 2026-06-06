@@ -329,6 +329,7 @@ export type Database = {
           pinned: boolean;
           class_name: string | null;
           coach: string;
+          coach_user_id: string | null;
           date_text: string;
           time_text: string;
           title: string;
@@ -348,6 +349,7 @@ export type Database = {
           pinned?: boolean;
           class_name?: string | null;
           coach: string;
+          coach_user_id?: string | null;
           date_text: string;
           time_text: string;
           title: string;

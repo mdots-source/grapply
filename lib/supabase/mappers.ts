@@ -204,8 +204,13 @@ export function toTrainingPost(row: TableRow<"training_posts">): TrainingPost {
   };
 }
 
-export function toTrainingPostInsert(item: TrainingPost, clubId: string): TableInsert<"training_posts"> {
-  return {
+export function toTrainingPostInsert(
+  item: TrainingPost,
+  clubId: string,
+  coachUserId?: string | null,
+  options: { includeCoachUserId?: boolean } = {},
+): TableInsert<"training_posts"> {
+  const row: TableInsert<"training_posts"> = {
     id: item.id,
     club_id: clubId,
     type: item.type,
@@ -222,4 +227,6 @@ export function toTrainingPostInsert(item: TrainingPost, clubId: string): TableI
     achievements: item.achievements ?? null,
     tagged_students: item.taggedStudents ?? null,
   };
+  if (options.includeCoachUserId !== false) row.coach_user_id = coachUserId ?? null;
+  return row;
 }
