@@ -82,6 +82,10 @@ export async function POST(request: Request) {
     return noStoreJson({ ok: false, error: "A valid belt is required for belt promotions." }, { status: 400 });
   }
 
+  if (promotionType === "belt" && typeof promotion.stripes === "number" && promotion.stripes !== 0) {
+    return noStoreJson({ ok: false, error: "Belt promotions start at 0 stripes. Award stripes separately after the belt promotion." }, { status: 400 });
+  }
+
   if ((promotionType === "ranking" || promotionType === "achievement") && (promotion.belt || typeof promotion.stripes === "number")) {
     return noStoreJson({ ok: false, error: "Ranking and achievement entries cannot change belt or stripes." }, { status: 400 });
   }
