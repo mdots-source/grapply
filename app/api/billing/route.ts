@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
@@ -51,6 +51,9 @@ export async function PATCH(request: Request) {
   if (validation.error) return validation.error;
 
   if (!isSupabaseConfigured()) {
+    const persistenceError = requireSupabasePersistence("Billing settings");
+    if (persistenceError) return persistenceError;
+
     return noStoreJson({ ok: true, source: "mock", subscription: { ...getMockSubscription(access.session.activeClub.id), ...validation.data } });
   }
 

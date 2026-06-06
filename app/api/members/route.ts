@@ -1,7 +1,7 @@
 import type { NextResponse } from "next/server";
 import { compareMemberHierarchy, type Student } from "@/data/academy";
 import { getClubRoster, platformUsers } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -120,6 +120,9 @@ export async function POST(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Members CRUD");
+  if (persistenceError) return persistenceError;
+
   const mockMembers = getMockMembers(access.session.activeClub.slug);
   if (mockMembers.some((item) => item.name.toLowerCase() === member.name.toLowerCase())) {
     return noStoreJson({ ok: false, error: "A member with this name already exists in this club." }, { status: 409 });
@@ -202,6 +205,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const persistenceError = requireSupabasePersistence("Members CRUD");
+  if (persistenceError) return persistenceError;
+
   const mockMembers = getMockMembers(access.session.activeClub.slug);
   const existing = mockMembers.find((item) => item.id === data.id);
   if (!existing) return noStoreJson({ ok: false, error: "Member not found in this club." }, { status: 404 });
@@ -246,6 +252,9 @@ export async function DELETE(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Members CRUD");
+  if (persistenceError) return persistenceError;
 
   const mockMember = getMockMembers(access.session.activeClub.slug).find((item) => item.id === memberId.value);
   if (!mockMember) return noStoreJson({ ok: false, error: "Member not found in this club." }, { status: 404 });
