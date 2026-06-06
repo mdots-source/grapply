@@ -7,9 +7,10 @@ import { getClassesData, getCompetitionsData, getVisibleMembersData } from "@/li
 import { getWorkspaceDestinationLabel } from "@/lib/workspace-intent";
 import { requireWorkspaceRole } from "@/lib/workspace-access";
 
-export default async function SchedulePage({ searchParams }: { searchParams?: Promise<{ access?: string; create?: string; from?: string }> }) {
+export default async function SchedulePage({ searchParams }: { searchParams?: Promise<{ access?: string; checkIn?: string; create?: string; from?: string }> }) {
   const params = await searchParams;
   const returnToParams = new URLSearchParams();
+  if (params?.checkIn) returnToParams.set("checkIn", params.checkIn);
   if (params?.create) returnToParams.set("create", params.create);
   const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], `/schedule${returnToParams.size ? `?${returnToParams}` : ""}`);
   const deniedFrom = params?.access === "denied" && params.from?.startsWith("/") ? params.from : null;
@@ -39,6 +40,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
       <PageTransition>
         {deniedFrom && <AccessNotice from={deniedFrom} />}
         <ScheduleGrid
+          initialCheckInClassId={canManageClasses ? params?.checkIn : undefined}
           initialCreateClass={canManageClasses && params?.create === "class"}
           canManageClasses={canManageClasses}
           initialClasses={initialClasses}

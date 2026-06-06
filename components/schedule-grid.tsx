@@ -261,6 +261,16 @@ function updateCheckedIn(blocks: SessionBlock[], classId: string, checkedIn: num
   return blocks.map((block) => (block.id === classId ? { ...block, checkedIn } : block));
 }
 
+function findClassBlock(rows: ScheduleRow[], classId: string) {
+  for (const row of rows) {
+    for (const [index, key] of dayKeys.entries()) {
+      const block = row[key].find((item) => item.id === classId);
+      if (block) return { day: dayLabels[index], block };
+    }
+  }
+  return null;
+}
+
 function levelTone(level: string) {
   const normalized = level.toLowerCase();
   if (normalized.includes("beginner") || normalized.includes("white")) return "border-sky-400/20 bg-sky-400/10 text-sky-200";
@@ -273,6 +283,7 @@ function levelTone(level: string) {
 }
 
 export function ScheduleGrid({
+  initialCheckInClassId,
   initialCreateClass = false,
   canManageClasses = false,
   initialClasses,
@@ -281,6 +292,7 @@ export function ScheduleGrid({
   initialScheduleError = null,
   initialClubSlug,
 }: {
+  initialCheckInClassId?: string;
   initialCreateClass?: boolean;
   canManageClasses?: boolean;
   initialClasses?: ScheduleApiClass[];
@@ -296,6 +308,7 @@ export function ScheduleGrid({
   const [loadingSchedule, setLoadingSchedule] = useState(!hasInitialSchedule && !initialScheduleError);
   const [scheduleReloadKey, setScheduleReloadKey] = useState(0);
   const [classesError, setClassesError] = useState<string | null>(initialScheduleError);
+  const [pendingCheckInClassId, setPendingCheckInClassId] = useState(initialCheckInClassId ?? null);
   const [classActionMessage, setClassActionMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [classActionLoading, setClassActionLoading] = useState<"delete" | "check-in" | null>(null);
@@ -450,6 +463,27 @@ export function ScheduleGrid({
       },
     });
   };
+
+  useEffect(() => {
+    setPendingCheckInClassId(initialCheckInClassId ?? null);
+  }, [initialCheckInClassId]);
+
+  useEffect(() => {
+    if (!pendingCheckInClassId || !canManageClasses) return;
+
+    const match = findClassBlock(scheduleRows, pendingCheckInClassId);
+    if (!match) {
+      if (!loadingSchedule) setPendingCheckInClassId(null);
+      return;
+    }
+
+    openTrainingEditor(match.day, match.block);
+    setClassActionMessage({
+      tone: "success",
+      text: "This class was opened from the check-in link. Pick a member to mark attendance.",
+    });
+    setPendingCheckInClassId(null);
+  }, [canManageClasses, loadingSchedule, pendingCheckInClassId, scheduleRows]);
 
   const deleteClass = async () => {
     const classId = trainingDefaults.id ?? trainingDefaults.original?.id;
