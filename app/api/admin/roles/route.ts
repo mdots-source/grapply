@@ -43,8 +43,14 @@ export async function GET(request: Request) {
 
   return noStoreJson({
     source: "mock",
-    roles: roleDefinitions,
-    memberships: clubMemberships.filter((membership) => membership.clubId === getMockClubId(access.session.activeClub.slug)),
+    roles: access.session.activeRole === "admin"
+      ? roleDefinitions.filter((role) => role.role === "coach" || role.role === "member")
+      : roleDefinitions,
+    memberships: clubMemberships.filter(
+      (membership) =>
+        membership.clubId === getMockClubId(access.session.activeClub.slug) &&
+        (access.session.activeRole === "owner" || membership.role === "coach" || membership.role === "member"),
+    ),
   });
 }
 

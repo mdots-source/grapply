@@ -340,6 +340,47 @@ export async function getMemberData(memberId: string, clubSlug?: string | null) 
   }
 }
 
+export async function getVisibleMemberData({
+  memberId,
+  clubSlug,
+  userId,
+  userEmail,
+  role,
+}: {
+  memberId: string;
+  clubSlug?: string | null;
+  userId: string;
+  userEmail?: string | null;
+  role: PlatformRole;
+}) {
+  const requestedClubSlug = clubSlug ?? (await getRequestedClubSlug());
+
+  if (!isSupabaseConfigured()) {
+    return filterMockRosterForViewer(getClubRoster(getMockClubId(requestedClubSlug)), { userId, userEmail, role })
+      .find((member) => member.id === memberId) ?? null;
+  }
+
+  try {
+    const clubId = await getBackendClubId(requestedClubSlug);
+    if (!clubId) return null;
+
+    const readable = await getReadableMemberIds({
+      clubId,
+      requestedMemberId: memberId,
+      userId,
+      userEmail,
+      role,
+    });
+    if ("error" in readable && readable.error) return null;
+    if ("empty" in readable && readable.empty) return null;
+
+    const rows = await selectRows("academy_members", `select=*&club_id=eq.${clubId}&id=eq.${encodeURIComponent(memberId)}&limit=1`);
+    return rows[0] ? toStudent(rows[0]) : null;
+  } catch (error) {
+    throw new Error(`Could not load member from Supabase: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function getTrainingCampsData(clubSlug?: string | null, viewer?: ViewerScope) {
   const requestedClubSlug = await getRequestedClubSlug(clubSlug);
   if (!isSupabaseConfigured()) {
