@@ -49,7 +49,7 @@ const nav = [
   { href: "/rankings", label: "Rankings", icon: Trophy, roles: workspaceRoles },
   { href: "/tv", label: "TV Screen", icon: MonitorPlay, roles: managerRoles },
   { href: "/admin", label: "Team", icon: UserCog, roles: ["owner", "admin"] as Role[] },
-  { href: "/settings", label: "Settings", icon: Settings, roles: ["owner", "admin"] as Role[] },
+  { href: "/settings", label: "Settings", icon: Settings, roles: workspaceRoles },
 ];
 
 function getWorkspacePath(pathname: string, organizationId?: string | null) {
