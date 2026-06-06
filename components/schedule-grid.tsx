@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, RotateCcw, Trophy } from "lucide-react";
+import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, Loader2, RefreshCw, RotateCcw, Trash2, Trophy } from "lucide-react";
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,17 @@ import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/componen
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgGridHost } from "@/components/ag-grid-host";
 import { useActiveClubState } from "@/components/use-active-club";
+import { formatApiError, readApiJson } from "@/lib/api-client";
 
 type SessionBlock = {
+  id?: string;
   time: string;
   name: string;
   coach: string;
   room: string;
   level: string;
+  durationMinutes: number;
+  checkedIn?: number;
 };
 
 type ScheduleRow = {
@@ -33,7 +37,7 @@ type ScheduleRow = {
   sun: SessionBlock[];
 };
 
-type ApiClass = {
+export type ScheduleApiClass = {
   id?: string;
   name: string;
   coach: string;
@@ -41,10 +45,18 @@ type ApiClass = {
   time: string;
   mat: string;
   level: string;
+  durationMinutes?: number;
   checkedIn?: number;
 };
 
-type ApiCompetition = {
+export type ScheduleApiMember = {
+  id: string;
+  name: string;
+  belt?: string;
+  role?: string;
+};
+
+export type ScheduleApiCompetition = {
   id: string;
   name: string;
   date: string;
@@ -57,11 +69,13 @@ type ApiCompetition = {
 type TrainingDrawerDefaults = Partial<ClassFormValue> & {
   title?: string;
   original?: {
+    id?: string;
     day: string;
     time: string;
     name: string;
     coach: string;
     room: string;
+    durationMinutes?: number;
   };
 };
 
@@ -132,8 +146,8 @@ const initialRows: ScheduleRow[] = [
   },
 ];
 
-function session(time: string, name: string, coach: string, room: string, level: string): SessionBlock {
-  return { time, name, coach, room, level };
+function session(time: string, name: string, coach: string, room: string, level: string, id?: string, checkedIn?: number, durationMinutes = 60): SessionBlock {
+  return { id, time, name, coach, room, level, durationMinutes, checkedIn };
 }
 
 function emptyRow(time: string): ScheduleRow {
@@ -151,31 +165,42 @@ function compareTimes(a: string, b: string) {
 }
 
 function classToSessionBlock(value: ClassFormValue): SessionBlock {
-  return session(value.time, value.name, value.coach, value.mat, value.level);
+  return session(value.time, value.name, value.coach, value.mat, value.level, value.id, value.checkedIn, value.durationMinutes);
 }
 
-function classApiToSessionBlock(value: ApiClass): SessionBlock {
-  return session(value.time, value.name, value.coach, value.mat, value.level);
+function classApiToSessionBlock(value: ScheduleApiClass): SessionBlock {
+  return session(value.time, value.name, value.coach, value.mat, value.level, value.id, value.checkedIn, value.durationMinutes ?? 60);
 }
 
 function normalizeScheduleValue(value: string) {
   return value.trim().toLowerCase();
 }
 
-function classesToScheduleRows(classes?: ApiClass[]) {
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function intervalsOverlap(startA: number, endA: number, startB: number, endB: number) {
+  return startA < endB && startB < endA;
+}
+
+function classesToScheduleRows(classes?: ScheduleApiClass[], includeSeedRows = true) {
   const rows = new Map<string, ScheduleRow>();
 
-  for (const initialRow of initialRows) {
-    rows.set(initialRow.time, {
-      time: initialRow.time,
-      mon: [...initialRow.mon],
-      tue: [...initialRow.tue],
-      wed: [...initialRow.wed],
-      thu: [...initialRow.thu],
-      fri: [...initialRow.fri],
-      sat: [...initialRow.sat],
-      sun: [...initialRow.sun],
-    });
+  if (includeSeedRows) {
+    for (const initialRow of initialRows) {
+      rows.set(initialRow.time, {
+        time: initialRow.time,
+        mon: [...initialRow.mon],
+        tue: [...initialRow.tue],
+        wed: [...initialRow.wed],
+        thu: [...initialRow.thu],
+        fri: [...initialRow.fri],
+        sat: [...initialRow.sat],
+        sun: [...initialRow.sun],
+      });
+    }
   }
 
   for (const classItem of classes ?? []) {
@@ -232,6 +257,10 @@ function parseCalendarDate(value: string) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function updateCheckedIn(blocks: SessionBlock[], classId: string, checkedIn: number) {
+  return blocks.map((block) => (block.id === classId ? { ...block, checkedIn } : block));
+}
+
 function levelTone(level: string) {
   const normalized = level.toLowerCase();
   if (normalized.includes("beginner") || normalized.includes("white")) return "border-sky-400/20 bg-sky-400/10 text-sky-200";
@@ -246,13 +275,31 @@ function levelTone(level: string) {
 export function ScheduleGrid({
   initialCreateClass = false,
   canManageClasses = false,
+  initialClasses,
+  initialCompetitionEvents,
+  initialMembers,
+  initialScheduleError = null,
+  initialClubSlug,
 }: {
   initialCreateClass?: boolean;
   canManageClasses?: boolean;
+  initialClasses?: ScheduleApiClass[];
+  initialCompetitionEvents?: ScheduleApiCompetition[];
+  initialMembers?: ScheduleApiMember[];
+  initialScheduleError?: string | null;
+  initialClubSlug?: string;
 }) {
-  const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>(initialRows);
-  const [competitionEvents, setCompetitionEvents] = useState<ApiCompetition[]>([]);
-  const [classesError, setClassesError] = useState<string | null>(null);
+  const hasInitialSchedule = Array.isArray(initialClasses);
+  const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>(() => classesToScheduleRows(initialClasses, false));
+  const [competitionEvents, setCompetitionEvents] = useState<ScheduleApiCompetition[]>(() => initialCompetitionEvents ?? []);
+  const [members, setMembers] = useState<ScheduleApiMember[]>(() => initialMembers ?? []);
+  const [loadingSchedule, setLoadingSchedule] = useState(!hasInitialSchedule && !initialScheduleError);
+  const [scheduleReloadKey, setScheduleReloadKey] = useState(0);
+  const [classesError, setClassesError] = useState<string | null>(initialScheduleError);
+  const [classActionMessage, setClassActionMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [classActionLoading, setClassActionLoading] = useState<"delete" | "check-in" | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => startOfWeek(new Date()));
@@ -263,6 +310,7 @@ export function ScheduleGrid({
     title: "Add training",
   });
   const { activeClub, loading: loadingClub } = useActiveClubState();
+  const resolvedClubSlug = activeClub?.slug ?? initialClubSlug;
 
   const selectedDay = useMemo(() => addDays(weekStart, 3), [weekStart]);
   const isCurrentWeek = weekStart.getTime() === startOfWeek(new Date()).getTime();
@@ -273,7 +321,7 @@ export function ScheduleGrid({
   }, [scheduleRows]);
 
   const competitionsByDay = useMemo(() => {
-    const events = new Map<DayKey, ApiCompetition[]>();
+    const events = new Map<DayKey, ScheduleApiCompetition[]>();
 
     for (const competition of competitionEvents) {
       const date = parseCalendarDate(competition.date);
@@ -301,9 +349,11 @@ export function ScheduleGrid({
               ...row,
               [originalDay]: row[originalDay].filter(
                 (item) =>
+                  (original.id && item.id !== original.id) ||
                   item.name !== original.name ||
                   item.coach !== original.coach ||
                   item.room !== original.room ||
+                  item.durationMinutes !== (original.durationMinutes ?? 60) ||
                   normalizeScheduleValue(item.time) !== normalizeScheduleValue(original.time),
               ),
             };
@@ -318,11 +368,13 @@ export function ScheduleGrid({
       return rowsWithTime.map((row) => {
         if (row.time !== value.time) return row;
         const alreadyShown = row[day].some(
-          (item) => item.time === block.time && item.name === block.name && item.coach === block.coach && item.room === block.room,
+          (item) =>
+            (block.id && item.id === block.id) ||
+            (item.time === block.time && item.name === block.name && item.coach === block.coach && item.room === block.room),
         );
         return {
           ...row,
-          [day]: alreadyShown ? row[day] : [...row[day], block],
+          [day]: alreadyShown ? row[day].map((item) => (block.id && item.id === block.id ? block : item)) : [...row[day], block],
         };
       });
     });
@@ -330,28 +382,42 @@ export function ScheduleGrid({
 
   const validateClassOverlap = (value: ClassFormValue) => {
     const day = dayKeyFromLabel(value.day);
-    const requestedTime = normalizeScheduleValue(value.time);
-    const row = scheduleRows.find((item) => normalizeScheduleValue(item.time) === requestedTime);
-    const existingClass = row?.[day]?.[0];
+    const requestedStart = timeToMinutes(value.time);
+    const requestedEnd = requestedStart + value.durationMinutes;
+    const requestedMat = normalizeScheduleValue(value.mat);
     const original = trainingDefaults.original;
+    const existingClass = scheduleRows
+      .flatMap((row) => row[day])
+      .find((item) => {
+        if (normalizeScheduleValue(item.room) !== requestedMat) return false;
+        if (original?.id && item.id === original.id) return false;
+        if (
+          original &&
+          !original.id &&
+          dayKeyFromLabel(original.day) === day &&
+          normalizeScheduleValue(item.time) === normalizeScheduleValue(original.time) &&
+          item.name === original.name &&
+          item.coach === original.coach &&
+          item.room === original.room &&
+          item.durationMinutes === (original.durationMinutes ?? 60)
+        ) {
+          return false;
+        }
+        const existingStart = timeToMinutes(item.time);
+        const existingEnd = existingStart + item.durationMinutes;
+        return intervalsOverlap(existingStart, existingEnd, requestedStart, requestedEnd);
+      });
 
     if (!existingClass) return null;
-    if (
-      original &&
-      dayKeyFromLabel(original.day) === day &&
-      normalizeScheduleValue(original.time) === requestedTime &&
-      existingClass.name === original.name &&
-      existingClass.coach === original.coach &&
-      existingClass.room === original.room
-    ) {
-      return null;
-    }
 
-    return `${existingClass.name} already uses ${value.day} at ${value.time}. Pick another time before saving.`;
+    return `${existingClass.name} already uses ${value.mat} on ${value.day} during this time. Pick another mat or time before saving.`;
   };
 
   const openTrainingDrawer = (defaults?: TrainingDrawerDefaults) => {
     if (!canManageClasses) return;
+    setClassActionMessage(null);
+    setSelectedMemberId("");
+    setDeleteConfirm(false);
     setTrainingDefaults({
       day: defaults?.day ?? "Mon",
       time: defaults?.time ?? "18:00",
@@ -369,49 +435,174 @@ export function ScheduleGrid({
       time: block.time,
       mat: block.room,
       level: block.level,
+      durationMinutes: block.durationMinutes,
+      id: block.id,
+      checkedIn: block.checkedIn,
       title: `Edit ${block.name}`,
       original: {
+        id: block.id,
         day,
         time: block.time,
         name: block.name,
         coach: block.coach,
         room: block.room,
+        durationMinutes: block.durationMinutes,
       },
     });
   };
 
+  const deleteClass = async () => {
+    const classId = trainingDefaults.id ?? trainingDefaults.original?.id;
+    if (!classId) {
+      setClassActionMessage({ tone: "error", text: "This class is not saved in Supabase yet." });
+      return;
+    }
+
+    if (!deleteConfirm) {
+      setDeleteConfirm(true);
+      setClassActionMessage({ tone: "error", text: "Click delete again to confirm removing this training." });
+      return;
+    }
+
+    setClassActionLoading("delete");
+    setClassActionMessage(null);
+
+    try {
+      const response = await fetch("/api/classes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: classId, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
+      });
+      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Class deletion failed.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Class deletion failed.", payload.requestId));
+
+      setScheduleRows((current) =>
+        current.map((row) => {
+          const day = dayKeyFromLabel(trainingDefaults.day ?? trainingDefaults.original?.day ?? "Mon");
+          return { ...row, [day]: row[day].filter((item) => item.id !== classId) };
+        }),
+      );
+      setTrainingDrawerOpen(false);
+      setDeleteConfirm(false);
+    } catch (error) {
+      setClassActionMessage({ tone: "error", text: error instanceof Error ? error.message : "Class deletion failed." });
+    } finally {
+      setClassActionLoading(null);
+    }
+  };
+
+  const checkInMember = async () => {
+    const classId = trainingDefaults.id ?? trainingDefaults.original?.id;
+    if (!classId || !selectedMemberId) {
+      setClassActionMessage({ tone: "error", text: "Pick a member before saving check-in." });
+      return;
+    }
+
+    setClassActionLoading("check-in");
+    setClassActionMessage(null);
+
+    try {
+      const response = await fetch("/api/check-ins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classId,
+          memberId: selectedMemberId,
+          source: "manual",
+          notes: `Checked in from ${trainingDefaults.name ?? trainingDefaults.original?.name ?? "schedule"}.`,
+          ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}),
+        }),
+      });
+      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string; class?: ScheduleApiClass }>(response, "Check-in failed.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Check-in failed.", payload.requestId));
+
+      const nextCheckedIn = payload.class?.checkedIn ?? (trainingDefaults.checkedIn ?? 0) + 1;
+      setTrainingDefaults((current) => ({ ...current, checkedIn: nextCheckedIn }));
+      setScheduleRows((current) =>
+        current.map((row) => ({
+          ...row,
+          mon: updateCheckedIn(row.mon, classId, nextCheckedIn),
+          tue: updateCheckedIn(row.tue, classId, nextCheckedIn),
+          wed: updateCheckedIn(row.wed, classId, nextCheckedIn),
+          thu: updateCheckedIn(row.thu, classId, nextCheckedIn),
+          fri: updateCheckedIn(row.fri, classId, nextCheckedIn),
+          sat: updateCheckedIn(row.sat, classId, nextCheckedIn),
+          sun: updateCheckedIn(row.sun, classId, nextCheckedIn),
+        })),
+      );
+      const checkedInMember = members.find((member) => member.id === selectedMemberId);
+      setSelectedMemberId("");
+      setClassActionMessage({
+        tone: "success",
+        text: `${checkedInMember?.name ?? "Member"} checked in. This will appear in their member profile history.`,
+      });
+    } catch (error) {
+      setClassActionMessage({ tone: "error", text: error instanceof Error ? error.message : "Check-in failed." });
+    } finally {
+      setClassActionLoading(null);
+    }
+  };
+
   useEffect(() => {
-    if (loadingClub) return;
+    if (loadingClub && !resolvedClubSlug) return;
+
+    if (hasInitialSchedule && scheduleReloadKey === 0 && resolvedClubSlug === initialClubSlug) {
+      setLoadingSchedule(false);
+      return;
+    }
 
     const controller = new AbortController();
     const params = new URLSearchParams();
-    if (activeClub?.slug) params.set("club", activeClub.slug);
 
+    setLoadingSchedule(true);
     setClassesError(null);
 
+    if (!resolvedClubSlug) {
+      setScheduleRows([]);
+      setCompetitionEvents([]);
+      setMembers([]);
+      setClassesError("Choose an academy to load the schedule.");
+      setLoadingSchedule(false);
+      return () => controller.abort();
+    }
+
+    params.set("club", resolvedClubSlug);
+
     fetch(`/api/classes${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load classes."))))
-      .then((payload: { classes?: ApiClass[] }) => {
-        setScheduleRows(classesToScheduleRows(payload.classes));
+      .then((response) => readApiJson<{ classes?: ScheduleApiClass[] }>(response, "Could not load classes."))
+      .then((payload: { classes?: ScheduleApiClass[] }) => {
+        setScheduleRows(classesToScheduleRows(payload.classes, false));
       })
       .catch((error: Error) => {
         if (error.name !== "AbortError") {
           setClassesError(error.message);
-          setScheduleRows(initialRows);
+          setScheduleRows([]);
         }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingSchedule(false);
       });
 
     fetch(`/api/competitions${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load competitions."))))
-      .then((payload: { competitions?: ApiCompetition[] }) => {
+      .then((response) => readApiJson<{ competitions?: ScheduleApiCompetition[] }>(response, "Could not load competitions."))
+      .then((payload: { competitions?: ScheduleApiCompetition[] }) => {
         setCompetitionEvents(payload.competitions ?? []);
       })
       .catch((error: Error) => {
         if (error.name !== "AbortError") setCompetitionEvents([]);
       });
 
+    fetch(`/api/members${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
+      .then((response) => readApiJson<{ members?: ScheduleApiMember[] }>(response, "Could not load members."))
+      .then((payload: { members?: ScheduleApiMember[] }) => {
+        setMembers(payload.members ?? []);
+      })
+      .catch((error: Error) => {
+        if (error.name !== "AbortError") setMembers([]);
+      });
+
     return () => controller.abort();
-  }, [activeClub?.slug, loadingClub]);
+  }, [hasInitialSchedule, initialClubSlug, loadingClub, resolvedClubSlug, scheduleReloadKey]);
 
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(() => {
     const dayColumns = dayKeys.map((key, index): ColDef<ScheduleRow> => ({
@@ -580,12 +771,24 @@ export function ScheduleGrid({
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">Class timetable</p>
-            <p className="text-xs text-[var(--muted)]">
-              {classesError ?? "Horizontal scroll keeps the full week readable."}
-            </p>
+            <p className="text-xs text-[var(--muted)]">Horizontal scroll keeps the full week readable.</p>
           </div>
+          {classesError && resolvedClubSlug && (
+            <Button type="button" variant="surface" size="sm" onClick={() => setScheduleReloadKey((value) => value + 1)}>
+              <RefreshCw size={14} />
+              Try again
+            </Button>
+          )}
         </div>
-        {hasClasses ? (
+        {classesError && (
+          <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 text-sm text-[var(--foreground)]">
+            <AlertTriangle size={16} className="shrink-0 text-[var(--accent-coral)]" />
+            <span>{classesError}</span>
+          </div>
+        )}
+        {loadingSchedule ? (
+          <ScheduleLoadingState />
+        ) : hasClasses ? (
           <AgGridHost className="oss-schedule-grid ag-theme-quartz h-[690px] w-full">
             <AgGridReact<ScheduleRow>
               rowData={scheduleRows}
@@ -637,9 +840,72 @@ export function ScheduleGrid({
             validateClass={validateClassOverlap}
             onCancel={() => setTrainingDrawerOpen(false)}
             onSaved={() => setTrainingDrawerOpen(false)}
+            clubSlug={resolvedClubSlug}
           />
+          {trainingDefaults.original && (
+            <div className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+              <div>
+                <p className="text-sm font-semibold text-[var(--foreground)]">Class actions</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Check in a member or remove this training session from the active club schedule.
+                </p>
+              </div>
+              {classActionMessage && (
+                <div
+                  className={
+                    classActionMessage.tone === "success"
+                      ? "flex items-start gap-2 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
+                      : "flex items-start gap-2 rounded-lg border border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
+                  }
+                >
+                  {classActionMessage.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                  <span>{classActionMessage.text}</span>
+                </div>
+              )}
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="sr-only" htmlFor="schedule-check-in-member">
+                  Member
+                </label>
+                <select
+                  id="schedule-check-in-member"
+                  value={selectedMemberId}
+                  onChange={(event) => setSelectedMemberId(event.target.value)}
+                  className="h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
+                >
+                  <option value="">Select member</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+                <Button type="button" variant="surface" disabled={!selectedMemberId || classActionLoading === "check-in"} onClick={checkInMember}>
+                  {classActionLoading === "check-in" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                  Check in
+                </Button>
+              </div>
+              <Button type="button" variant={deleteConfirm ? "primary" : "outline"} className="w-full justify-center" disabled={classActionLoading === "delete"} onClick={deleteClass}>
+                {classActionLoading === "delete" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                {deleteConfirm ? "Confirm delete training" : "Delete training"}
+              </Button>
+            </div>
+          )}
         </div>
       </Drawer>
+    </div>
+  );
+}
+
+function ScheduleLoadingState() {
+  return (
+    <div className="grid min-h-[420px] place-items-center px-6 py-10">
+      <div className="text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--accent)]">
+          <Loader2 size={26} strokeWidth={1.6} className="animate-spin" />
+        </div>
+        <h3 className="mt-5 text-lg font-semibold text-[var(--foreground)]">Loading schedule</h3>
+        <p className="mt-2 text-sm text-[var(--muted)]">Getting the current class timetable from this academy.</p>
+      </div>
     </div>
   );
 }
@@ -676,7 +942,7 @@ function ScheduleCell(
     <div className="flex h-full w-full flex-col justify-center py-2">
       {blocks.map((block) => (
         <button
-          key={`${block.name}-${block.room}`}
+          key={block.id ?? `${block.name}-${block.room}`}
           type="button"
           className="grid h-[74px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default"
           onClick={() => params.onEditBlock?.(block)}
@@ -691,7 +957,16 @@ function ScheduleCell(
             <p className="truncate text-[13px] font-semibold leading-4 text-[var(--foreground)]">{block.name}</p>
             <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--muted)]">{block.coach}</p>
           </div>
-          <p className="truncate text-[11px] leading-none text-[var(--muted)]">{block.room}</p>
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <p className="truncate text-[11px] leading-none text-[var(--muted)]">
+              {block.room} · {block.durationMinutes} min
+            </p>
+            {typeof block.checkedIn === "number" && block.checkedIn > 0 && (
+              <span className="shrink-0 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+                {block.checkedIn} in
+              </span>
+            )}
+          </div>
         </button>
       ))}
     </div>

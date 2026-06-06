@@ -26,9 +26,11 @@ import { ActiveClubProvider } from "@/components/use-active-club";
 import { academyMeta } from "@/data/academy-meta";
 import { getNavBeltAccent } from "@/lib/nav-belt";
 import { cn, initials } from "@/lib/utils";
+import { getWorkspaceHref } from "@/lib/workspace-url";
 
 type Role = "owner" | "admin" | "coach" | "member";
 const managerRoles: Role[] = ["owner", "admin", "coach"];
+const workspaceRoles: Role[] = ["owner", "admin", "coach", "member"];
 
 export type ShellSession = {
   user?: { name: string; email: string; avatar?: string };
@@ -38,21 +40,17 @@ export type ShellSession = {
 };
 
 const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: managerRoles },
-  { href: "/members", label: "Members", icon: Users, roles: managerRoles },
-  { href: "/schedule", label: "Schedule", icon: CalendarDays, roles: managerRoles },
-  { href: "/competitions", label: "Competitions", icon: Medal, roles: managerRoles },
-  { href: "/training-camps", label: "Training Camps", icon: Mountain, roles: managerRoles },
-  { href: "/training-feed", label: "Training Feed", icon: Flame, roles: managerRoles },
-  { href: "/rankings", label: "Rankings", icon: Trophy, roles: managerRoles },
+  { href: "/dashboard", label: "Dashboard", icon: BarChart3, roles: workspaceRoles },
+  { href: "/members", label: "Members", icon: Users, roles: workspaceRoles },
+  { href: "/schedule", label: "Schedule", icon: CalendarDays, roles: workspaceRoles },
+  { href: "/competitions", label: "Competitions", icon: Medal, roles: workspaceRoles },
+  { href: "/training-camps", label: "Training Camps", icon: Mountain, roles: workspaceRoles },
+  { href: "/training-feed", label: "Training Feed", icon: Flame, roles: workspaceRoles },
+  { href: "/rankings", label: "Rankings", icon: Trophy, roles: workspaceRoles },
   { href: "/tv", label: "TV Screen", icon: MonitorPlay, roles: managerRoles },
   { href: "/admin", label: "Team", icon: UserCog, roles: ["owner", "admin"] as Role[] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["owner", "admin"] as Role[] },
 ];
-
-function getWorkspaceHref(href: string, organizationId?: string | null) {
-  return organizationId ? `/${organizationId}${href}` : href;
-}
 
 function getWorkspacePath(pathname: string, organizationId?: string | null) {
   if (!organizationId) return pathname;

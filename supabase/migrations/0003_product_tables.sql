@@ -118,37 +118,56 @@ create policy "club members can read competitions"
 on public.competitions for select
 using (public.current_user_club_role(club_id) is not null);
 
-create policy "admins and coaches can manage competitions"
-on public.competitions for all
+create policy "admins and coaches can create competitions"
+on public.competitions for insert
+with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "admins and coaches can update competitions"
+on public.competitions for update
 using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
 with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "owners and admins can delete competitions"
+on public.competitions for delete
+using (public.current_user_club_role(club_id) in ('owner', 'admin'));
 
 create policy "club members can read training camps"
 on public.training_camps for select
 using (public.current_user_club_role(club_id) is not null);
 
-create policy "admins and coaches can manage training camps"
-on public.training_camps for all
+create policy "admins and coaches can create training camps"
+on public.training_camps for insert
+with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "admins and coaches can update training camps"
+on public.training_camps for update
 using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
 with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "owners and admins can delete training camps"
+on public.training_camps for delete
+using (public.current_user_club_role(club_id) in ('owner', 'admin'));
 
 create policy "club members can read training posts"
 on public.training_posts for select
 using (public.current_user_club_role(club_id) is not null);
 
-create policy "admins and coaches can manage training posts"
-on public.training_posts for all
+create policy "admins and coaches can create training posts"
+on public.training_posts for insert
+with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "admins and coaches can update training posts"
+on public.training_posts for update
 using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
 with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "owners and admins can delete training posts"
+on public.training_posts for delete
+using (public.current_user_club_role(club_id) in ('owner', 'admin'));
 
 create policy "club members can read dashboard events"
 on public.dashboard_events for select
 using (public.current_user_club_role(club_id) is not null);
-
-create policy "admins and coaches can manage dashboard events"
-on public.dashboard_events for all
-using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
-with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
 
 create policy "club members can read settings"
 on public.club_settings for select

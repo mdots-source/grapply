@@ -81,12 +81,14 @@ export type Database = {
         Row: {
           id: string;
           club_id: string;
+          user_id: string | null;
           name: string;
           coach: string;
           day: string;
           time: string;
           mat: string;
           level: string;
+          duration_minutes: number;
           checked_in: number;
           created_at: string;
         };
@@ -99,6 +101,7 @@ export type Database = {
           time: string;
           mat: string;
           level: string;
+          duration_minutes?: number;
           checked_in?: number;
         };
         Update: Partial<Database["public"]["Tables"]["club_classes"]["Insert"]>;
@@ -107,6 +110,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          club_id: string;
           athlete_id: string;
           access_token: string;
           refresh_token: string;
@@ -118,6 +122,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          club_id: string;
           athlete_id: string;
           access_token: string;
           refresh_token: string;
@@ -126,10 +131,76 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["strava_connections"]["Insert"]>;
       };
+      club_billing_subscriptions: {
+        Row: {
+          id: string;
+          club_id: string;
+          plan: "starter" | "growth" | "pro" | "enterprise";
+          status: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+          billing_email: string | null;
+          trial_ends_at: string | null;
+          current_period_ends_at: string | null;
+          seats_included: number;
+          member_limit: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          club_id: string;
+          plan?: "starter" | "growth" | "pro" | "enterprise";
+          status?: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+          billing_email?: string | null;
+          trial_ends_at?: string | null;
+          current_period_ends_at?: string | null;
+          seats_included?: number;
+          member_limit?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["club_billing_subscriptions"]["Insert"]>;
+      };
+      strava_activities: {
+        Row: {
+          id: string;
+          user_id: string;
+          club_id: string;
+          activity_id: string;
+          name: string;
+          sport_type: string;
+          start_date: string;
+          distance_meters: number | null;
+          moving_time_seconds: number | null;
+          elapsed_time_seconds: number | null;
+          elevation_gain_meters: number | null;
+          average_heartrate: number | null;
+          suffer_score: number | null;
+          raw: Json;
+          synced_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          club_id: string;
+          activity_id: string;
+          name: string;
+          sport_type: string;
+          start_date: string;
+          distance_meters?: number | null;
+          moving_time_seconds?: number | null;
+          elapsed_time_seconds?: number | null;
+          elevation_gain_meters?: number | null;
+          average_heartrate?: number | null;
+          suffer_score?: number | null;
+          raw?: Json;
+          synced_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["strava_activities"]["Insert"]>;
+      };
       academy_members: {
         Row: {
           id: string;
           club_id: string;
+          user_id?: string | null;
           name: string;
           belt: "white" | "blue" | "purple" | "brown" | "black";
           stripes: number;
@@ -151,6 +222,7 @@ export type Database = {
         Insert: {
           id: string;
           club_id: string;
+          user_id?: string | null;
           name: string;
           belt: "white" | "blue" | "purple" | "brown" | "black";
           stripes?: number;
@@ -335,6 +407,7 @@ export type Database = {
           checked_in_by: string | null;
           source: "manual" | "qr" | "kiosk" | "strava";
           checked_in_at: string;
+          checked_in_date: string;
           notes: string | null;
         };
         Insert: {
@@ -344,6 +417,7 @@ export type Database = {
           member_id: string;
           checked_in_by?: string | null;
           source?: "manual" | "qr" | "kiosk" | "strava";
+          checked_in_date?: string;
           notes?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["class_checkins"]["Insert"]>;
@@ -381,6 +455,8 @@ export type Database = {
           type: "stripe" | "belt" | "ranking" | "achievement";
           belt: "white" | "blue" | "purple" | "brown" | "black" | null;
           stripes: number | null;
+          previous_belt: "white" | "blue" | "purple" | "brown" | "black" | null;
+          previous_stripes: number | null;
           detail: string;
           awarded_at: string;
         };
@@ -393,6 +469,8 @@ export type Database = {
           type: "stripe" | "belt" | "ranking" | "achievement";
           belt?: "white" | "blue" | "purple" | "brown" | "black" | null;
           stripes?: number | null;
+          previous_belt?: "white" | "blue" | "purple" | "brown" | "black" | null;
+          previous_stripes?: number | null;
           detail: string;
         };
         Update: Partial<Database["public"]["Tables"]["member_promotions"]["Insert"]>;
@@ -402,7 +480,7 @@ export type Database = {
           id: string;
           club_id: string;
           email: string;
-          role: "owner" | "admin" | "coach" | "member";
+          role: "admin" | "coach" | "member";
           invited_by: string | null;
           status: "pending" | "accepted" | "expired" | "revoked";
           token: string;
@@ -414,11 +492,66 @@ export type Database = {
           id?: string;
           club_id: string;
           email: string;
-          role?: "owner" | "admin" | "coach" | "member";
+          role?: "admin" | "coach" | "member";
           invited_by?: string | null;
           status?: "pending" | "accepted" | "expired" | "revoked";
+          token?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["club_invites"]["Insert"]>;
+      };
+      email_outbox: {
+        Row: {
+          id: string;
+          club_id: string | null;
+          to_email: string;
+          template: string;
+          subject: string;
+          body: string;
+          status: "pending" | "sent" | "failed" | "skipped";
+          attempts: number;
+          provider_message_id: string | null;
+          metadata: Json;
+          created_at: string;
+          sent_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          club_id?: string | null;
+          to_email: string;
+          template: string;
+          subject: string;
+          body: string;
+          status?: "pending" | "sent" | "failed" | "skipped";
+          attempts?: number;
+          provider_message_id?: string | null;
+          metadata?: Json;
+          sent_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["email_outbox"]["Insert"]>;
+      };
+      app_error_events: {
+        Row: {
+          id: string;
+          club_id: string | null;
+          request_id: string;
+          source: string;
+          severity: "error" | "warning" | "info";
+          message: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          club_id?: string | null;
+          request_id: string;
+          source: string;
+          severity?: "error" | "warning" | "info";
+          message: string;
+          metadata?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["app_error_events"]["Insert"]>;
       };
       member_goals: {
         Row: {
@@ -438,6 +571,7 @@ export type Database = {
           title: string;
           status?: string;
           target_date?: string | null;
+          completed_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["member_goals"]["Insert"]>;
       };
@@ -448,3 +582,4 @@ export type Database = {
 export type TableName = keyof Database["public"]["Tables"];
 export type TableRow<T extends TableName> = Database["public"]["Tables"][T]["Row"];
 export type TableInsert<T extends TableName> = Database["public"]["Tables"][T]["Insert"];
+export type TableUpdate<T extends TableName> = Database["public"]["Tables"][T]["Update"];

@@ -30,6 +30,8 @@ export function useActiveClubState() {
   }, [hasInitialActiveClub, initialActiveClub]);
 
   useEffect(() => {
+    if (hasInitialActiveClub) return;
+
     let alive = true;
 
     fetch("/api/auth/session", { cache: "no-store" })
@@ -48,7 +50,7 @@ export function useActiveClubState() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [hasInitialActiveClub]);
 
   return { activeClub, loading };
 }

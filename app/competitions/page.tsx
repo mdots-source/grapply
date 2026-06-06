@@ -1,73 +1,82 @@
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, Clock, MapPin, Trophy, Users } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, Clock, MapPin, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { CreateCompetitionForm, EditCompetitionButton } from "@/components/planning/create-competition-form";
+import { CreateCompetitionForm, DeleteCompetitionButton, EditCompetitionButton } from "@/components/planning/create-competition-form";
 import { PageTransition } from "@/components/page-transition";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { resolveStudentsByIds } from "@/lib/members";
-import { getCompetitionsData } from "@/lib/backend-data";
+import { getCompetitionsData, getVisibleMembersData } from "@/lib/backend-data";
 import { requireWorkspaceRole } from "@/lib/workspace-access";
+import { getWorkspaceHref } from "@/lib/workspace-url";
 import type { Competition } from "@/data/competitions";
+import type { Student } from "@/data/academy";
 
 export default async function CompetitionsPage() {
-  const session = await requireWorkspaceRole(["owner", "admin", "coach"], "/competitions");
-  const competitions = await getCompetitionsData();
-  const totalAthletes = new Set(competitions.flatMap((event) => event.registered_students)).size;
-  const nextEvent = competitions[0];
+  const session = await requireWorkspaceRole(["owner", "admin", "coach", "member"], "/competitions");
+  let loadError: string | null = null;
+  const viewer = {
+    userId: session.user.id,
+    userEmail: session.user.email,
+    role: session.activeRole,
+  };
+  const [competitions, members] = await Promise.all([
+    getCompetitionsData(session.activeClub.slug, viewer).catch((error) => {
+      loadError = error instanceof Error ? error.message : "Could not load competitions.";
+      return [];
+    }),
+    getVisibleMembersData({
+      clubSlug: session.activeClub.slug,
+      userId: session.user.id,
+      userEmail: session.user.email,
+      role: session.activeRole,
+    }).catch(() => {
+      loadError ??= "Could not load competition roster.";
+      return [];
+    }),
+  ]);
   const canManagePlanning = session.activeRole !== "member";
+  const canDeletePlanning = session.activeRole === "owner" || session.activeRole === "admin";
+  const organizationId = session.activeClub.slug;
 
   return (
     <AppShell title="Competitions" subtitle="Track tournaments, deadlines, athlete rosters, and team preparation in one place." initialSession={session}>
       <PageTransition>
-        {!nextEvent ? (
-          <Card className="flex min-h-[360px] flex-col items-center justify-center border-dashed p-8 text-center">
-            <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent)]">
-              <Trophy size={26} />
-            </div>
-            <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">No competitions yet</h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-              Add tournaments for this club when the team starts tracking registrations, prep, and travel.
-            </p>
-          </Card>
+        {loadError ? (
+          <PlanningErrorState
+            title="Competitions are unavailable"
+            message={loadError}
+            canManagePlanning={canManagePlanning}
+            organizationId={organizationId}
+          />
+        ) : competitions.length === 0 ? (
+          <div className="space-y-5">
+            <Card className="flex min-h-[320px] flex-col items-center justify-center border-dashed p-8 text-center">
+              <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent)]">
+                <Trophy size={26} />
+              </div>
+              <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">No competitions yet</h2>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+                Add tournaments for this club when the team starts tracking registrations, prep, and travel.
+              </p>
+            </Card>
+            {canManagePlanning && <CreateCompetitionForm clubSlug={organizationId} />}
+          </div>
         ) : (
         <div className="space-y-5">
-          <section>
-            <Card className="overflow-hidden p-0">
-              <div className="border-b border-[var(--border)] p-5">
-                <Badge variant="accent">Next competition</Badge>
-                <div className="mt-4">
-                  <div>
-                    <h2 className="text-3xl font-semibold text-[var(--foreground)]">{nextEvent.name}</h2>
-                    <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
-                      <span className="inline-flex items-center gap-1.5">
-                        <CalendarDays size={15} /> {nextEvent.date}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MapPin size={15} /> {nextEvent.city}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Trophy size={15} /> {nextEvent.type}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="grid gap-3 p-5 sm:grid-cols-3">
-                <Metric label="Athletes tracking" value={totalAthletes.toString()} />
-                <Metric label="Upcoming events" value={competitions.length.toString()} />
-                <Metric label="Registration deadline" value={nextEvent.registration_deadline} />
-              </div>
-            </Card>
-          </section>
-
-          {canManagePlanning && <CreateCompetitionForm />}
+          {canManagePlanning && <CreateCompetitionForm clubSlug={organizationId} />}
 
           <section id="competition-events" className="scroll-mt-6 grid gap-4 xl:grid-cols-3">
             {competitions.map((event) => (
-              <CompetitionCard key={event.id} event={event} canManagePlanning={canManagePlanning} />
+              <CompetitionCard
+                key={event.id}
+                event={event}
+                members={members}
+                organizationId={organizationId}
+                canManagePlanning={canManagePlanning}
+                canDeletePlanning={canDeletePlanning}
+              />
             ))}
           </section>
         </div>
@@ -77,17 +86,45 @@ export default async function CompetitionsPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function PlanningErrorState({
+  title,
+  message,
+  canManagePlanning,
+  organizationId,
+}: {
+  title: string;
+  message: string;
+  canManagePlanning: boolean;
+  organizationId: string;
+}) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <p className="text-xs text-[var(--muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{value}</p>
+    <div className="space-y-5">
+      <Card className="flex min-h-[320px] flex-col items-center justify-center border-dashed p-8 text-center">
+        <div className="grid size-14 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--accent-coral)]">
+          <AlertTriangle size={26} />
+        </div>
+        <h2 className="mt-5 text-xl font-semibold text-[var(--foreground)]">{title}</h2>
+        <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">{message}</p>
+      </Card>
+      {canManagePlanning && <CreateCompetitionForm clubSlug={organizationId} />}
     </div>
   );
 }
 
-function CompetitionCard({ event, canManagePlanning }: { event: Competition; canManagePlanning: boolean }) {
-  const roster = resolveStudentsByIds(event.registered_students);
+function CompetitionCard({
+  event,
+  members,
+  organizationId,
+  canManagePlanning,
+  canDeletePlanning,
+}: {
+  event: Competition;
+  members: Student[];
+  organizationId: string;
+  canManagePlanning: boolean;
+  canDeletePlanning: boolean;
+}) {
+  const roster = resolveClubRoster(event.registered_students, members);
 
   return (
     <Card className="flex min-h-[330px] flex-col p-5">
@@ -137,9 +174,10 @@ function CompetitionCard({ event, canManagePlanning }: { event: Competition; can
           </div>
           {canManagePlanning ? (
             <div className="flex flex-wrap justify-end gap-2">
-              <EditCompetitionButton event={event} />
+              <EditCompetitionButton event={event} clubSlug={organizationId} />
+              {canDeletePlanning && <DeleteCompetitionButton event={event} clubSlug={organizationId} />}
               <Button variant="surface" size="sm" asChild>
-                <Link href={`/members?filter=competition&event=${event.id}`}>
+                <Link href={getWorkspaceHref(`/members?filter=competition&event=${event.id}`, organizationId)}>
                   Manage roster
                 </Link>
               </Button>
@@ -151,4 +189,9 @@ function CompetitionCard({ event, canManagePlanning }: { event: Competition; can
       </div>
     </Card>
   );
+}
+
+function resolveClubRoster(memberIds: string[], members: Student[]) {
+  const membersById = new Map(members.map((member) => [member.id, member]));
+  return memberIds.map((id) => membersById.get(id)).filter((member): member is Student => Boolean(member));
 }

@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -52,11 +52,16 @@ type GitHubPullRequestFile = {
 };
 
 export function GET() {
-  return NextResponse.json({
+  const payload: Record<string, unknown> = {
     ok: true,
     service: "github-pr-summary",
-    telegramChatConfigured: Boolean(process.env.TELEGRAM_CHAT_ID),
-  });
+  };
+
+  if (process.env.NODE_ENV !== "production" && process.env.VERCEL_ENV !== "production") {
+    payload.telegramChatConfigured = Boolean(process.env.TELEGRAM_CHAT_ID);
+  }
+
+  return noStoreJson(payload);
 }
 
 export async function POST(request: Request) {
@@ -65,33 +70,55 @@ export async function POST(request: Request) {
   const event = request.headers.get("x-github-event");
 
   if (!isValidGitHubSignature(body, signature)) {
-    return NextResponse.json({ ok: false, error: "Invalid signature" }, { status: 401 });
+    return noStoreJson({ ok: false, error: "Invalid signature" }, { status: 401 });
   }
 
   if (event !== "push") {
-    return NextResponse.json({ ok: true, skipped: "Unsupported event" });
+    return noStoreJson({ ok: true, skipped: "Unsupported event" });
   }
 
   const payload = parsePayload(body);
+  if (!payload) {
+    return noStoreJson({ ok: false, error: "Invalid GitHub webhook payload" }, { status: 400 });
+  }
 
   if (payload.ref !== "refs/heads/main") {
-    return NextResponse.json({ ok: true, skipped: "Push target is not main" });
+    return noStoreJson({ ok: true, skipped: "Push target is not main" });
   }
 
   if (!payload.head_commit || payload.after === "0000000000000000000000000000000000000000") {
-    return NextResponse.json({ ok: true, skipped: "No production commit to report" });
+    return noStoreJson({ ok: true, skipped: "No production commit to report" });
   }
 
-  await sendTelegramMessage(await formatProductionUpdateMessage(payload));
+  try {
+    await sendTelegramMessage(await formatProductionUpdateMessage(payload));
+  } catch (error) {
+    const requestId = randomUUID();
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[grapply:github-pr-summary:${requestId}]`, message);
+    return noStoreJson(
+      { ok: false, error: "Production update notification failed.", requestId },
+      { status: 502 },
+      { requestId, source: "github-webhook" },
+    );
+  }
 
-  return NextResponse.json({ ok: true });
+  return noStoreJson({ ok: true });
+}
+
+function noStoreJson(body: unknown, init?: ResponseInit, meta?: { requestId?: string; source?: string }) {
+  const response = NextResponse.json(body, init);
+  response.headers.set("Cache-Control", "no-store");
+  if (meta?.requestId) response.headers.set("X-Request-Id", meta.requestId);
+  if (meta?.source) response.headers.set("X-Grapply-Error-Source", meta.source);
+  return response;
 }
 
 function parsePayload(body: string) {
   try {
     return JSON.parse(body) as GitHubPushPayload;
   } catch {
-    throw new Error("Invalid GitHub webhook payload");
+    return null;
   }
 }
 
@@ -130,7 +157,7 @@ function formatPullRequestProductionMessage(
   pullRequest: GitHubPullRequest,
   files: GitHubPullRequestFile[],
 ) {
-  const summary = pullRequest.body?.trim() || "No PR description provided.";
+  const summary = pullRequest.body?.trim() || "No release notes provided.";
   const fileLines = formatFileLines(files);
   const stats = [
     `${pullRequest.changed_files} files changed`,
@@ -150,7 +177,7 @@ function formatPullRequestProductionMessage(
     escapeHtml(truncate(summary, 1200)),
     "",
     "<b>Touched areas</b>",
-    escapeHtml(fileLines.length ? fileLines.join("\n") : "- No file details provided"),
+    escapeHtml(fileLines.length ? fileLines.join("\n") : "- No files listed"),
     "",
     `<a href="${escapeHtml(pullRequest.html_url)}">Open PR</a>`,
   ].join("\n").slice(0, 3900);
@@ -180,7 +207,7 @@ function formatDirectPushMessage(payload: GitHubPushPayload) {
     escapeHtml(commitLines.length ? `${commitLines.join("\n")}${moreCommits}` : "- No commit details provided"),
     "",
     `<b>Touched areas</b>`,
-    escapeHtml(fileLines.length ? fileLines.join("\n") : "- No file details provided"),
+    escapeHtml(fileLines.length ? fileLines.join("\n") : "- No files listed"),
     "",
     payload.compare ? `<a href="${escapeHtml(payload.compare)}">View changes</a>` : "",
   ].join("\n").slice(0, 3900);

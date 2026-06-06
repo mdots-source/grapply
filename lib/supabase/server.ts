@@ -1,4 +1,4 @@
-import type { TableInsert, TableName, TableRow } from "@/lib/supabase/types";
+import type { TableInsert, TableName, TableRow, TableUpdate } from "@/lib/supabase/types";
 
 type SupabaseConfig = {
   url: string;
@@ -71,6 +71,13 @@ export async function upsertRow<T extends TableName>(table: T, row: TableInsert<
   });
 
   return created;
+}
+
+export async function updateRows<T extends TableName>(table: T, row: TableUpdate<T>, query: string) {
+  return supabaseRequest<TableRow<T>[]>(`${table}?${query}`, {
+    method: "PATCH",
+    body: JSON.stringify(row),
+  });
 }
 
 export async function deleteRows<T extends TableName>(table: T, query: string) {

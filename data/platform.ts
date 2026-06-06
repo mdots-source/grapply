@@ -50,6 +50,7 @@ export type ClubClass = {
   time: string;
   mat: string;
   level: string;
+  durationMinutes: number;
   checkedIn: number;
 };
 
@@ -246,6 +247,7 @@ export const clubClasses: ClubClass[] = [
     time: item.time,
     mat: item.room,
     level: item.belts.join(" / "),
+    durationMinutes: 60,
     checkedIn: [18, 22, 14, 31][index] ?? 10,
   })),
   {
@@ -257,6 +259,7 @@ export const clubClasses: ClubClass[] = [
     time: "18:00",
     mat: "Mat 1",
     level: "white / blue",
+    durationMinutes: 60,
     checkedIn: 16,
   },
   {
@@ -268,6 +271,7 @@ export const clubClasses: ClubClass[] = [
     time: "19:30",
     mat: "Mat 2",
     level: "blue / purple / brown",
+    durationMinutes: 60,
     checkedIn: 18,
   },
   {
@@ -279,6 +283,7 @@ export const clubClasses: ClubClass[] = [
     time: "10:30",
     mat: "Main Mat",
     level: "blue / purple / brown / black",
+    durationMinutes: 75,
     checkedIn: 12,
   },
   {
@@ -290,6 +295,7 @@ export const clubClasses: ClubClass[] = [
     time: "18:30",
     mat: "Main Mat",
     level: "white / blue",
+    durationMinutes: 60,
     checkedIn: 19,
   },
   {
@@ -301,6 +307,7 @@ export const clubClasses: ClubClass[] = [
     time: "11:00",
     mat: "Main Mat",
     level: "all belts",
+    durationMinutes: 120,
     checkedIn: 27,
   },
 ];

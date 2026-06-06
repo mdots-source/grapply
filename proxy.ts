@@ -7,9 +7,9 @@ import { normalizeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/li
 const publicPrefixes = [
   "/login",
   "/register",
+  "/auth/callback",
   "/clubs/select",
   "/api",
-  "/tv",
   "/ui",
   "/_next",
   "/favicon.ico",
@@ -31,6 +31,14 @@ const unscopedWorkspacePrefixes = [
   "/training-feed",
   "/tv",
 ];
+const reservedTopLevelPaths = new Set([
+  "auth",
+  "clubs",
+  "login",
+  "register",
+  "ui",
+  ...unscopedWorkspacePrefixes.map((prefix) => prefix.slice(1)),
+]);
 
 function appendRequestCookie(cookieHeader: string, name: string, value: string) {
   return cookieHeader ? `${cookieHeader}; ${name}=${value}` : `${name}=${value}`;
@@ -41,8 +49,37 @@ export function proxy(request: NextRequest) {
   if (publicPaths.includes(pathname)) return NextResponse.next();
   if (publicPrefixes.some((prefix) => pathname.startsWith(prefix))) return NextResponse.next();
 
-  const organizationRoute = splitOrganizationWorkspacePath(pathname);
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments.length === 1 && !reservedTopLevelPaths.has(segments[0])) {
+    const organizationId = segments[0];
+    const dashboardPath = `/${organizationId}/dashboard`;
+
+    if (!accessToken && !isAutomaticDemoLoginEnabled()) {
+      const loginUrl = getRequestUrl("/login", request);
+      loginUrl.searchParams.set("returnTo", dashboardPath);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = dashboardPath;
+    const response = NextResponse.redirect(dashboardUrl);
+
+    if (!accessToken && isAutomaticDemoLoginEnabled()) {
+      response.cookies.set(authCookieNames.accessToken, demoAccessToken, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: request.nextUrl.protocol === "https:",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+
+    return response;
+  }
+
+  const organizationRoute = splitOrganizationWorkspacePath(pathname);
 
   if (organizationRoute) {
     if (!accessToken && !isAutomaticDemoLoginEnabled()) {
@@ -55,6 +92,7 @@ export function proxy(request: NextRequest) {
     let cookieHeader = requestHeaders.get("cookie") ?? "";
     cookieHeader = appendRequestCookie(cookieHeader, authCookieNames.activeClub, organizationRoute.organizationId);
     requestHeaders.set("cookie", cookieHeader);
+    requestHeaders.set("x-grapply-organization-id", organizationRoute.organizationId);
 
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = organizationRoute.workspacePath;
@@ -82,7 +120,16 @@ export function proxy(request: NextRequest) {
 
   const isUnscopedWorkspacePath = unscopedWorkspacePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
   if (isUnscopedWorkspacePath) {
-    const organizationId = request.cookies.get(authCookieNames.activeClub)?.value ?? demoActiveClub;
+    if (request.headers.get("x-grapply-organization-id")) return NextResponse.next();
+
+    const activeClub = request.cookies.get(authCookieNames.activeClub)?.value;
+    const organizationId = activeClub ?? (isAutomaticDemoLoginEnabled() ? demoActiveClub : null);
+    if (!organizationId) {
+      const clubsUrl = getRequestUrl("/clubs", request);
+      clubsUrl.searchParams.set("returnTo", `${pathname}${search}`);
+      return NextResponse.redirect(clubsUrl);
+    }
+
     const scopedUrl = request.nextUrl.clone();
     scopedUrl.pathname = `/${organizationId}${pathname}`;
     return NextResponse.redirect(scopedUrl);

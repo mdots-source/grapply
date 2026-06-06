@@ -5,23 +5,32 @@ import { CalendarClock, ClipboardList, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { dashboardStats as seedDashboardStats, todayClasses } from "@/data/dashboard";
-import type { DashboardMeta, DashboardStats } from "@/components/dashboard-grid";
+import { useActiveClub } from "@/components/use-active-club";
+import { dashboardStats as seedDashboardStats } from "@/data/dashboard";
+import type { DashboardClass, DashboardMeta, DashboardStats } from "@/components/dashboard-grid";
 import type { PlatformRole } from "@/data/platform";
 
 export function AdminOverview({
   stats = seedDashboardStats,
   viewerRole,
   meta,
+  classes,
+  clubSlug,
 }: {
   stats?: DashboardStats;
   viewerRole: PlatformRole;
   meta: DashboardMeta;
+  classes?: DashboardClass[];
+  clubSlug?: string;
 }) {
-  const canManageMembers = viewerRole === "owner" || viewerRole === "admin" || viewerRole === "coach";
+  const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
+  const canManageSchedule = viewerRole === "owner" || viewerRole === "admin" || viewerRole === "coach";
   const canManageClub = viewerRole === "owner" || viewerRole === "admin";
   const roleLabel = viewerRole === "coach" ? "Coach" : viewerRole[0].toUpperCase() + viewerRole.slice(1);
-  const nextClass = todayClasses.find((item) => item.isNext) ?? todayClasses[0];
+  const workspaceHref = (path: string) => resolvedClubSlug ? `/${resolvedClubSlug}${path}` : path;
+  const visibleClasses = classes ?? [];
+  const nextClass = visibleClasses[0];
 
   return (
     <section className="space-y-5">
@@ -43,20 +52,20 @@ export function AdminOverview({
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Button variant="surface" asChild>
-              <Link href="/schedule">
+              <Link href={workspaceHref("/schedule")}>
                 <CalendarClock size={16} />
                 View schedule
               </Link>
             </Button>
             <Button variant="surface" asChild>
-              <Link href="/members">
+              <Link href={workspaceHref("/members")}>
                 <Users size={16} />
                 View members
               </Link>
             </Button>
-            {canManageMembers && (
+            {canManageSchedule && (
               <Button variant="primary" asChild>
-                <Link href="/schedule?create=class">
+                <Link href={workspaceHref("/schedule?create=class")}>
                   <ClipboardList size={16} />
                   Create class
                 </Link>
@@ -64,7 +73,7 @@ export function AdminOverview({
             )}
             {canManageClub && (
               <Button variant="outline" asChild>
-                <Link href="/admin">
+                <Link href={workspaceHref("/admin")}>
                   <ShieldCheck size={16} />
                   Manage roles
                 </Link>
@@ -82,26 +91,32 @@ export function AdminOverview({
                 <CalendarClock size={18} className="text-[var(--accent)]" />
                 Classes today
               </CardTitle>
-              <CardDescription>Next up: {nextClass.name} at {nextClass.time}.</CardDescription>
+              <CardDescription>
+                {nextClass ? `Next up: ${nextClass.name} at ${nextClass.time}.` : "No classes are scheduled for this club yet."}
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            {todayClasses.map((item) => (
+            {visibleClasses.length ? visibleClasses.map((item, index) => (
               <div
-                key={item.time}
+                key={item.id}
                 className={`rounded-xl border p-3 ${
-                  item.isNext ? "border-[var(--accent)]/35 bg-[var(--accent)]/8" : "border-[var(--border)] bg-[var(--surface)]"
+                  index === 0 ? "border-[var(--accent)]/35 bg-[var(--accent)]/8" : "border-[var(--border)] bg-[var(--surface)]"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[var(--foreground)]">{item.name}</p>
-                  <Badge variant={item.isNext ? "accent" : "default"}>{item.time}</Badge>
+                  <Badge variant={index === 0 ? "accent" : "default"}>{item.time}</Badge>
                 </div>
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  {item.coach} · {item.room}
+                  {item.coach} · {item.mat}
                 </p>
               </div>
-            ))}
+            )) : (
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--muted)]">
+                Create the first class from Schedule when you are ready.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

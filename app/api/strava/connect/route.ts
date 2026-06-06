@@ -1,17 +1,73 @@
 import { NextResponse } from "next/server";
+import { setActiveClubCookie, setStravaStateCookie } from "@/lib/auth-cookies";
+import { getCurrentSession } from "@/lib/auth-session";
+import { getRequestUrl } from "@/lib/request-origin";
 import { buildStravaAuthorizationUrl } from "@/lib/strava";
-import { normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
+import {
+  normalizeWorkspaceReturnTo,
+  scopeWorkspaceReturnTo,
+  splitOrganizationWorkspacePath,
+} from "@/lib/workspace-intent";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const returnTo = `/clubs?returnTo=${encodeURIComponent(normalizeWorkspaceReturnTo(searchParams.get("returnTo")))}`;
-  const url = buildStravaAuthorizationUrl({ state: returnTo });
+  const rawReturnTo = searchParams.get("returnTo");
+  const workspaceReturnTo = normalizeWorkspaceReturnTo(rawReturnTo);
+  const session = await getCurrentSession();
 
-  if (!url) {
-    const redirectUrl = new URL(returnTo, request.url);
-    redirectUrl.searchParams.set("strava", "missing-config");
-    return NextResponse.redirect(redirectUrl);
+  if (!session) {
+    const loginUrl = getRequestUrl("/login", request);
+    loginUrl.searchParams.set("returnTo", workspaceReturnTo);
+    loginUrl.searchParams.set("strava", "login-required");
+    return noStoreRedirect(loginUrl, 303);
   }
 
-  return NextResponse.redirect(url);
+  const requestedClubSlug = getRequestedClubSlug(rawReturnTo);
+  const membership = requestedClubSlug
+    ? session.memberships.find((item) => item.club.slug === requestedClubSlug)
+    : session.activeClub
+      ? session.memberships.find((item) => item.club.slug === session.activeClub?.slug)
+      : session.memberships[0];
+
+  if (!membership) {
+    const clubsUrl = getRequestUrl("/clubs", request);
+    clubsUrl.searchParams.set("returnTo", workspaceReturnTo);
+    clubsUrl.searchParams.set("strava", "club-required");
+    return noStoreRedirect(clubsUrl, 303);
+  }
+
+  const clubSlug = membership.club.slug;
+  const nonce = crypto.randomUUID();
+  const state = `/clubs?club=${encodeURIComponent(clubSlug)}&returnTo=${encodeURIComponent(workspaceReturnTo)}&nonce=${encodeURIComponent(nonce)}`;
+  const url = buildStravaAuthorizationUrl({ state });
+
+  if (!url) {
+    const redirectUrl = getRequestUrl(scopeWorkspaceReturnTo(workspaceReturnTo, clubSlug), request);
+    redirectUrl.searchParams.set("strava", "missing-config");
+    const response = noStoreRedirect(redirectUrl);
+    setActiveClubCookie(response, clubSlug);
+    return response;
+  }
+
+  const response = noStoreRedirect(url);
+  setActiveClubCookie(response, clubSlug);
+  setStravaStateCookie(response, nonce);
+  return response;
+}
+
+function noStoreRedirect(url: URL | string, status?: number) {
+  const response = NextResponse.redirect(url, status);
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+function getRequestedClubSlug(returnTo: string | null) {
+  if (!returnTo?.startsWith("/")) return null;
+
+  try {
+    const destination = new URL(returnTo, "https://grapply.local");
+    return splitOrganizationWorkspacePath(destination.pathname)?.organizationId ?? null;
+  } catch {
+    return null;
+  }
 }

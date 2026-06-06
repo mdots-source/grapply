@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   if (!session) {
     const loginUrl = getRequestUrl("/login", request);
     loginUrl.searchParams.set("returnTo", requestedDestination);
-    return NextResponse.redirect(loginUrl, 303);
+    return noStoreRedirect(loginUrl, 303);
   }
 
   const membership = club ? session.memberships.find((item) => item.club.slug === club) : null;
@@ -21,13 +21,19 @@ export async function GET(request: Request) {
     const clubsUrl = getRequestUrl("/clubs", request);
     clubsUrl.searchParams.set("access", "denied");
     clubsUrl.searchParams.set("returnTo", requestedDestination);
-    return NextResponse.redirect(clubsUrl, 303);
+    return noStoreRedirect(clubsUrl, 303);
   }
 
   const role = membership.role;
   const clubSlug = membership.club.slug;
   const destination = scopeWorkspaceReturnTo(getRoleSafeWorkspaceReturnTo(requestedDestination, role), clubSlug);
-  const response = NextResponse.redirect(getRequestUrl(destination, request));
+  const response = noStoreRedirect(getRequestUrl(destination, request));
   setActiveClubCookie(response, clubSlug);
+  return response;
+}
+
+function noStoreRedirect(url: URL, status?: number) {
+  const response = NextResponse.redirect(url, status);
+  response.headers.set("Cache-Control", "no-store");
   return response;
 }

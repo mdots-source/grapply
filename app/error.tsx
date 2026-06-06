@@ -1,13 +1,33 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getWorkspaceHref } from "@/lib/workspace-url";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const [scheduleHref, setScheduleHref] = useState("/schedule");
+
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  useEffect(() => {
+    let alive = true;
+
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { activeClub?: { slug?: string } | null } | null) => {
+        if (alive) setScheduleHref(getWorkspaceHref("/schedule", payload?.activeClub?.slug));
+      })
+      .catch(() => {
+        if (alive) setScheduleHref("/schedule");
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--background)] px-4 text-[var(--foreground)]">
@@ -20,7 +40,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
             Try again
           </Button>
           <Button variant="surface" asChild>
-            <Link href="/schedule">Back to schedule</Link>
+            <Link href={scheduleHref}>Back to schedule</Link>
           </Button>
         </div>
       </div>

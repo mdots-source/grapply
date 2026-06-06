@@ -21,10 +21,14 @@ export function TrainingFeedTimeline({
   initialPosts,
   initialCreatePost = false,
   canCreatePost = false,
+  canDeletePost = false,
+  clubSlug,
 }: {
   initialPosts: TrainingPost[];
   initialCreatePost?: boolean;
   canCreatePost?: boolean;
+  canDeletePost?: boolean;
+  clubSlug: string;
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [filter, setFilter] = useState<FeedFilter>("all");
@@ -36,10 +40,18 @@ export function TrainingFeedTimeline({
     setPosts((current) => [post, ...current.filter((item) => item.id !== post.id)]);
   };
 
+  const removePost = (postId: string) => {
+    setPosts((current) => current.filter((post) => post.id !== postId));
+  };
+
+  const updatePost = (post: TrainingPost) => {
+    setPosts((current) => current.map((item) => (item.id === post.id ? post : item)));
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       {canCreatePost ? (
-        <CreateTrainingPostForm initialOpen={initialCreatePost} onCreate={addPost} />
+        <CreateTrainingPostForm initialOpen={initialCreatePost} clubSlug={clubSlug} onCreate={addPost} />
       ) : (
         <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
           <p className="text-sm font-semibold text-[var(--foreground)]">Academy updates</p>
@@ -79,7 +91,17 @@ export function TrainingFeedTimeline({
       ) : (
         <>
           {pinned.map((post, index) => (
-            <TrainingPostCard key={post.id} post={post} index={index} canComment={canCreatePost} />
+            <TrainingPostCard
+              key={post.id}
+              post={post}
+              index={index}
+              canComment={canCreatePost}
+              canEdit={canCreatePost}
+              canDelete={canDeletePost}
+              clubSlug={clubSlug}
+              onDelete={removePost}
+              onUpdate={updatePost}
+            />
           ))}
           <div className="border-t border-[var(--border)] pt-2">
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -87,7 +109,16 @@ export function TrainingFeedTimeline({
             </p>
             {rest.map((post, index) => (
               <div key={post.id} className="mb-5">
-                <TrainingPostCard post={post} index={index + pinned.length} canComment={canCreatePost} />
+                <TrainingPostCard
+                  post={post}
+                  index={index + pinned.length}
+                  canComment={canCreatePost}
+                  canEdit={canCreatePost}
+                  canDelete={canDeletePost}
+                  clubSlug={clubSlug}
+                  onDelete={removePost}
+                  onUpdate={updatePost}
+                />
               </div>
             ))}
           </div>

@@ -10,8 +10,9 @@ create table public.class_checkins (
   checked_in_by uuid references public.app_users(id) on delete set null,
   source public.checkin_source not null default 'manual',
   checked_in_at timestamptz not null default now(),
+  checked_in_date date not null default current_date,
   notes text,
-  unique (class_id, member_id)
+  unique (class_id, member_id, checked_in_date)
 );
 
 create table public.coach_notes (
@@ -96,19 +97,27 @@ create policy "admins and coaches can read coach notes"
 on public.coach_notes for select
 using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
 
-create policy "admins and coaches can manage coach notes"
-on public.coach_notes for all
+create policy "admins and coaches can create coach notes"
+on public.coach_notes for insert
+with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "admins and coaches can update coach notes"
+on public.coach_notes for update
 using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
 with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "owners and admins can delete coach notes"
+on public.coach_notes for delete
+using (public.current_user_club_role(club_id) in ('owner', 'admin'));
 
 create policy "club members can read promotions"
 on public.member_promotions for select
 using (public.current_user_club_role(club_id) is not null);
 
-create policy "admins and coaches can manage promotions"
+create policy "owners and admins can manage promotions"
 on public.member_promotions for all
-using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
-with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+using (public.current_user_club_role(club_id) in ('owner', 'admin'))
+with check (public.current_user_club_role(club_id) in ('owner', 'admin'));
 
 create policy "owners and admins can manage invites"
 on public.club_invites for all
@@ -119,7 +128,15 @@ create policy "club members can read own goals"
 on public.member_goals for select
 using (public.current_user_club_role(club_id) is not null);
 
-create policy "admins and coaches can manage goals"
-on public.member_goals for all
+create policy "admins and coaches can create goals"
+on public.member_goals for insert
+with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "admins and coaches can update goals"
+on public.member_goals for update
 using (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'))
 with check (public.current_user_club_role(club_id) in ('owner', 'admin', 'coach'));
+
+create policy "owners and admins can delete goals"
+on public.member_goals for delete
+using (public.current_user_club_role(club_id) in ('owner', 'admin'));

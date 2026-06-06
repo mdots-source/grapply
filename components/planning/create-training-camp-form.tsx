@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, type Dispatch, type SetStateAction } from "react";
-import { Loader2, Mountain } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Mountain, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActiveClub } from "@/components/use-active-club";
 import type { TrainingCamp } from "@/data/training-camps";
+import { formatApiError, readApiJson } from "@/lib/api-client";
 
 type TrainingCampFormState = {
   name: string;
@@ -23,6 +25,7 @@ type TrainingCampFormState = {
   estimatedCost: string;
   notes: string;
 };
+type FormMessageState = { tone: "success" | "error"; text: string };
 
 const emptyCampForm: TrainingCampFormState = {
   name: "New academy camp",
@@ -43,11 +46,13 @@ function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `camp-${Date.now()}`;
 }
 
-export function CreateTrainingCampForm() {
+export function CreateTrainingCampForm({ clubSlug }: { clubSlug?: string }) {
   const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
   const [form, setForm] = useState(emptyCampForm);
 
   return (
@@ -57,7 +62,7 @@ export function CreateTrainingCampForm() {
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">Camp planning</p>
             <p className="mt-1 text-xs text-[var(--muted)]">Create a camp plan with travel basics and roster space.</p>
-            {message && <p className="mt-3 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold">{message}</p>}
+            {message && <FormMessage message={message} className="mt-3" />}
           </div>
           <Button variant="primary" onClick={() => setOpen(true)}>
             <Mountain size={16} />
@@ -78,6 +83,7 @@ export function CreateTrainingCampForm() {
           onChange={setForm}
           onCancel={() => setOpen(false)}
           onSubmit={async () => {
+            const spotsTotal = parseSpotsTotal(form.spotsTotal);
             const camp: TrainingCamp = {
               id: `${slugify(form.name)}-${crypto.randomUUID().slice(0, 6)}`,
               name: form.name,
@@ -94,12 +100,13 @@ export function CreateTrainingCampForm() {
               notes: form.notes,
               type: form.type,
               prep: 0,
-              spotsTotal: Number(form.spotsTotal) || 20,
+              spotsTotal,
               estimatedCost: form.estimatedCost,
             };
-            await saveTrainingCamp(camp, activeClub?.slug);
-            setMessage("Camp plan saved.");
+            await saveTrainingCamp(camp, resolvedClubSlug, "POST");
+            setMessage({ tone: "success", text: "Camp plan saved." });
             setOpen(false);
+            router.refresh();
           }}
           setLoading={setLoading}
           setMessage={setMessage}
@@ -109,11 +116,13 @@ export function CreateTrainingCampForm() {
   );
 }
 
-export function EditTrainingCampButton({ camp }: { camp: TrainingCamp }) {
+export function EditTrainingCampButton({ camp, clubSlug }: { camp: TrainingCamp; clubSlug?: string }) {
   const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
   const [form, setForm] = useState<TrainingCampFormState>({
     name: camp.name,
     date: camp.date,
@@ -146,6 +155,7 @@ export function EditTrainingCampButton({ camp }: { camp: TrainingCamp }) {
           onChange={setForm}
           onCancel={() => setOpen(false)}
           onSubmit={async () => {
+            const spotsTotal = parseSpotsTotal(form.spotsTotal);
             await saveTrainingCamp(
               {
                 ...camp,
@@ -160,13 +170,15 @@ export function EditTrainingCampButton({ camp }: { camp: TrainingCamp }) {
                 registration_deadline: form.deadline,
                 notes: form.notes,
                 type: form.type,
-                spotsTotal: Number(form.spotsTotal) || camp.spotsTotal,
+                spotsTotal,
                 estimatedCost: form.estimatedCost,
               },
-              activeClub?.slug,
+              resolvedClubSlug,
+              "PATCH",
             );
-            setMessage("Training camp updated.");
+            setMessage({ tone: "success", text: "Training camp updated." });
             setOpen(false);
+            router.refresh();
           }}
           setLoading={setLoading}
           setMessage={setMessage}
@@ -176,14 +188,59 @@ export function EditTrainingCampButton({ camp }: { camp: TrainingCamp }) {
   );
 }
 
-async function saveTrainingCamp(camp: TrainingCamp, clubSlug?: string) {
+export function DeleteTrainingCampButton({ camp, clubSlug }: { camp: TrainingCamp; clubSlug?: string }) {
+  const activeClub = useActiveClub();
+  const resolvedClubSlug = activeClub?.slug ?? clubSlug;
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<FormMessageState | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  async function deleteCamp() {
+    if (!confirming) {
+      setConfirming(true);
+      setMessage({ tone: "error", text: "Click delete again to confirm." });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/training-camps", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: camp.id, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
+      });
+      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Camp delete failed.");
+      if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Camp delete failed.", payload.requestId));
+      setConfirming(false);
+      router.refresh();
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Camp delete failed." });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button type="button" variant={confirming ? "primary" : "outline"} size="sm" disabled={loading} onClick={deleteCamp}>
+        {loading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+        {confirming ? "Confirm delete" : "Delete"}
+      </Button>
+      {message && <FormMessage message={message} className="max-w-56" />}
+    </div>
+  );
+}
+
+async function saveTrainingCamp(camp: TrainingCamp, clubSlug?: string, method: "POST" | "PATCH" = "POST") {
   const response = await fetch("/api/training-camps", {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...camp, ...(clubSlug ? { clubSlug } : {}) }),
   });
-  const payload = (await response.json()) as { ok?: boolean; error?: string };
-  if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Camp save failed.");
+  const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Camp save failed.");
+  if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Camp save failed.", payload.requestId));
 }
 
 function TrainingCampDrawerForm({
@@ -198,12 +255,12 @@ function TrainingCampDrawerForm({
 }: {
   form: TrainingCampFormState;
   loading: boolean;
-  message: string | null;
+  message: FormMessageState | null;
   onChange: Dispatch<SetStateAction<TrainingCampFormState>>;
   onCancel: () => void;
   onSubmit: () => Promise<void>;
   setLoading: (value: boolean) => void;
-  setMessage: (value: string | null) => void;
+  setMessage: (value: FormMessageState | null) => void;
 }) {
   return (
     <form
@@ -216,7 +273,7 @@ function TrainingCampDrawerForm({
         try {
           await onSubmit();
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : "Camp save failed.");
+          setMessage({ tone: "error", text: error instanceof Error ? error.message : "Camp save failed." });
         } finally {
           setLoading(false);
         }
@@ -245,7 +302,7 @@ function TrainingCampDrawerForm({
         <TextField id="camp-notes" label="Travel notes" value={form.notes} onChange={(notes) => onChange((value) => ({ ...value, notes }))} />
       </div>
 
-      {message && <p className="text-xs text-[var(--muted)]">{message}</p>}
+      {message && <FormMessage message={message} />}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
@@ -268,6 +325,14 @@ function Field({ id, label, value, onChange }: { id: string; label: string; valu
   );
 }
 
+function parseSpotsTotal(value: string) {
+  const spotsTotal = Number(value);
+  if (!Number.isInteger(spotsTotal) || spotsTotal < 1 || spotsTotal > 10000) {
+    throw new Error("Spots must be a whole number between 1 and 10000.");
+  }
+  return spotsTotal;
+}
+
 function TextField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (value: string) => void }) {
   return (
     <div className="space-y-1.5">
@@ -279,6 +344,21 @@ function TextField({ id, label, value, onChange }: { id: string; label: string; 
         className="min-h-24 w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20"
         required
       />
+    </div>
+  );
+}
+
+function FormMessage({ message, className = "" }: { message: FormMessageState; className?: string }) {
+  return (
+    <div
+      className={`${className} flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-semibold text-[var(--foreground)] ${
+        message.tone === "success"
+          ? "border-[var(--status-success)]/25 bg-[var(--status-success)]/10"
+          : "border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10"
+      }`}
+    >
+      {message.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+      <span>{message.text}</span>
     </div>
   );
 }

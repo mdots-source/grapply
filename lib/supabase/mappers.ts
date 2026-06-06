@@ -94,6 +94,7 @@ export function toClubClass(row: TableRow<"club_classes">): ClubClass {
     time: row.time,
     mat: row.mat,
     level: row.level,
+    durationMinutes: row.duration_minutes,
     checkedIn: row.checked_in,
   };
 }
