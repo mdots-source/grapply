@@ -96,13 +96,16 @@ export async function GET(request: Request) {
       membershipRole: invite.role,
     });
 
-    await updateRows(
-      "club_invites",
-      { status: "accepted", accepted_at: new Date().toISOString() },
-      `id=eq.${invite.id}`,
-    );
-
     const destination = getInviteDestination(returnTo, club.slug, invite.role);
+    const acceptedInvite = await markInviteAccepted(invite.id);
+    if (!acceptedInvite) {
+      const destinationUrl = getRequestUrl(destination, request);
+      destinationUrl.searchParams.set("invite", "already-accepted");
+      const response = noStoreRedirect(destinationUrl, 303);
+      setActiveClubCookie(response, club.slug);
+      return response;
+    }
+
     await queueEmail({
       clubId: club.id,
       toEmail: session.user.email,
@@ -177,6 +180,15 @@ function getInviteDestination(returnTo: string, clubSlug: string, role: string |
 
 function isInviteMembershipRole(role: string): role is "admin" | "coach" | "member" {
   return role === "admin" || role === "coach" || role === "member";
+}
+
+async function markInviteAccepted(inviteId: string) {
+  const [acceptedInvite] = await updateRows(
+    "club_invites",
+    { status: "accepted", accepted_at: new Date().toISOString() },
+    `id=eq.${encodeURIComponent(inviteId)}&status=eq.pending`,
+  );
+  return acceptedInvite ?? null;
 }
 
 function authErrorUrl(request: Request, returnTo: string, error: string) {
