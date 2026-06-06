@@ -3,6 +3,7 @@ import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePers
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
+import { toStudent } from "@/lib/supabase/mappers";
 import { deleteRows, insertRow, isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 
 const validBelts = new Set(["white", "blue", "purple", "brown", "black"]);
@@ -112,8 +113,9 @@ export async function POST(request: Request) {
         previous_stripes: member.stripes,
         detail: promotion.detail,
       });
+      const updatedMember = await getPromotionMember(clubId, promotion.memberId);
 
-      return noStoreJson({ ok: true, source: "supabase", promotion: row });
+      return noStoreJson({ ok: true, source: "supabase", promotion: row, member: updatedMember });
     } catch (error) {
       return apiSupabaseError(error, { clubId });
     }
@@ -134,6 +136,12 @@ export async function POST(request: Request) {
     return noStoreJson({ ok: false, error: "Belt promotion must move the member forward." }, { status: 409 });
   }
 
+  const nextMockMember = {
+    ...mockMember,
+    ...(promotionType === "stripe" && typeof promotion.stripes === "number" ? { stripes: promotion.stripes } : {}),
+    ...(promotionType === "belt" && promotion.belt ? { belt: promotion.belt, stripes: promotion.stripes ?? 0 } : {}),
+  };
+
   return noStoreJson({
     ok: true,
     source: "mock",
@@ -150,6 +158,7 @@ export async function POST(request: Request) {
       detail: promotion.detail,
       awarded_at: new Date().toISOString(),
     },
+    member: nextMockMember,
   });
 }
 
@@ -206,8 +215,8 @@ export async function DELETE(request: Request) {
 
       const removed = await deleteRows("member_promotions", `id=eq.${encodeURIComponent(promotionId)}&club_id=eq.${clubId}`);
       if (removed.length === 0) return noStoreJson({ ok: false, error: "Promotion not found in this club." }, { status: 404 });
-      const [member] = await selectRows("academy_members", `select=*&id=eq.${encodeURIComponent(promotion.member_id)}&club_id=eq.${clubId}&limit=1`);
-      return noStoreJson({ ok: true, source: "supabase", removed, member });
+      const updatedMember = await getPromotionMember(clubId, promotion.member_id);
+      return noStoreJson({ ok: true, source: "supabase", removed, member: updatedMember });
     } catch (error) {
       return apiSupabaseError(error, { clubId });
     }
@@ -249,4 +258,9 @@ function readOptionalBelt(value: unknown): FieldResult<PromotionBelt | null | un
 
 function isUuid(value: unknown) {
   return typeof value === "string" && uuidPattern.test(value);
+}
+
+async function getPromotionMember(clubId: string, memberId: string) {
+  const [member] = await selectRows("academy_members", `select=*&id=eq.${encodeURIComponent(memberId)}&club_id=eq.${clubId}&limit=1`);
+  return member ? toStudent(member) : null;
 }

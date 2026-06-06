@@ -444,9 +444,9 @@ function MemberActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(getPayload(action)),
       });
-      const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Action failed.");
+      const payload = await readApiJson<{ ok?: boolean; member?: Student; error?: string; requestId?: string }>(response, "Action failed.");
       if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Action failed.", payload.requestId));
-      if (action === "promotion") syncPromotionLocally();
+      if (action === "promotion") syncPromotionLocally(payload.member);
       setMessage({
         tone: "success",
         text: action === "check-in" ? "Check-in saved." : action === "note" ? "Coach note saved." : "Award saved.",
@@ -458,8 +458,12 @@ function MemberActions({
     }
   }
 
-  function syncPromotionLocally() {
+  function syncPromotionLocally(updatedMember?: Student) {
     if (!onLocalMemberChange) return;
+    if (updatedMember) {
+      onLocalMemberChange(updatedMember);
+      return;
+    }
     if (promotionType === "stripe" && member.stripes < 4) {
       onLocalMemberChange({ ...member, stripes: nextStripe });
     }
