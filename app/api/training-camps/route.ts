@@ -149,6 +149,9 @@ export async function DELETE(request: Request) {
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
 
+  const forbidden = getForbiddenCampField(payload, "delete");
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const id = requiredString(payload.id, "Camp id", 120);
   if (id.error) return validationError(id.error);
   const campId = id.value ?? "";
@@ -162,6 +165,8 @@ export async function DELETE(request: Request) {
       if (removed.length === 0) return noStoreJson({ ok: false, error: "Camp not found in this club." }, { status: 404 });
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
+      const campError = getCampSupabaseValidationError(error);
+      if (campError) return campError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -203,6 +208,9 @@ function validateMockRegisteredMembers(clubSlug: string, memberIds: string[]) {
 }
 
 function validateTrainingCampPayload(payload: Record<string, unknown>): { data: TrainingCamp; error?: never } | { data?: never; error: Response } {
+  const forbidden = getForbiddenCampField(payload, "write");
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
+
   const id = requiredString(payload.id, "Camp id", 120);
   const name = requiredString(payload.name, "Camp name", 160);
   const date = requiredString(payload.date, "Start date", 120);
@@ -271,6 +279,44 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getForbiddenCampField(payload: Record<string, unknown>, mode: "write" | "delete") {
+  const serverLabels: Record<string, string> = {
+    clubId: "Camp club",
+    club_id: "Camp club",
+    createdAt: "Camp creation time",
+    created_at: "Camp creation time",
+    updatedAt: "Camp update time",
+    updated_at: "Camp update time",
+  };
+  const deleteOnlyLabels: Record<string, string> = mode === "delete"
+    ? {
+        city: "City",
+        date: "Start date",
+        endDate: "End date",
+        estimatedCost: "Estimated cost",
+        focus: "Focus",
+        host: "Host",
+        location: "Location",
+        name: "Camp name",
+        notes: "Notes",
+        prep: "Prep",
+        registeredStudents: "Registered members",
+        registered_students: "Registered members",
+        registered_member_ids: "Registered members",
+        registration_deadline: "Registration deadline",
+        spotsTotal: "Spots total",
+        status: "Status",
+        type: "Type",
+        venue: "Venue",
+      }
+    : {
+        registered_member_ids: "Registered members",
+      };
+  const labels = { ...serverLabels, ...deleteOnlyLabels };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
 }
 
 function getCampSupabaseValidationError(error: unknown) {
