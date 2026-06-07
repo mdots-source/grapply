@@ -220,6 +220,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenMemberField(payload);
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
@@ -249,6 +252,8 @@ export async function DELETE(request: Request) {
       if (removed.length === 0) return noStoreJson({ ok: false, error: "Member not found in this club." }, { status: 404 });
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
+      const memberError = getMemberSupabaseValidationError(error);
+      if (memberError) return memberError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -283,6 +288,9 @@ type ValidatedMemberPayload = Partial<Student> & { id: string; clubSlug?: string
 type FieldResult<T> = { value: T; error?: never } | { value?: never; error: string };
 
 function validateMemberPayload(payload: Record<string, unknown>, mode: MemberValidationMode): { data: ValidatedMemberPayload; error?: never } | { data?: never; error: NextResponse } {
+  const forbidden = getForbiddenMemberField(payload);
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
+
   const id = optionalMemberId(payload.id);
   const name = optionalString(payload.name, "Member name");
   const belt = optionalEnum(payload.belt, validBelts, "Belt");
@@ -336,6 +344,21 @@ function validateMemberPayload(payload: Record<string, unknown>, mode: MemberVal
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getForbiddenMemberField(payload: Record<string, unknown>) {
+  const labels: Record<string, string> = {
+    clubId: "Member club",
+    club_id: "Member club",
+    createdAt: "Member creation time",
+    created_at: "Member creation time",
+    updatedAt: "Member update time",
+    updated_at: "Member update time",
+    userId: "Linked user account",
+    user_id: "Linked user account",
+  };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
 }
 
 function getMemberSupabaseValidationError(error: unknown) {
