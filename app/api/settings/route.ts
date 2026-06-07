@@ -12,7 +12,7 @@ const hexColorPattern = /^#[0-9a-f]{6}$/i;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const access = await requireApiRole(["owner", "admin", "coach", "member"], searchParams.get("club"));
+  const access = await requireApiRole(["owner", "admin"], searchParams.get("club"));
   if (access.error) return access.error;
 
   if (isSupabaseConfigured()) {
