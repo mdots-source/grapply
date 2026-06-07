@@ -18,7 +18,7 @@ export function getStravaConfig() {
   return {
     clientId: process.env.STRAVA_CLIENT_ID,
     clientSecret: process.env.STRAVA_CLIENT_SECRET,
-    redirectUri: process.env.STRAVA_REDIRECT_URI ?? "http://localhost:3002/api/strava/callback",
+    redirectUri: getDefaultStravaRedirectUri(),
   };
 }
 
@@ -27,13 +27,14 @@ export function isStravaConfigured() {
   return Boolean(clientId && clientSecret && redirectUri);
 }
 
-export function buildStravaAuthorizationUrl({ state }: { state: string }) {
+export function buildStravaAuthorizationUrl({ state, redirectUri: redirectUriOverride }: { state: string; redirectUri?: string }) {
   const { clientId, clientSecret, redirectUri } = getStravaConfig();
-  if (!clientId || !clientSecret || !redirectUri) return null;
+  const callbackUrl = redirectUriOverride ?? redirectUri;
+  if (!clientId || !clientSecret || !callbackUrl) return null;
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri,
+    redirect_uri: callbackUrl,
     response_type: "code",
     approval_prompt: "auto",
     scope: STRAVA_SCOPES.join(","),
@@ -41,6 +42,12 @@ export function buildStravaAuthorizationUrl({ state }: { state: string }) {
   });
 
   return `${STRAVA_AUTHORIZE_URL}?${params.toString()}`;
+}
+
+function getDefaultStravaRedirectUri() {
+  if (process.env.STRAVA_REDIRECT_URI) return process.env.STRAVA_REDIRECT_URI;
+  if (process.env.NEXT_PUBLIC_APP_URL) return `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/api/strava/callback`;
+  return "http://localhost:3000/api/strava/callback";
 }
 
 export async function exchangeStravaCode(code: string) {
