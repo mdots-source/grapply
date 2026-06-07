@@ -24,6 +24,8 @@ export async function GET(request: Request) {
       const rows = await selectRows("club_invites", `select=*&club_id=eq.${clubId}${roleFilter}&order=created_at.desc`);
       return noStoreJson({ source: "supabase", invites: rows });
     } catch (error) {
+      const inviteError = getInviteSupabaseValidationError(error);
+      if (inviteError) return inviteError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -103,6 +105,8 @@ export async function POST(request: Request) {
       await queueInviteEmail(request, row, access.session.activeClub);
       return noStoreJson({ ok: true, source: "supabase", invite: row });
     } catch (error) {
+      const inviteError = getInviteSupabaseValidationError(error);
+      if (inviteError) return inviteError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -138,6 +142,9 @@ export async function PATCH(request: Request) {
       if (access.session.activeRole !== "owner" && existingInvite.role === "admin") {
         return noStoreJson({ ok: false, error: "Only owners can manage admin invites." }, { status: 403 });
       }
+      if (existingInvite.status === "accepted") {
+        return noStoreJson({ ok: false, error: "Accepted invites cannot be edited. Revoke the invite or change the member role from Admin." }, { status: 409 });
+      }
       if (data.status === "pending" || data.email) {
         const nextEmail = data.email ?? existingInvite.email;
         const inviteConflict = await getInviteEmailConflict(clubId, nextEmail, existingInvite.id);
@@ -158,6 +165,8 @@ export async function PATCH(request: Request) {
       if (row && data.status === "pending") await queueInviteEmail(request, row, access.session.activeClub);
       return noStoreJson({ ok: true, source: "supabase", invite: row });
     } catch (error) {
+      const inviteError = getInviteSupabaseValidationError(error);
+      if (inviteError) return inviteError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -170,6 +179,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getClientControlledInviteField(payload);
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
@@ -195,6 +207,8 @@ export async function DELETE(request: Request) {
       );
       return noStoreJson({ ok: true, source: "supabase", invite });
     } catch (error) {
+      const inviteError = getInviteSupabaseValidationError(error);
+      if (inviteError) return inviteError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -211,18 +225,19 @@ type InvitePayload = {
   email?: string;
   role?: "admin" | "coach" | "member";
   status?: "pending" | "expired" | "revoked";
-  invitedBy?: string | null;
 };
 
 function validateInvitePayload(payload: Record<string, unknown>, mode: "create" | "update"): { data: InvitePayload; error?: never } | { data?: never; error: Response } {
+  const forbidden = getClientControlledInviteField(payload);
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
+
   const id = mode === "update" ? optionalInviteId(payload.id) : optionalString(payload.id, "Invite id");
   const clubSlug = optionalString(payload.clubSlug, "Club slug");
   const email = optionalEmail(payload.email);
   const role = optionalRole(payload.role);
   const status = optionalStatus(payload.status);
-  const invitedBy = optionalUuid(payload.invitedBy, "Invited by");
 
-  const firstError = [id, clubSlug, email, role, status, invitedBy].find((item) => item.error);
+  const firstError = [id, clubSlug, email, role, status].find((item) => item.error);
   if (firstError?.error) return { error: validationError(firstError.error) };
 
   if (mode === "create" && !email.value) {
@@ -244,7 +259,6 @@ function validateInvitePayload(payload: Record<string, unknown>, mode: "create" 
       ...(email.value ? { email: email.value } : {}),
       ...(role.value ? { role: role.value } : {}),
       ...(status.value ? { status: status.value } : {}),
-      ...(invitedBy.value !== undefined ? { invitedBy: invitedBy.value } : {}),
     },
   };
 }
@@ -253,6 +267,37 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getClientControlledInviteField(payload: Record<string, unknown>) {
+  const labels: Record<string, string> = {
+    acceptedAt: "Invite acceptance",
+    accepted_at: "Invite acceptance",
+    clubId: "Invite club",
+    club_id: "Invite club",
+    expiresAt: "Invite expiry",
+    expires_at: "Invite expiry",
+    invitedBy: "Invite author",
+    invited_by: "Invite author",
+    token: "Invite token",
+  };
+
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
+}
+
+function getInviteSupabaseValidationError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("club_invites_club_lower_email_key") || message.includes("club_invites_club_id_email_key")) {
+    return noStoreJson({ ok: false, error: "An invite already exists for this email in this club." }, { status: 409 });
+  }
+  if (message.includes("club_invites_role_allowed_for_membership") || message.includes("club_invites_role_not_owner")) {
+    return noStoreJson({ ok: false, error: "Invite role is not supported." }, { status: 400 });
+  }
+  if (message.includes("club_invites_accepted_at_status_consistent")) {
+    return noStoreJson({ ok: false, error: "Invite acceptance is managed by the invite link." }, { status: 400 });
+  }
+  return null;
 }
 
 function getInviteExpiry() {
@@ -330,13 +375,6 @@ function optionalStatus(value: unknown): FieldResult<InvitePayload["status"] | u
   if (value === undefined || value === null) return { value: undefined as InvitePayload["status"] | undefined };
   if (typeof value !== "string" || !validStatuses.has(value)) return { error: "Invite status is not supported." };
   return { value: value as InvitePayload["status"] };
-}
-
-function optionalUuid(value: unknown, label: string): FieldResult<string | null | undefined> {
-  if (value === undefined) return { value: undefined as string | null | undefined };
-  if (value === null) return { value: null };
-  if (typeof value !== "string" || !uuidPattern.test(value)) return { error: `${label} must be a valid user id.` };
-  return { value };
 }
 
 function getSafeUuid(value: unknown) {
