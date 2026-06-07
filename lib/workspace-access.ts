@@ -13,9 +13,10 @@ export async function requireWorkspaceRole(allowedRoles: PlatformRole[], returnT
   const session = await getCurrentSession();
   const requestHeaders = await headers();
   const requestedOrganizationId = requestHeaders.get("x-grapply-organization-id");
+  const requestedReturnTo = requestedOrganizationId ? scopeWorkspaceReturnTo(returnTo, requestedOrganizationId) : returnTo;
 
   if (!session) {
-    redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+    redirect(`/login?returnTo=${encodeURIComponent(requestedReturnTo)}`);
   }
 
   const requestedMembership = requestedOrganizationId
@@ -27,19 +28,19 @@ export async function requireWorkspaceRole(allowedRoles: PlatformRole[], returnT
   if (requestedOrganizationId && !requestedMembership) {
     const destination = new URL("/clubs", "https://grapply.local");
     destination.searchParams.set("access", "denied");
-    destination.searchParams.set("returnTo", returnTo);
+    destination.searchParams.set("returnTo", requestedReturnTo);
     redirect(`${destination.pathname}${destination.search}`);
   }
 
   if (!activeRole || !activeClub) {
-    redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
+    redirect(`/clubs?returnTo=${encodeURIComponent(requestedReturnTo)}`);
   }
 
   if (!allowedRoles.includes(activeRole)) {
-    const fallback = getRoleSafeWorkspaceReturnTo(returnTo, activeRole);
+    const fallback = getRoleSafeWorkspaceReturnTo(requestedReturnTo, activeRole);
     const destination = new URL(scopeWorkspaceReturnTo(fallback, activeClub.slug), "https://grapply.local");
     destination.searchParams.set("access", "denied");
-    destination.searchParams.set("from", returnTo);
+    destination.searchParams.set("from", requestedReturnTo);
     redirect(`${destination.pathname}${destination.search}`);
   }
 
