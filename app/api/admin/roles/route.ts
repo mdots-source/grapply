@@ -3,8 +3,9 @@ import { apiSupabaseError, requireApiRole, requireSupabasePersistence } from "@/
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { queueEmail, staffNotificationEmailBody } from "@/lib/email/outbox";
+import { ensureClubMemberProfile } from "@/lib/member-profiles";
 import { getRequestUrl } from "@/lib/request-origin";
-import { deleteRows, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
+import { deleteRows, insertRow, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
 
 const validAssignableRoles = new Set(["admin", "coach", "member"]);
 
@@ -60,10 +61,71 @@ export async function POST(request: Request) {
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
 
-  return noStoreJson({
-    ok: false,
-    error: "Direct club access assignment is disabled. Invite the user from Admin, then update their role after they join.",
-  }, { status: 405 });
+  const validation = validateRolePayload(payload, "assign");
+  if (validation.error) return validation.error;
+  const data = validation.data;
+  const nextRole = data.role ?? "member";
+  const targetUserId = data.userId ?? "";
+
+  const permissionError = getRoleManagementError({
+    actorRole: access.session.activeRole,
+    actorUserId: access.session.user.id,
+    targetRole: null,
+    targetUserId,
+    nextRole,
+    action: "assign",
+  });
+  if (permissionError) return permissionError;
+
+  if (isSupabaseConfigured()) {
+    let clubId: string | null = null;
+    try {
+      clubId = await getBackendClubId(access.session.activeClub.slug);
+      if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
+
+      const [user] = await selectRows("app_users", `select=*&id=eq.${encodeURIComponent(targetUserId)}&limit=1`);
+      if (!user) return noStoreJson({ ok: false, error: "User not found." }, { status: 404 });
+
+      const [existingMembership] = await selectRows(
+        "club_memberships",
+        `select=*&club_id=eq.${clubId}&user_id=eq.${encodeURIComponent(targetUserId)}&limit=1`,
+      );
+      if (existingMembership) {
+        return noStoreJson({ ok: false, error: "This user already has access to this club." }, { status: 409 });
+      }
+
+      const membership = await insertRow("club_memberships", {
+        club_id: clubId,
+        user_id: targetUserId,
+        role: nextRole,
+        invited_by: data.invitedBy ?? (isUuid(access.session.user.id) ? access.session.user.id : access.session.user.email),
+      });
+      await ensureClubMemberProfile({
+        clubId,
+        clubName: access.session.activeClub.name,
+        user,
+        membershipRole: nextRole,
+      });
+      await queueRoleChangeEmail(request, {
+        clubId,
+        clubName: access.session.activeClub.name,
+        userId: targetUserId,
+        nextRole,
+        destination: `/${access.session.activeClub.slug}/dashboard`,
+      });
+
+      return noStoreJson({ ok: true, source: "supabase", membership });
+    } catch (error) {
+      const roleError = getRoleSupabaseValidationError(error);
+      if (roleError) return roleError;
+      return apiSupabaseError(error, { clubId });
+    }
+  }
+
+  const persistenceError = requireSupabasePersistence("Role management");
+  if (persistenceError) return persistenceError;
+
+  return noStoreJson({ ok: true, source: "mock", membership: data });
 }
 
 export async function PATCH(request: Request) {
@@ -375,6 +437,14 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getRoleSupabaseValidationError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("club_memberships_user_id_club_id_key") || message.includes("duplicate key")) {
+    return noStoreJson({ ok: false, error: "This user already has access to this club." }, { status: 409 });
+  }
+  return null;
 }
 
 function requiredString(value: unknown, label: string): FieldResult<string> {
