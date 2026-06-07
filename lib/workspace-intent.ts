@@ -1,4 +1,5 @@
 const routeLabels: Record<string, string> = {
+  "/account": "Account",
   "/admin": "Team",
   "/competitions": "Competitions",
   "/dashboard": "Dashboard",

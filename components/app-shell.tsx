@@ -18,6 +18,7 @@ import {
   Building2,
   Trophy,
   UserCog,
+  UserRound,
   Users,
 } from "lucide-react";
 import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -317,6 +318,17 @@ function ProfileDrawer({
               );
             })}
           </div>
+        )}
+
+        {session?.activeClub?.slug && (
+          <Link
+            href={getWorkspaceHref("/account", session.activeClub.slug)}
+            onClick={close}
+            className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]/30 hover:bg-[var(--surface-hover)]"
+          >
+            <UserRound size={15} />
+            Account settings
+          </Link>
         )}
 
         <Link

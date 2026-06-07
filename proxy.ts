@@ -21,6 +21,7 @@ const publicPaths = ["/"];
 const demoAccessToken = "mock:usr-sofia";
 const demoActiveClub = "grapply-bjj";
 const unscopedWorkspacePrefixes = [
+  "/account",
   "/admin",
   "/competitions",
   "/dashboard",
