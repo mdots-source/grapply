@@ -28,6 +28,7 @@ export function apiErrorJson(error: string, status: number, source: "validation"
     console.error(`[grapply:${source}:${requestId}]`, error);
     recordErrorEvent({
       requestId,
+      clubId: getErrorClubId(extra),
       source,
       message: error,
       metadata: extra,
@@ -52,4 +53,8 @@ function getErrorSource(status?: number) {
   if (status === 409) return "conflict";
   if (status && status >= 500) return "backend";
   return "validation";
+}
+
+function getErrorClubId(extra?: Record<string, unknown>) {
+  return typeof extra?.clubId === "string" && extra.clubId.length > 0 ? extra.clubId : null;
 }
