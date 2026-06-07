@@ -316,6 +316,9 @@ function getCheckInSupabaseValidationError(error: unknown) {
   if (message.includes("class_checkins_one_member_per_class_day") || message.includes("duplicate key")) {
     return noStoreJson({ ok: false, error: "This member is already checked into this class today." }, { status: 409 });
   }
+  if (message.includes("check-in identity fields cannot be changed")) {
+    return noStoreJson({ ok: false, error: "Check-in history cannot be moved to another class, member, date, or author." }, { status: 409 });
+  }
 
   return null;
 }
