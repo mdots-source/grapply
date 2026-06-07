@@ -39,7 +39,10 @@ export async function GET(request: Request) {
   const clubSlug = membership.club.slug;
   const nonce = crypto.randomUUID();
   const state = `/clubs?club=${encodeURIComponent(clubSlug)}&returnTo=${encodeURIComponent(workspaceReturnTo)}&nonce=${encodeURIComponent(nonce)}`;
-  const url = buildStravaAuthorizationUrl({ state });
+  const url = buildStravaAuthorizationUrl({
+    state,
+    redirectUri: getRequestUrl("/api/strava/callback", request).toString(),
+  });
 
   if (!url) {
     const redirectUrl = getRequestUrl(scopeWorkspaceReturnTo(workspaceReturnTo, clubSlug), request);
