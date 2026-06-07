@@ -14,7 +14,7 @@ const routeLabels: Record<string, string> = {
 const fallbackWorkspacePath = "/schedule";
 const workspacePaths = new Set(Object.keys(routeLabels));
 const blockedWorkspacePaths = new Set(["/", "/login", "/register", "/clubs"]);
-const ownerOnlyPaths = new Set(["/admin"]);
+const ownerOnlyPaths = new Set(["/admin", "/settings"]);
 const staffOnlyPaths = new Set(["/tv"]);
 
 export function splitOrganizationWorkspacePath(pathname: string) {
