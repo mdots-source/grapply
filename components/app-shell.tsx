@@ -31,6 +31,7 @@ import { getWorkspaceHref } from "@/lib/workspace-url";
 type Role = "owner" | "admin" | "coach" | "member";
 const managerRoles: Role[] = ["owner", "admin", "coach"];
 const workspaceRoles: Role[] = ["owner", "admin", "coach", "member"];
+const adminRoles: Role[] = ["owner", "admin"];
 
 export type ShellSession = {
   user?: { name: string; email: string; avatar?: string };
@@ -48,8 +49,8 @@ const nav = [
   { href: "/training-feed", label: "Training Feed", icon: Flame, roles: workspaceRoles },
   { href: "/rankings", label: "Rankings", icon: Trophy, roles: workspaceRoles },
   { href: "/tv", label: "TV Screen", icon: MonitorPlay, roles: managerRoles },
-  { href: "/admin", label: "Team", icon: UserCog, roles: ["owner", "admin"] as Role[] },
-  { href: "/settings", label: "Settings", icon: Settings, roles: workspaceRoles },
+  { href: "/admin", label: "Team", icon: UserCog, roles: adminRoles },
+  { href: "/settings", label: "Settings", icon: Settings, roles: adminRoles },
 ];
 
 function getWorkspacePath(pathname: string, organizationId?: string | null) {
