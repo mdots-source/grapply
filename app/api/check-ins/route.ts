@@ -78,6 +78,9 @@ export async function POST(request: Request) {
 
       const [classRow] = await selectRows("club_classes", `select=*&id=eq.${encodeURIComponent(data.classId)}&club_id=eq.${clubId}&limit=1`);
       if (!classRow) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
+      if (!canCoachManageClassAttendance(access.session.activeRole, access.session.user.id, access.session.user.name, classRow)) {
+        return noStoreJson({ ok: false, error: "Coaches can only check members into classes assigned to them." }, { status: 403 });
+      }
       const [memberRow] = await selectRows("academy_members", `select=id&club_id=eq.${clubId}&id=eq.${encodeURIComponent(data.memberId)}&limit=1`);
       if (!memberRow) return noStoreJson({ ok: false, error: "Member not found in this club." }, { status: 404 });
 
@@ -116,6 +119,9 @@ export async function POST(request: Request) {
   const mockClubId = getMockClubId(access.session.activeClub.slug);
   const mockClass = clubClasses.find((item) => item.clubId === mockClubId && item.id === data.classId);
   if (!mockClass) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
+  if (!canCoachManageClassAttendance(access.session.activeRole, access.session.user.id, access.session.user.name, mockClass)) {
+    return noStoreJson({ ok: false, error: "Coaches can only check members into classes assigned to them." }, { status: 403 });
+  }
 
   const mockMember = getClubRoster(mockClubId).find((item) => item.id === data.memberId);
   if (!mockMember) return noStoreJson({ ok: false, error: "Member not found in this club." }, { status: 404 });
@@ -236,6 +242,18 @@ function canCoachDeleteCheckIn(userId: string, checkIn: TableRow<"class_checkins
   return checkIn.checked_in_by === userId && checkIn.checked_in_date === getCheckInDate();
 }
 
+function canCoachManageClassAttendance(
+  role: string,
+  userId: string,
+  userName: string,
+  classRow: { coach?: string | null; user_id?: string | null },
+) {
+  if (role === "owner" || role === "admin") return true;
+  if (role !== "coach") return false;
+  if (classRow.user_id) return isUuid(userId) && classRow.user_id === userId;
+  return normalizeText(classRow.coach) === normalizeText(userName);
+}
+
 async function enrichCheckIns(clubId: string, rows: TableRow<"class_checkins">[]) {
   if (rows.length === 0) return rows;
 
@@ -295,6 +313,10 @@ function getCheckInSupabaseValidationError(error: unknown) {
 
 function isNonEmptyText(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeText(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
 }
 
 function requiredString(value: unknown, label: string): FieldResult<string> {
