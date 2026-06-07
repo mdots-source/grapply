@@ -82,6 +82,7 @@ export async function POST(request: Request) {
             role: data.role ?? "member",
             invited_by: inviterId,
             status: "pending",
+            token: createInviteToken(),
             expires_at: getInviteExpiry(),
             accepted_at: null,
           },
@@ -149,11 +150,12 @@ export async function PATCH(request: Request) {
           status: data.status,
           ...(data.role ? { role: data.role } : {}),
           ...(data.email ? { email: data.email } : {}),
-          ...(data.status === "pending" ? { expires_at: getInviteExpiry(), accepted_at: null } : {}),
+          ...(data.status === "pending" ? { token: createInviteToken(), expires_at: getInviteExpiry(), accepted_at: null } : {}),
         },
         `id=eq.${encodeURIComponent(data.id)}&club_id=eq.${clubId}`,
       );
 
+      if (row && data.status === "pending") await queueInviteEmail(request, row, access.session.activeClub);
       return noStoreJson({ ok: true, source: "supabase", invite: row });
     } catch (error) {
       return apiSupabaseError(error, { clubId });
@@ -255,6 +257,12 @@ function validationError(error: string) {
 
 function getInviteExpiry() {
   return new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function createInviteToken() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function getInviteEmailConflict(clubId: string, email: string, currentInviteId?: string) {
