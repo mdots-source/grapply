@@ -64,15 +64,24 @@ export async function GET(request: Request) {
 
     const [existingMembership] = await selectRows("club_memberships", `select=*&club_id=eq.${club.id}&user_id=eq.${session.user.id}&limit=1`);
     if (existingMembership) {
+      const nextRole = getInviteAppliedRole(existingMembership.role, invite.role);
+      if (existingMembership.role !== nextRole) {
+        await updateRows(
+          "club_memberships",
+          { role: nextRole },
+          `id=eq.${encodeURIComponent(existingMembership.id)}&club_id=eq.${club.id}`,
+        );
+      }
       await ensureClubMemberProfile({
         clubId: club.id,
         clubName: club.name,
         user,
-        membershipRole: existingMembership.role,
+        membershipRole: nextRole,
       });
-      const destination = getInviteDestination(returnTo, club.slug, existingMembership.role);
+      const destination = getInviteDestination(returnTo, club.slug, nextRole);
+      await markInviteAccepted(invite.id);
       const destinationUrl = getRequestUrl(destination, request);
-      destinationUrl.searchParams.set("invite", "already-member");
+      destinationUrl.searchParams.set("invite", existingMembership.role === nextRole ? "already-member" : "role-updated");
       const response = noStoreRedirect(destinationUrl, 303);
       setActiveClubCookie(response, club.slug);
       return response;
@@ -180,6 +189,11 @@ function getInviteDestination(returnTo: string, clubSlug: string, role: string |
 
 function isInviteMembershipRole(role: string): role is "admin" | "coach" | "member" {
   return role === "admin" || role === "coach" || role === "member";
+}
+
+function getInviteAppliedRole(existingRole: string, inviteRole: "admin" | "coach" | "member"): "owner" | "admin" | "coach" | "member" {
+  if (existingRole === "owner") return "owner";
+  return inviteRole;
 }
 
 async function markInviteAccepted(inviteId: string) {

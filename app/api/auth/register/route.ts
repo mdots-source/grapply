@@ -107,18 +107,27 @@ export async function POST(request: Request) {
       session ??= await signInWithPassword(ownerEmail, password);
 
       if (existingMembership) {
-        const destination = getInviteDestination(returnTo, club.slug, existingMembership.role);
+        const nextRole = getInviteAppliedRole(existingMembership.role, invite.role);
+        if (existingMembership.role !== nextRole) {
+          await updateRows(
+            "club_memberships",
+            { role: nextRole },
+            `id=eq.${encodeURIComponent(existingMembership.id)}&club_id=eq.${club.id}`,
+          );
+        }
+        const destination = getInviteDestination(returnTo, club.slug, nextRole);
         await ensureClubMemberProfile({
           clubId: club.id,
           clubName: club.name,
           user,
-          membershipRole: existingMembership.role,
+          membershipRole: nextRole,
         });
+        await markInviteAccepted(invite.id);
         const destinationUrl = getRequestUrl(destination, request);
-        destinationUrl.searchParams.set("invite", "already-member");
+        destinationUrl.searchParams.set("invite", existingMembership.role === nextRole ? "already-member" : "role-updated");
         const response = isFormSubmit
           ? noStoreRedirect(destinationUrl, 303)
-          : noStoreJson({ ok: true, source: "supabase", user, club, membership: existingMembership, redirectTo: destinationUrl.pathname + destinationUrl.search });
+          : noStoreJson({ ok: true, source: "supabase", user, club, membership: { ...existingMembership, role: nextRole }, redirectTo: destinationUrl.pathname + destinationUrl.search });
         setAuthCookies(response, session);
         setActiveClubCookie(response, club.slug);
         return response;
@@ -365,6 +374,14 @@ function getInviteDestination(returnTo: string, clubSlug: string, role: string |
 
 function isInviteMembershipRole(role: string): role is "admin" | "coach" | "member" {
   return role === "admin" || role === "coach" || role === "member";
+}
+
+function getInviteAppliedRole(
+  existingRole: string,
+  inviteRole: "admin" | "coach" | "member",
+): "owner" | "admin" | "coach" | "member" {
+  if (existingRole === "owner") return "owner";
+  return inviteRole;
 }
 
 async function markInviteAccepted(inviteId: string) {
