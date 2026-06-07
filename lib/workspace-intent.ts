@@ -22,8 +22,8 @@ export function splitOrganizationWorkspacePath(pathname: string) {
   if (segments.length < 2) return null;
 
   const [, ...rest] = segments;
-  const workspacePath = `/${rest.join("/")}`;
-  const basePath = `/${rest[0] ?? ""}`;
+  const workspacePath = normalizeLegacyWorkspacePath(`/${rest.join("/")}`);
+  const basePath = normalizeLegacyWorkspacePath(`/${rest[0] ?? ""}`);
 
   if (workspacePaths.has(basePath) || basePath === "/members") {
     return {
@@ -37,7 +37,13 @@ export function splitOrganizationWorkspacePath(pathname: string) {
 }
 
 function getWorkspacePathname(pathname: string) {
-  return splitOrganizationWorkspacePath(pathname)?.workspacePath ?? pathname;
+  return splitOrganizationWorkspacePath(pathname)?.workspacePath ?? normalizeLegacyWorkspacePath(pathname);
+}
+
+function normalizeLegacyWorkspacePath(pathname: string) {
+  if (pathname === "/students") return "/members";
+  if (pathname.startsWith("/students/")) return `/members/${pathname.slice("/students/".length)}`;
+  return pathname;
 }
 
 export function scopeWorkspaceReturnTo(returnTo: string, organizationId: string) {
