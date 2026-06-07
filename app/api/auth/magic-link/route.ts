@@ -1,4 +1,5 @@
 import { isProductionRuntime } from "@/lib/auth-mode";
+import { recordAuthFailure } from "@/lib/auth-observability";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getAuthEmailError, normalizeAuthEmail } from "@/lib/auth-validation";
 import { isEmailDeliveryConfigured } from "@/lib/email/delivery";
@@ -56,6 +57,7 @@ function authFailureJson(error: unknown, fallback: string, status = 400) {
   const requestId = crypto.randomUUID();
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[grapply:auth:${requestId}]`, message);
+  recordAuthFailure({ requestId, message, status, action: "magic-link" });
   const response = noStoreJson(
     {
       ok: false,

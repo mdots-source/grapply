@@ -1,5 +1,6 @@
 import { setAuthCookies } from "@/lib/auth-cookies";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
+import { recordAuthFailure } from "@/lib/auth-observability";
 import { isProductionRuntime } from "@/lib/auth-mode";
 import { getPasswordError } from "@/lib/auth-validation";
 import { getAuthUser, updatePassword } from "@/lib/supabase/auth";
@@ -46,6 +47,7 @@ function authFailureJson(error: unknown, fallback: string, status = 400) {
   const requestId = crypto.randomUUID();
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[grapply:auth:${requestId}]`, message);
+  recordAuthFailure({ requestId, message, status, action: "update-password" });
   const response = noStoreJson(
     {
       ok: false,

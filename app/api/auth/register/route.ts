@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { setActiveClubCookie, setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
+import { recordAuthFailure } from "@/lib/auth-observability";
 import { isMockAuthFallbackAllowed, isProductionRuntime } from "@/lib/auth-mode";
 import { getAuthEmailError, getPasswordError, normalizeAuthEmail } from "@/lib/auth-validation";
 import { inviteAcceptedEmailBody, queueEmail, welcomeEmailBody } from "@/lib/email/outbox";
@@ -284,6 +285,7 @@ function authFailureJson(error: unknown, fallback: string, status = 400) {
   const requestId = crypto.randomUUID();
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[grapply:auth:${requestId}]`, message);
+  recordAuthFailure({ requestId, message, status, action: "register" });
   const response = noStoreJson(
     {
       ok: false,
