@@ -43,6 +43,7 @@ export function TrainingPostCard({
   canComment = false,
   canEdit = false,
   canDelete = false,
+  canChangeCoach = false,
   clubSlug,
   onDelete,
   onUpdate,
@@ -52,6 +53,7 @@ export function TrainingPostCard({
   canComment?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  canChangeCoach?: boolean;
   clubSlug: string;
   onDelete?: (postId: string) => void;
   onUpdate?: (post: TrainingPost) => void;
@@ -191,7 +193,13 @@ export function TrainingPostCard({
                     ))}
                   </select>
                 </div>
-                <EditField id={`post-coach-${post.id}`} label="Coach" value={editForm.coach} onChange={(coach) => setEditForm((value) => ({ ...value, coach }))} />
+                <EditField
+                  id={`post-coach-${post.id}`}
+                  label="Coach"
+                  value={editForm.coach}
+                  disabled={!canChangeCoach}
+                  onChange={(coach) => setEditForm((value) => ({ ...value, coach }))}
+                />
                 <EditField id={`post-class-${post.id}`} label="Class" value={editForm.className} onChange={(className) => setEditForm((value) => ({ ...value, className }))} />
                 <EditField id={`post-attendance-${post.id}`} label="Attendance" value={editForm.attendance} onChange={(attendance) => setEditForm((value) => ({ ...value, attendance }))} />
               </div>
@@ -352,11 +360,23 @@ function toEditForm(post: TrainingPost) {
   };
 }
 
-function EditField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (value: string) => void }) {
+function EditField({
+  id,
+  label,
+  value,
+  disabled = false,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} />
+      <Input id={id} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
     </div>
   );
 }
