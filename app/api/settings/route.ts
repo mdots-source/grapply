@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
@@ -12,7 +12,7 @@ const hexColorPattern = /^#[0-9a-f]{6}$/i;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const access = await requireApiRole(["owner", "admin"], searchParams.get("club"));
+  const access = await requireApiAccess(searchParams.get("club"));
   if (access.error) return access.error;
 
   if (isSupabaseConfigured()) {

@@ -1,5 +1,5 @@
 import { apiSupabaseError, requireApiRole } from "@/lib/api-access";
-import { noStoreJson, readJsonObject } from "@/lib/api-json";
+import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { deliverEmail, isEmailDeliveryConfigured } from "@/lib/email/delivery";
 import { isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
@@ -32,6 +32,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenEmailOutboxField(payload);
+  if (forbidden) return validationError(`${forbidden} cannot be changed from this action.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
@@ -49,11 +52,13 @@ export async function POST(request: Request) {
     clubId = await getBackendClubId(access.session.activeClub.slug);
     if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
 
-    const emailId = typeof payload.id === "string" && payload.id.trim() ? payload.id.trim() : null;
+    const emailId = getEmailId(payload.id);
+    if (emailId.error) return validationError(emailId.error);
     const limit = getSendLimit(payload.limit);
-    const query = emailId
-      ? `select=*&club_id=eq.${clubId}&id=eq.${encodeURIComponent(emailId)}&status=in.(pending,failed)&limit=1`
-      : `select=*&club_id=eq.${clubId}&status=in.(pending,failed)&order=created_at.asc&limit=${limit}`;
+    if (limit.error) return validationError(limit.error);
+    const query = emailId.value
+      ? `select=*&club_id=eq.${clubId}&id=eq.${encodeURIComponent(emailId.value)}&status=in.(pending,failed)&limit=1`
+      : `select=*&club_id=eq.${clubId}&status=in.(pending,failed)&order=created_at.asc&limit=${limit.value}`;
     const emails = await selectRows("email_outbox", query);
 
     const results = [];
@@ -99,9 +104,51 @@ export async function POST(request: Request) {
   }
 }
 
-function getSendLimit(value: unknown) {
-  if (typeof value !== "number" || !Number.isInteger(value)) return 10;
-  return Math.max(1, Math.min(25, value));
+type FieldResult<T> = { value: T; error?: never } | { value?: never; error: string };
+
+function getEmailId(value: unknown): FieldResult<string | null> {
+  if (value === undefined || value === null || value === "") return { value: null };
+  if (typeof value !== "string" || !isUuid(value.trim())) return { error: "Email id must be a valid id." };
+  return { value: value.trim() };
+}
+
+function getSendLimit(value: unknown): FieldResult<number> {
+  if (value === undefined || value === null) return { value: 10 };
+  if (typeof value !== "number" || !Number.isInteger(value)) return { error: "Email send limit must be a whole number." };
+  return { value: Math.max(1, Math.min(25, value)) };
+}
+
+function validationError(error: string) {
+  return validationErrorJson(error);
+}
+
+function getForbiddenEmailOutboxField(payload: Record<string, unknown>) {
+  const labels: Record<string, string> = {
+    attempts: "Email attempts",
+    body: "Email body",
+    clubId: "Email club",
+    club_id: "Email club",
+    createdAt: "Email creation time",
+    created_at: "Email creation time",
+    fromEmail: "Sender email",
+    from_email: "Sender email",
+    metadata: "Email metadata",
+    providerMessageId: "Provider message id",
+    provider_message_id: "Provider message id",
+    sentAt: "Email sent time",
+    sent_at: "Email sent time",
+    status: "Email status",
+    subject: "Email subject",
+    template: "Email template",
+    toEmail: "Recipient email",
+    to_email: "Recipient email",
+  };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 function appendDeliveryError(email: TableRow<"email_outbox">, error: string) {
