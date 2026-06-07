@@ -65,13 +65,12 @@ export async function POST(request: Request) {
   if (validation.error) return validation.error;
   const data = validation.data;
   const nextRole = data.role ?? "member";
-  const targetUserId = data.userId ?? "";
 
   const permissionError = getRoleManagementError({
     actorRole: access.session.activeRole,
     actorUserId: access.session.user.id,
     targetRole: null,
-    targetUserId,
+    targetUserId: data.userId ?? "",
     nextRole,
     action: "assign",
   });
@@ -83,8 +82,14 @@ export async function POST(request: Request) {
       clubId = await getBackendClubId(access.session.activeClub.slug);
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
 
-      const [user] = await selectRows("app_users", `select=*&id=eq.${encodeURIComponent(targetUserId)}&limit=1`);
+      const [user] = data.userId
+        ? await selectRows("app_users", `select=*&id=eq.${encodeURIComponent(data.userId)}&limit=1`)
+        : await selectRows("app_users", `select=*&email=eq.${encodeURIComponent(data.email ?? "")}&limit=1`);
       if (!user) return noStoreJson({ ok: false, error: "User not found." }, { status: 404 });
+      const targetUserId = user.id;
+      if (targetUserId === access.session.user.id) {
+        return noStoreJson({ ok: false, error: "You cannot change your own access." }, { status: 403 });
+      }
 
       const [existingMembership] = await selectRows(
         "club_memberships",
@@ -400,6 +405,7 @@ type RolePayload = {
   clubSlug?: string;
   membershipId: string;
   userId?: string;
+  email?: string;
   role?: "admin" | "coach" | "member";
   invitedBy?: string | null;
 };
@@ -408,14 +414,15 @@ function validateRolePayload(payload: Record<string, unknown>, mode: "assign" | 
   const clubSlug = optionalString(payload.clubSlug, "Club slug");
   const membershipId = optionalString(payload.membershipId, "Membership id");
   const userId = optionalUuid(payload.user_id ?? payload.userId, "User id");
+  const email = optionalEmail(payload.email, "Email");
   const role = optionalRole(payload.role);
   const invitedBy = optionalUuid(payload.invited_by ?? payload.invitedBy, "Invited by");
 
-  const firstError = [clubSlug, membershipId, userId, role, invitedBy].find((item) => item.error);
+  const firstError = [clubSlug, membershipId, userId, email, role, invitedBy].find((item) => item.error);
   if (firstError?.error) return { error: validationError(firstError.error) };
 
-  if (mode === "assign" && (!userId.value || !role.value)) {
-    return { error: validationError("User id and role are required.") };
+  if (mode === "assign" && ((!userId.value && !email.value) || !role.value)) {
+    return { error: validationError("User id or email and role are required.") };
   }
 
   if (mode === "update" && (!membershipId.value || !role.value)) {
@@ -427,6 +434,7 @@ function validateRolePayload(payload: Record<string, unknown>, mode: "assign" | 
       membershipId: membershipId.value ?? "",
       ...(clubSlug.value ? { clubSlug: clubSlug.value } : {}),
       ...(userId.value ? { userId: userId.value } : {}),
+      ...(email.value ? { email: email.value } : {}),
       ...(role.value ? { role: role.value } : {}),
       ...(invitedBy.value !== undefined ? { invitedBy: invitedBy.value } : {}),
     },
@@ -455,6 +463,15 @@ function requiredString(value: unknown, label: string): FieldResult<string> {
 function optionalString(value: unknown, label: string): FieldResult<string | undefined> {
   if (value === undefined || value === null) return { value: undefined as string | undefined };
   return requiredString(value, label);
+}
+
+function optionalEmail(value: unknown, label: string): FieldResult<string | undefined> {
+  if (value === undefined || value === null || value === "") return { value: undefined as string | undefined };
+  if (typeof value !== "string") return { error: `${label} must be text.` };
+  const email = value.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: `${label} must be a valid email.` };
+  if (email.length > 254) return { error: `${label} is too long.` };
+  return { value: email };
 }
 
 function optionalUuid(value: unknown, label: string): FieldResult<string | null | undefined> {
