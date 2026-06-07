@@ -268,6 +268,8 @@ export async function DELETE(request: Request) {
       if (removed.length === 0) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
+      const classError = getClassSupabaseValidationError(error);
+      if (classError) return classError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -452,6 +454,12 @@ function getClassSupabaseValidationError(error: unknown) {
   }
   if (message.includes("class checked_in is managed by attendance check-ins")) {
     return noStoreJson({ ok: false, error: "Checked-in count is managed by attendance check-ins." }, { status: 400 });
+  }
+  if (message.includes("class_checkins_class_id_fkey") || message.includes("violates foreign key constraint")) {
+    return noStoreJson(
+      { ok: false, error: "This class already has attendance history. Remove the check-ins first or edit the class instead of deleting it." },
+      { status: 409 },
+    );
   }
 
   return null;
