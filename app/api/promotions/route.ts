@@ -121,6 +121,8 @@ export async function POST(request: Request) {
 
       return noStoreJson({ ok: true, source: "supabase", promotion: row, member: updatedMember });
     } catch (error) {
+      const promotionError = getPromotionSupabaseValidationError(error);
+      if (promotionError) return promotionError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -178,6 +180,10 @@ function readPromotionType(value: unknown): FieldResult<PromotionType> {
 }
 
 function validatePromotionPayload(payload: Record<string, unknown>): { data: PromotionPayload; error?: never } | { data?: never; error: Response } {
+  if (payload.awardedBy !== undefined || payload.awarded_by !== undefined || payload.awardedByName !== undefined || payload.awarded_by_name !== undefined) {
+    return { error: validationError("Promotion author is assigned by the server.") };
+  }
+
   const memberId = readText(payload.memberId, "Member id", 120);
   const type = readPromotionType(payload.type);
   const detail = readText(payload.detail, "Promotion detail", 500);
@@ -222,6 +228,8 @@ export async function DELETE(request: Request) {
       const updatedMember = await getPromotionMember(clubId, promotion.member_id);
       return noStoreJson({ ok: true, source: "supabase", removed, member: updatedMember });
     } catch (error) {
+      const promotionError = getPromotionSupabaseValidationError(error);
+      if (promotionError) return promotionError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -236,6 +244,30 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getPromotionSupabaseValidationError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("Member not found in this club")) {
+    return noStoreJson({ ok: false, error: "Member not found in this club." }, { status: 404 });
+  }
+  if (message.includes("Stripe awards must be between 1 and 4")) {
+    return noStoreJson({ ok: false, error: "Stripe awards must be between 1 and 4." }, { status: 400 });
+  }
+  if (message.includes("Stripe awards must move the member forward")) {
+    return noStoreJson({ ok: false, error: "Stripe awards must move the member forward." }, { status: 409 });
+  }
+  if (message.includes("A valid belt is required for belt promotions")) {
+    return noStoreJson({ ok: false, error: "A valid belt is required for belt promotions." }, { status: 400 });
+  }
+  if (message.includes("Belt promotion must move the member forward")) {
+    return noStoreJson({ ok: false, error: "Belt promotion must move the member forward." }, { status: 409 });
+  }
+  if (message.includes("member_promotions_rank_fields_match_type")) {
+    return noStoreJson({ ok: false, error: "Promotion rank fields do not match the selected promotion type." }, { status: 400 });
+  }
+
+  return null;
 }
 
 function readText(value: unknown, label: string, maxLength: number): FieldResult<string> {
