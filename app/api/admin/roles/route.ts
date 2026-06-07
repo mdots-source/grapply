@@ -9,7 +9,7 @@ import { deleteRows, insertRow, isSupabaseConfigured, selectRows, updateRows } f
 
 const validAssignableRoles = new Set(["admin", "coach", "member"]);
 
-function isUuid(value: unknown) {
+function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         club_id: clubId,
         user_id: targetUserId,
         role: nextRole,
-        invited_by: data.invitedBy ?? (isUuid(access.session.user.id) ? access.session.user.id : access.session.user.email),
+        invited_by: getServerAssignedActorId(access.session.user.id),
       });
       await ensureClubMemberProfile({
         clubId,
@@ -216,6 +216,8 @@ export async function PATCH(request: Request) {
 
       return noStoreJson({ ok: true, source: "supabase", membership });
     } catch (error) {
+      const roleError = getRoleSupabaseValidationError(error);
+      if (roleError) return roleError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -228,6 +230,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenRoleField(payload, "remove");
+  if (forbidden) return validationError(`${forbidden} is not accepted for this action.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
@@ -407,18 +412,19 @@ type RolePayload = {
   userId?: string;
   email?: string;
   role?: "admin" | "coach" | "member";
-  invitedBy?: string | null;
 };
 
 function validateRolePayload(payload: Record<string, unknown>, mode: "assign" | "update"): { data: RolePayload; error?: never } | { data?: never; error: Response } {
+  const forbidden = getForbiddenRoleField(payload, mode);
+  if (forbidden) return { error: validationError(`${forbidden} is not accepted for this action.`) };
+
   const clubSlug = optionalString(payload.clubSlug, "Club slug");
   const membershipId = optionalString(payload.membershipId, "Membership id");
   const userId = optionalUuid(payload.user_id ?? payload.userId, "User id");
   const email = optionalEmail(payload.email, "Email");
   const role = optionalRole(payload.role);
-  const invitedBy = optionalUuid(payload.invited_by ?? payload.invitedBy, "Invited by");
 
-  const firstError = [clubSlug, membershipId, userId, email, role, invitedBy].find((item) => item.error);
+  const firstError = [clubSlug, membershipId, userId, email, role].find((item) => item.error);
   if (firstError?.error) return { error: validationError(firstError.error) };
 
   if (mode === "assign" && ((!userId.value && !email.value) || !role.value)) {
@@ -436,7 +442,6 @@ function validateRolePayload(payload: Record<string, unknown>, mode: "assign" | 
       ...(userId.value ? { userId: userId.value } : {}),
       ...(email.value ? { email: email.value } : {}),
       ...(role.value ? { role: role.value } : {}),
-      ...(invitedBy.value !== undefined ? { invitedBy: invitedBy.value } : {}),
     },
   };
 }
@@ -445,6 +450,30 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getServerAssignedActorId(userId: unknown) {
+  return isUuid(userId) ? userId : null;
+}
+
+function getForbiddenRoleField(payload: Record<string, unknown>, mode: "assign" | "update" | "remove") {
+  const alwaysServerAssigned: Record<string, string> = {
+    clubId: "Club id",
+    club_id: "Club id",
+    invitedBy: "Role assignment author",
+    invited_by: "Role assignment author",
+    joinedAt: "Join date",
+    joined_at: "Join date",
+  };
+  const modeForbidden: Record<string, string> =
+    mode === "assign"
+      ? { membershipId: "Membership id" }
+      : mode === "update"
+        ? { email: "Email", userId: "User id", user_id: "User id" }
+        : { email: "Email", role: "Role", userId: "User id", user_id: "User id" };
+  const labels = { ...alwaysServerAssigned, ...modeForbidden };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
 }
 
 function getRoleSupabaseValidationError(error: unknown) {
