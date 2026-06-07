@@ -173,6 +173,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenTrainingPostField(payload, "delete");
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
   if (access.error) return access.error;
@@ -193,6 +196,8 @@ export async function DELETE(request: Request) {
       const removed = await deleteRows("training_posts", `id=eq.${encodeURIComponent(postId)}&club_id=eq.${clubId}`);
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
+      const postError = getTrainingPostSupabaseValidationError(error);
+      if (postError) return postError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -306,6 +311,9 @@ function validateMockTaggedStudents(clubSlug: string, post: TrainingPost) {
 }
 
 function validateTrainingPostPayload(payload: Record<string, unknown>): { data: TrainingPost; error?: never } | { data?: never; error: Response } {
+  const forbidden = getForbiddenTrainingPostField(payload, "write");
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
+
   const id = requiredString(payload.id, "Post id", 120);
   const type = requiredPostType(payload.type);
   const coach = requiredString(payload.coach, "Coach", 120);
@@ -345,14 +353,47 @@ function validateTrainingPostPayload(payload: Record<string, unknown>): { data: 
   };
 }
 
-function isUuid(value: string) {
-  return uuidPattern.test(value);
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && uuidPattern.test(value);
 }
 
 type FieldResult<T> = { value: T; error?: never } | { value?: never; error: string };
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getForbiddenTrainingPostField(payload: Record<string, unknown>, mode: "write" | "delete") {
+  const labels: Record<string, string> = {
+    clubId: "Training post club",
+    club_id: "Training post club",
+    coachUserId: "Training post author",
+    coach_user_id: "Training post author",
+    createdAt: "Training post creation time",
+    created_at: "Training post creation time",
+    updatedAt: "Training post update time",
+    updated_at: "Training post update time",
+  };
+  const deleteOnlyLabels: Record<string, string> = mode === "delete"
+    ? {
+        achievements: "Achievements",
+        attendance: "Attendance",
+        className: "Class name",
+        coach: "Coach",
+        date: "Date",
+        pinned: "Pinned",
+        sparringHighlight: "Sparring highlight",
+        summary: "Summary",
+        taggedStudents: "Tagged students",
+        time: "Time",
+        title: "Title",
+        topParticipant: "Top participant",
+        type: "Post type",
+      }
+    : {};
+  const allLabels = { ...labels, ...deleteOnlyLabels };
+  const field = Object.keys(allLabels).find((key) => payload[key] !== undefined);
+  return field ? allLabels[field] : null;
 }
 
 function getTrainingPostSupabaseValidationError(error: unknown) {
