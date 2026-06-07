@@ -7,6 +7,7 @@ import { normalizeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/li
 const publicPrefixes = [
   "/login",
   "/register",
+  "/invite",
   "/auth/callback",
   "/clubs/select",
   "/api",
@@ -36,6 +37,7 @@ const reservedTopLevelPaths = new Set([
   "clubs",
   "login",
   "register",
+  "invite",
   "ui",
   ...unscopedWorkspacePrefixes.map((prefix) => prefix.slice(1)),
 ]);
