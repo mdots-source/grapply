@@ -95,6 +95,7 @@ export type Database = {
         Insert: {
           id?: string;
           club_id: string;
+          user_id?: string | null;
           name: string;
           coach: string;
           day: string;
