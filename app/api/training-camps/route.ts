@@ -8,6 +8,9 @@ import { getMockTrainingCampsForClub, getVisibleMockTrainingCampsForClub } from 
 import { deleteRows, insertRow, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
 import { toTrainingCamp, toTrainingCampInsert } from "@/lib/supabase/mappers";
 
+const validCampStatuses = new Set(["Registration open", "Planning", "Early bird", "Waitlist", "Closed", "Completed", "Cancelled"]);
+const validCampTypes = new Set(["Gi", "No-Gi", "Gi / No-Gi"]);
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiAccess(searchParams.get("club"));
@@ -211,9 +214,9 @@ function validateTrainingCampPayload(payload: Record<string, unknown>): { data: 
   const focus = requiredString(payload.focus, "Focus", 240);
   const registeredStudents = optionalStringArray(payload.registered_students, "Registered members", 200, 120);
   const registrationDeadline = requiredString(payload.registration_deadline, "Registration deadline", 120);
-  const status = requiredString(payload.status, "Status", 80);
+  const status = requiredPlanningValue(payload.status, validCampStatuses, "Status");
   const notes = requiredString(payload.notes, "Notes", 1200);
-  const type = requiredString(payload.type, "Type", 80);
+  const type = requiredPlanningValue(payload.type, validCampTypes, "Type");
   const prep = requiredInteger(payload.prep, "Prep", 0, 100);
   const spotsTotal = requiredInteger(payload.spotsTotal, "Spots total", 1, 10000);
   const estimatedCost = requiredString(payload.estimatedCost, "Estimated cost", 80);
@@ -278,6 +281,12 @@ function getCampSupabaseValidationError(error: unknown) {
   if (message.includes("training_camps_spots_total_valid")) {
     return noStoreJson({ ok: false, error: "Camp spots must be at least 1 and cannot be lower than registered members." }, { status: 400 });
   }
+  if (message.includes("training_camps_status_valid")) {
+    return noStoreJson({ ok: false, error: "Camp status is not supported." }, { status: 400 });
+  }
+  if (message.includes("training_camps_type_valid")) {
+    return noStoreJson({ ok: false, error: "Camp type is not supported." }, { status: 400 });
+  }
   if (message.includes("registered_member_ids must be unique")) {
     return noStoreJson({ ok: false, error: "Registered members cannot contain duplicates." }, { status: 400 });
   }
@@ -293,6 +302,14 @@ function requiredString(value: unknown, label: string, maxLength: number): Field
   const trimmed = value.trim();
   if (trimmed.length > maxLength) return { error: `${label} is too long.` };
   return { value: trimmed };
+}
+
+function requiredPlanningValue(value: unknown, allowedValues: Set<string>, label: string): FieldResult<string> {
+  const text = requiredString(value, label, 80);
+  if (text.error) return text;
+  const nextValue = text.value ?? "";
+  if (!allowedValues.has(nextValue)) return { error: `${label} is not supported.` };
+  return { value: nextValue };
 }
 
 function requiredInteger(value: unknown, label: string, min: number, max: number): FieldResult<number> {

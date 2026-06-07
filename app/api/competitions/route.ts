@@ -8,6 +8,9 @@ import { getMockCompetitionsForClub, getVisibleMockCompetitionsForClub } from "@
 import { deleteRows, insertRow, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
 import { toCompetition, toCompetitionInsert } from "@/lib/supabase/mappers";
 
+const validCompetitionStatuses = new Set(["Registration open", "Planning", "Invite list", "Waitlist", "Closed", "Completed", "Cancelled"]);
+const validCompetitionTypes = new Set(["Gi", "No-Gi", "Gi / No-Gi"]);
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiAccess(searchParams.get("club"));
@@ -208,9 +211,9 @@ function validateCompetitionPayload(payload: Record<string, unknown>): { data: C
   const venue = requiredString(payload.venue, "Venue", 160);
   const registeredStudents = optionalStringArray(payload.registered_students, "Registered members", 200, 120);
   const registrationDeadline = requiredString(payload.registration_deadline, "Registration deadline", 120);
-  const status = requiredString(payload.status, "Status", 80);
+  const status = requiredPlanningValue(payload.status, validCompetitionStatuses, "Status");
   const notes = requiredString(payload.notes, "Notes", 1200);
-  const type = requiredString(payload.type, "Type", 80);
+  const type = requiredPlanningValue(payload.type, validCompetitionTypes, "Type");
   const prep = requiredInteger(payload.prep, "Prep", 0, 100);
 
   const firstError = [id, name, date, location, city, venue, registeredStudents, registrationDeadline, status, notes, type, prep].find((item) => item.error);
@@ -247,6 +250,12 @@ function getCompetitionSupabaseValidationError(error: unknown) {
   if (message.includes("competitions_prep_valid")) {
     return noStoreJson({ ok: false, error: "Competition prep must be between 0 and 100." }, { status: 400 });
   }
+  if (message.includes("competitions_status_valid")) {
+    return noStoreJson({ ok: false, error: "Competition status is not supported." }, { status: 400 });
+  }
+  if (message.includes("competitions_type_valid")) {
+    return noStoreJson({ ok: false, error: "Competition type is not supported." }, { status: 400 });
+  }
   if (message.includes("registered_member_ids must be unique")) {
     return noStoreJson({ ok: false, error: "Registered members cannot contain duplicates." }, { status: 400 });
   }
@@ -262,6 +271,14 @@ function requiredString(value: unknown, label: string, maxLength: number): Field
   const trimmed = value.trim();
   if (trimmed.length > maxLength) return { error: `${label} is too long.` };
   return { value: trimmed };
+}
+
+function requiredPlanningValue(value: unknown, allowedValues: Set<string>, label: string): FieldResult<string> {
+  const text = requiredString(value, label, 80);
+  if (text.error) return text;
+  const nextValue = text.value ?? "";
+  if (!allowedValues.has(nextValue)) return { error: `${label} is not supported.` };
+  return { value: nextValue };
 }
 
 function requiredInteger(value: unknown, label: string, min: number, max: number): FieldResult<number> {
