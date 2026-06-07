@@ -217,7 +217,10 @@ function getWritableTrainingPost(post: TrainingPost, role: string, userName: str
 
 function getTrainingPostAuthorError(role: string, userId: string, userName: string, post: { coach: string; coach_user_id?: string | null }) {
   if (role !== "coach") return null;
-  if (post.coach_user_id && isUuid(userId) && post.coach_user_id === userId) return null;
+  if (post.coach_user_id) {
+    if (isUuid(userId) && post.coach_user_id === userId) return null;
+    return noStoreJson({ ok: false, error: "Coaches can only manage their own training posts." }, { status: 403 });
+  }
   if (post.coach.trim().toLowerCase() === userName.trim().toLowerCase()) return null;
   return noStoreJson({ ok: false, error: "Coaches can only manage their own training posts." }, { status: 403 });
 }

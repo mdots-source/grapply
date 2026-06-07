@@ -101,6 +101,7 @@ export function TrainingFeedTimeline({
               canComment={canCreatePost}
               canEdit={canManagePost(post, currentRole, currentUserName)}
               canDelete={canManagePost(post, currentRole, currentUserName)}
+              canChangeCoach={canChangePostCoach(currentRole)}
               clubSlug={clubSlug}
               onDelete={removePost}
               onUpdate={updatePost}
@@ -118,6 +119,7 @@ export function TrainingFeedTimeline({
                   canComment={canCreatePost}
                   canEdit={canManagePost(post, currentRole, currentUserName)}
                   canDelete={canManagePost(post, currentRole, currentUserName)}
+                  canChangeCoach={canChangePostCoach(currentRole)}
                   clubSlug={clubSlug}
                   onDelete={removePost}
                   onUpdate={updatePost}
@@ -135,6 +137,10 @@ function canManagePost(post: TrainingPost, role: PlatformRole, userName: string)
   if (role === "owner" || role === "admin") return true;
   if (role !== "coach") return false;
   return post.coach.trim().toLowerCase() === userName.trim().toLowerCase();
+}
+
+function canChangePostCoach(role: PlatformRole) {
+  return role === "owner" || role === "admin";
 }
 
 function FeedEmptyState({
