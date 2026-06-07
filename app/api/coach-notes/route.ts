@@ -146,6 +146,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenCoachNoteField(payload, "delete");
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
   if (access.error) return access.error;
@@ -169,6 +172,8 @@ export async function DELETE(request: Request) {
       const removed = await deleteRows("coach_notes", `id=eq.${encodeURIComponent(noteId)}&club_id=eq.${clubId}`);
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
+      const noteError = getCoachNoteSupabaseValidationError(error);
+      if (noteError) return noteError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -188,13 +193,8 @@ type CoachNotePayload = {
 };
 
 function validateCoachNotePayload(payload: Record<string, unknown>, mode: "create" | "update"): { data: CoachNotePayload; error?: never } | { data?: never; error: Response } {
-  if (payload.coachUserId !== undefined || payload.coach_user_id !== undefined || payload.coachName !== undefined || payload.coach_name !== undefined) {
-    return { error: validationError("Coach note author is assigned by the server.") };
-  }
-
-  if (mode === "update" && (payload.memberId !== undefined || payload.member_id !== undefined)) {
-    return { error: validationError("Coach notes cannot be moved between members.") };
-  }
+  const forbidden = getForbiddenCoachNoteField(payload, mode);
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
 
   const id = optionalString(payload.id, "Note id");
   const clubSlug = optionalString(payload.clubSlug, "Club slug");
@@ -232,6 +232,35 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getForbiddenCoachNoteField(payload: Record<string, unknown>, mode: "create" | "update" | "delete") {
+  const labels: Record<string, string> = {
+    clubId: "Coach note club",
+    club_id: "Coach note club",
+    coachName: "Coach note author",
+    coach_name: "Coach note author",
+    coachUserId: "Coach note author",
+    coach_user_id: "Coach note author",
+    createdAt: "Coach note creation time",
+    created_at: "Coach note creation time",
+    updatedAt: "Coach note update time",
+    updated_at: "Coach note update time",
+  };
+  const modeLabels: Record<string, string> =
+    mode === "create"
+      ? {}
+      : mode === "update"
+        ? { memberId: "Coach note member", member_id: "Coach note member" }
+        : {
+            body: "Coach note body",
+            memberId: "Coach note member",
+            member_id: "Coach note member",
+            visibility: "Coach note visibility",
+          };
+  const allLabels = { ...labels, ...modeLabels };
+  const field = Object.keys(allLabels).find((key) => payload[key] !== undefined);
+  return field ? allLabels[field] : null;
 }
 
 function getCoachNoteSupabaseValidationError(error: unknown) {
