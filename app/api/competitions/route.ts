@@ -215,6 +215,8 @@ function validateCompetitionPayload(payload: Record<string, unknown>): { data: C
 
   const firstError = [id, name, date, location, city, venue, registeredStudents, registrationDeadline, status, notes, type, prep].find((item) => item.error);
   if (firstError?.error) return { error: validationError(firstError.error) };
+  const dateOrderError = getCompetitionDateError(date.value, registrationDeadline.value);
+  if (dateOrderError) return { error: validationError(dateOrderError) };
 
   return {
     data: {
@@ -266,6 +268,21 @@ function requiredInteger(value: unknown, label: string, min: number, max: number
   if (typeof value !== "number" || !Number.isInteger(value)) return { error: `${label} must be a whole number.` };
   if (value < min || value > max) return { error: `${label} must be between ${min} and ${max}.` };
   return { value };
+}
+
+function getCompetitionDateError(date?: string, registrationDeadline?: string) {
+  const eventTime = parseDateTime(date);
+  if (eventTime === null) return "Competition date must be a real date.";
+  const deadlineTime = parseDateTime(registrationDeadline);
+  if (deadlineTime === null) return "Registration deadline must be a real date.";
+  if (deadlineTime > eventTime) return "Registration deadline cannot be after the competition date.";
+  return null;
+}
+
+function parseDateTime(value?: string) {
+  if (!value) return null;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? null : time;
 }
 
 function optionalStringArray(value: unknown, label: string, maxItems: number, maxLength: number): FieldResult<string[] | undefined> {

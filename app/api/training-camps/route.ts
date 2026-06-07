@@ -238,6 +238,8 @@ function validateTrainingCampPayload(payload: Record<string, unknown>): { data: 
     estimatedCost,
   ].find((item) => item.error);
   if (firstError?.error) return { error: validationError(firstError.error) };
+  const dateOrderError = getCampDateError(date.value, endDate.value, registrationDeadline.value);
+  if (dateOrderError) return { error: validationError(dateOrderError) };
 
   return {
     data: {
@@ -297,6 +299,24 @@ function requiredInteger(value: unknown, label: string, min: number, max: number
   if (typeof value !== "number" || !Number.isInteger(value)) return { error: `${label} must be a whole number.` };
   if (value < min || value > max) return { error: `${label} must be between ${min} and ${max}.` };
   return { value };
+}
+
+function getCampDateError(startDate?: string, endDate?: string, registrationDeadline?: string) {
+  const startTime = parseDateTime(startDate);
+  if (startTime === null) return "Camp start date must be a real date.";
+  const endTime = parseDateTime(endDate);
+  if (endTime === null) return "Camp end date must be a real date.";
+  const deadlineTime = parseDateTime(registrationDeadline);
+  if (deadlineTime === null) return "Registration deadline must be a real date.";
+  if (endTime < startTime) return "Camp end date cannot be before the start date.";
+  if (deadlineTime > startTime) return "Registration deadline cannot be after the camp starts.";
+  return null;
+}
+
+function parseDateTime(value?: string) {
+  if (!value) return null;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? null : time;
 }
 
 function optionalStringArray(value: unknown, label: string, maxItems: number, maxLength: number): FieldResult<string[] | undefined> {
