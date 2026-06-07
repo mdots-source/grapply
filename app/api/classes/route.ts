@@ -89,8 +89,9 @@ export async function POST(request: Request) {
         );
       }
 
-      const created = await insertRow("club_classes", {
+      const created = await insertClubClassWithUserFallback({
         club_id: clubId,
+        user_id: await getClassCoachUserId(clubId, access.session.activeRole, access.session.user.id, coach),
         name: className,
         coach,
         day,
@@ -144,7 +145,7 @@ export async function PATCH(request: Request) {
 
       const [existing] = await selectRows("club_classes", `select=*&id=eq.${encodeURIComponent(data.id)}&club_id=eq.${clubId}&limit=1`);
       if (!existing) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
-      if (!canManageClass(access.session.activeRole, access.session.user.name, existing)) {
+      if (!canManageClass(access.session.activeRole, access.session.user.id, access.session.user.name, existing)) {
         return noStoreJson({ ok: false, error: "Coaches can only update classes assigned to them." }, { status: 403 });
       }
 
@@ -169,9 +170,9 @@ export async function PATCH(request: Request) {
         }
       }
 
-      const [updated] = await updateRows(
-        "club_classes",
+      const [updated] = await updateClubClassWithUserFallback(
         {
+          ...(access.session.activeRole === "coach" ? { user_id: isUuid(access.session.user.id) ? access.session.user.id : null } : {}),
           ...(data.name ? { name: data.name } : {}),
           ...(data.coach ? { coach: data.coach } : {}),
           ...(data.day ? { day: data.day } : {}),
@@ -198,7 +199,7 @@ export async function PATCH(request: Request) {
   const mockClasses = getMockClasses(access.session.activeClub.slug);
   const existing = mockClasses.find((item) => item.id === data.id);
   if (!existing) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
-  if (!canManageClass(access.session.activeRole, access.session.user.name, existing)) {
+  if (!canManageClass(access.session.activeRole, access.session.user.id, access.session.user.name, existing)) {
     return noStoreJson({ ok: false, error: "Coaches can only update classes assigned to them." }, { status: 403 });
   }
 
@@ -248,7 +249,7 @@ export async function DELETE(request: Request) {
 
       const [existing] = await selectRows("club_classes", `select=*&id=eq.${encodeURIComponent(payload.id)}&club_id=eq.${clubId}&limit=1`);
       if (!existing) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
-      if (!canManageClass(access.session.activeRole, access.session.user.name, existing)) {
+      if (!canManageClass(access.session.activeRole, access.session.user.id, access.session.user.name, existing)) {
         return noStoreJson({ ok: false, error: "Coaches can only delete classes assigned to them." }, { status: 403 });
       }
 
@@ -276,7 +277,7 @@ export async function DELETE(request: Request) {
 
   const mockClass = getMockClasses(access.session.activeClub.slug).find((item) => item.id === payload.id);
   if (!mockClass) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
-  if (!canManageClass(access.session.activeRole, access.session.user.name, mockClass)) {
+  if (!canManageClass(access.session.activeRole, access.session.user.id, access.session.user.name, mockClass)) {
     return noStoreJson({ ok: false, error: "Coaches can only delete classes assigned to them." }, { status: 403 });
   }
 
@@ -309,10 +310,54 @@ function getWritableClassPayload(data: ValidatedClassPayload, role: string, user
   return { ...data, coach: userName };
 }
 
-function canManageClass(role: string, userName: string, classRow: { coach?: string | null }) {
+async function getClassCoachUserId(clubId: string, role: string, userId: string, coachName: string) {
+  if (role === "coach") return isUuid(userId) ? userId : null;
+
+  const users = await selectRows("app_users", `select=id&name=eq.${encodeURIComponent(coachName)}&limit=10`);
+  if (!users.length) return null;
+
+  const userIds = users.map((user) => user.id);
+  const [membership] = await selectRows(
+    "club_memberships",
+    `select=user_id&club_id=eq.${clubId}&user_id=in.(${userIds.map(encodeURIComponent).join(",")})&role=in.(owner,admin,coach)&limit=1`,
+  );
+  return membership?.user_id ?? null;
+}
+
+function canManageClass(role: string, userId: string, userName: string, classRow: { coach?: string | null; user_id?: string | null }) {
   if (role === "owner" || role === "admin") return true;
   if (role !== "coach") return false;
+  if (classRow.user_id) return isUuid(userId) && classRow.user_id === userId;
   return normalizeClassField(classRow.coach) === normalizeClassField(userName);
+}
+
+async function insertClubClassWithUserFallback(row: Parameters<typeof insertRow<"club_classes">>[1]) {
+  try {
+    return await insertRow("club_classes", row);
+  } catch (error) {
+    if (!isMissingClubClassUserColumn(error)) throw error;
+    const { user_id: _userId, ...legacyRow } = row;
+    return insertRow("club_classes", legacyRow);
+  }
+}
+
+async function updateClubClassWithUserFallback(row: Parameters<typeof updateRows<"club_classes">>[1], query: string) {
+  try {
+    return await updateRows("club_classes", row, query);
+  } catch (error) {
+    if (!isMissingClubClassUserColumn(error)) throw error;
+    const { user_id: _userId, ...legacyRow } = row;
+    return updateRows("club_classes", legacyRow, query);
+  }
+}
+
+function isMissingClubClassUserColumn(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("user_id") && (
+    message.includes("PGRST204") ||
+    message.includes("Could not find") ||
+    message.includes("does not exist")
+  );
 }
 
 function normalizeClassField(value: unknown) {
