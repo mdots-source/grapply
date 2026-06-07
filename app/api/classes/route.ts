@@ -231,6 +231,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenClassField(payload);
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
   if (access.error) return access.error;
@@ -384,9 +387,8 @@ type ValidatedClassPayload = {
 };
 
 function validateClassPayload(payload: Record<string, unknown>, mode: ClassValidationMode): { data: ValidatedClassPayload; error?: never } | { data?: never; error: NextResponse } {
-  if (payload.checkedIn !== undefined || payload.checked_in !== undefined) {
-    return { error: validationError("Checked-in count is managed by attendance check-ins.") };
-  }
+  const forbidden = getForbiddenClassField(payload);
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
 
   const id = optionalString(payload.id, "Class id");
   const clubSlug = optionalString(payload.clubSlug, "Club slug");
@@ -428,6 +430,23 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getForbiddenClassField(payload: Record<string, unknown>) {
+  const labels: Record<string, string> = {
+    checkedIn: "Checked-in count",
+    checked_in: "Checked-in count",
+    clubId: "Class club",
+    club_id: "Class club",
+    createdAt: "Class creation time",
+    created_at: "Class creation time",
+    updatedAt: "Class update time",
+    updated_at: "Class update time",
+    userId: "Assigned coach account",
+    user_id: "Assigned coach account",
+  };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
 }
 
 function getClassTimeBoundaryError(time: string, durationMinutes: number) {
@@ -537,6 +556,6 @@ function intervalsOverlap(startA: number, endA: number, startB: number, endB: nu
   return startA < endB && startB < endA;
 }
 
-function isUuid(value: unknown) {
+function isUuid(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
 }
