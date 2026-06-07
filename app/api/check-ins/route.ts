@@ -161,6 +161,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenCheckInField(payload, "delete");
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
   if (access.error) return access.error;
@@ -201,6 +204,8 @@ export async function DELETE(request: Request) {
 
       return noStoreJson({ ok: true, source: "supabase", removed, class: updatedClass ? toClubClass(updatedClass) : null });
     } catch (error) {
+      const checkInError = getCheckInSupabaseValidationError(error);
+      if (checkInError) return checkInError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -220,6 +225,9 @@ type CheckInPayload = {
 };
 
 function validateCheckInPayload(payload: Record<string, unknown>): { data: CheckInPayload; error?: never } | { data?: never; error: Response } {
+  const forbidden = getForbiddenCheckInField(payload, "create");
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
+
   const classId = requiredString(payload.classId, "Class id");
   const memberId = requiredString(payload.memberId, "Member id");
   const clubSlug = optionalString(payload.clubSlug, "Club slug");
@@ -245,6 +253,34 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getForbiddenCheckInField(payload: Record<string, unknown>, mode: "create" | "delete") {
+  const labels: Record<string, string> = {
+    checkedInAt: "Check-in time",
+    checked_in_at: "Check-in time",
+    checkedInBy: "Check-in author",
+    checked_in_by: "Check-in author",
+    checkedInDate: "Check-in date",
+    checked_in_date: "Check-in date",
+    clubId: "Check-in club",
+    club_id: "Check-in club",
+    createdAt: "Check-in creation time",
+    created_at: "Check-in creation time",
+  };
+  const deleteOnlyLabels: Record<string, string> = mode === "delete"
+    ? {
+        classId: "Class id",
+        class_id: "Class id",
+        memberId: "Member id",
+        member_id: "Member id",
+        notes: "Notes",
+        source: "Source",
+      }
+    : {};
+  const allLabels = { ...labels, ...deleteOnlyLabels };
+  const field = Object.keys(allLabels).find((key) => payload[key] !== undefined);
+  return field ? allLabels[field] : null;
 }
 
 function canCoachDeleteCheckIn(userId: string, checkIn: TableRow<"class_checkins">) {
