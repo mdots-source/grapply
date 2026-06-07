@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, KeyRound, MailCheck, ShieldCheck, UserCog, Users } from "lucide-react";
+import { AssignExistingUserForm } from "@/components/admin/assign-existing-user-form";
 import { ClubUsersList } from "@/components/admin/club-users-list";
 import { EmailOutboxActions } from "@/components/admin/email-outbox-actions";
 import { InviteUserForm } from "@/components/admin/invite-user-form";
@@ -98,6 +99,16 @@ export default async function AdminPage() {
               </div>
             </CardHeader>
             <InviteUserForm currentRole={session.activeRole} clubSlug={organizationId} initialInvites={invites} />
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Add existing account</CardTitle>
+                <CardDescription>Grant club access to someone who already has a Grapply login.</CardDescription>
+              </div>
+            </CardHeader>
+            <AssignExistingUserForm currentRole={session.activeRole} clubSlug={organizationId} />
           </Card>
 
           <Card>
