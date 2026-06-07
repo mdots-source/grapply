@@ -180,9 +180,8 @@ function readPromotionType(value: unknown): FieldResult<PromotionType> {
 }
 
 function validatePromotionPayload(payload: Record<string, unknown>): { data: PromotionPayload; error?: never } | { data?: never; error: Response } {
-  if (payload.awardedBy !== undefined || payload.awarded_by !== undefined || payload.awardedByName !== undefined || payload.awarded_by_name !== undefined) {
-    return { error: validationError("Promotion author is assigned by the server.") };
-  }
+  const forbidden = getForbiddenPromotionField(payload, "create");
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
 
   const memberId = readText(payload.memberId, "Member id", 120);
   const type = readPromotionType(payload.type);
@@ -205,6 +204,9 @@ function validatePromotionPayload(payload: Record<string, unknown>): { data: Pro
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenPromotionField(payload, "delete");
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
@@ -244,6 +246,42 @@ type FieldResult<T> = { value: T; error?: never } | { value?: never; error: stri
 
 function validationError(error: string) {
   return validationErrorJson(error);
+}
+
+function getForbiddenPromotionField(payload: Record<string, unknown>, mode: "create" | "delete") {
+  const labels: Record<string, string> = {
+    awardedAt: "Promotion award time",
+    awarded_at: "Promotion award time",
+    awardedBy: "Promotion author",
+    awarded_by: "Promotion author",
+    awardedByName: "Promotion author",
+    awarded_by_name: "Promotion author",
+    clubId: "Promotion club",
+    club_id: "Promotion club",
+    createdAt: "Promotion creation time",
+    created_at: "Promotion creation time",
+    previousBelt: "Previous belt",
+    previous_belt: "Previous belt",
+    previousStripes: "Previous stripes",
+    previous_stripes: "Previous stripes",
+    updatedAt: "Promotion update time",
+    updated_at: "Promotion update time",
+  };
+  const deleteOnlyLabels: Record<string, string> = mode === "delete"
+    ? {
+        belt: "Belt",
+        detail: "Promotion detail",
+        memberId: "Member id",
+        member_id: "Member id",
+        stripes: "Stripes",
+        type: "Promotion type",
+      }
+    : {
+        member_id: "Member id",
+      };
+  const allLabels = { ...labels, ...deleteOnlyLabels };
+  const field = Object.keys(allLabels).find((key) => payload[key] !== undefined);
+  return field ? allLabels[field] : null;
 }
 
 function getPromotionSupabaseValidationError(error: unknown) {
