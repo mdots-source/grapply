@@ -180,9 +180,18 @@ export async function DELETE(request: Request) {
       const [checkIn] = await selectRows("class_checkins", `select=*&id=eq.${encodeURIComponent(checkInId)}&club_id=eq.${clubId}&limit=1`);
       if (!checkIn) return noStoreJson({ ok: false, error: "Check-in not found in this club." }, { status: 404 });
 
-      if (access.session.activeRole === "coach" && !canCoachDeleteCheckIn(access.session.user.id, checkIn)) {
+      const [classRow] = await selectRows("club_classes", `select=*&id=eq.${encodeURIComponent(checkIn.class_id)}&club_id=eq.${clubId}&limit=1`);
+      if (!classRow) return noStoreJson({ ok: false, error: "Class not found in this club." }, { status: 404 });
+
+      if (
+        access.session.activeRole === "coach" &&
+        (
+          !canCoachManageClassAttendance(access.session.activeRole, access.session.user.id, access.session.user.name, classRow) ||
+          !canCoachDeleteCheckIn(access.session.user.id, checkIn)
+        )
+      ) {
         return noStoreJson(
-          { ok: false, error: "Coaches can only remove check-ins they created today. Ask an admin to edit older attendance history." },
+          { ok: false, error: "Coaches can only remove today's check-ins they created for classes assigned to them. Ask an admin to edit other attendance history." },
           { status: 403 },
         );
       }
