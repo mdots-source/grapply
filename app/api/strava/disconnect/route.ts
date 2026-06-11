@@ -1,5 +1,5 @@
 import { apiSupabaseError, requireApiAccess, requireSupabasePersistence } from "@/lib/api-access";
-import { noStoreJson, readJsonObject } from "@/lib/api-json";
+import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { deleteRows, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -14,6 +14,9 @@ export async function DELETE(request: Request) {
 async function disconnectStrava(request: Request) {
   const url = new URL(request.url);
   const payload = request.method === "POST" ? await readJsonObject(request) : {};
+  const forbidden = getForbiddenDisconnectField(payload);
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : url.searchParams.get("club");
   const access = await requireApiAccess(requestedClubSlug);
   if (access.error) return access.error;
@@ -54,6 +57,33 @@ async function disconnectStrava(request: Request) {
   } catch (error) {
     return apiSupabaseError(error, { clubId });
   }
+}
+
+function validationError(error: string) {
+  return validationErrorJson(error);
+}
+
+function getForbiddenDisconnectField(payload: Record<string, unknown>) {
+  const labels: Record<string, string> = {
+    accessToken: "Strava access token",
+    access_token: "Strava access token",
+    activityId: "Strava activity id",
+    activity_id: "Strava activity id",
+    athleteId: "Strava athlete",
+    athlete_id: "Strava athlete",
+    clubId: "Strava club",
+    club_id: "Strava club",
+    expiresAt: "Strava token expiry",
+    expires_at: "Strava token expiry",
+    refreshToken: "Strava refresh token",
+    refresh_token: "Strava refresh token",
+    scopes: "Strava scopes",
+    status: "Strava status",
+    userId: "Strava user",
+    user_id: "Strava user",
+  };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
 }
 
 function isUuid(value: string) {

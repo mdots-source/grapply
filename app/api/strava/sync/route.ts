@@ -1,5 +1,5 @@
 import { apiSupabaseError, requireApiAccess, requireSupabasePersistence } from "@/lib/api-access";
-import { noStoreJson, readJsonObject } from "@/lib/api-json";
+import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { fetchStravaActivities, isStravaConfigured, refreshStravaToken, StravaApiError, STRAVA_SCOPES, type StravaActivity } from "@/lib/strava";
 import { isSupabaseConfigured, selectRows, updateRows, upsertRow } from "@/lib/supabase/server";
@@ -39,6 +39,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenSyncField(payload);
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiAccess(requestedClubSlug);
   if (access.error) return access.error;
@@ -128,6 +131,37 @@ function stravaProviderError(error: StravaApiError) {
     { ok: false, source: "strava", status: "temporarily_unavailable", error: "Strava is temporarily unavailable. Try syncing again later." },
     { status: 502 },
   );
+}
+
+function validationError(error: string) {
+  return validationErrorJson(error);
+}
+
+function getForbiddenSyncField(payload: Record<string, unknown>) {
+  const labels: Record<string, string> = {
+    accessToken: "Strava access token",
+    access_token: "Strava access token",
+    activityId: "Strava activity id",
+    activity_id: "Strava activity id",
+    athleteId: "Strava athlete",
+    athlete_id: "Strava athlete",
+    clubId: "Strava club",
+    club_id: "Strava club",
+    createdAt: "Strava activity creation time",
+    created_at: "Strava activity creation time",
+    expiresAt: "Strava token expiry",
+    expires_at: "Strava token expiry",
+    raw: "Raw Strava activity",
+    refreshToken: "Strava refresh token",
+    refresh_token: "Strava refresh token",
+    scopes: "Strava scopes",
+    syncedAt: "Strava sync time",
+    synced_at: "Strava sync time",
+    userId: "Strava user",
+    user_id: "Strava user",
+  };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
 }
 
 function toActivityInsert(activity: StravaActivity, userId: string, clubId: string): TableInsert<"strava_activities"> {
