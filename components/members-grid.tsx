@@ -18,6 +18,7 @@ import { AgGridHost } from "@/components/ag-grid-host";
 import { useActiveClub } from "@/components/use-active-club";
 import { compareMemberHierarchy, type Student } from "@/data/academy";
 import { getMemberProfileExtra } from "@/data/member-profiles";
+import type { PlatformRole } from "@/data/platform";
 import { formatApiError, readApiJson } from "@/lib/api-client";
 
 export type RosterFilter = "all" | "active" | "promotion" | "inactive" | "trial" | "follow-up";
@@ -45,6 +46,9 @@ export function MembersGrid({
   canManageMembers = false,
   canUseStaffActions = false,
   canDeleteMembers = false,
+  currentRole = null,
+  currentUserId = null,
+  currentUserName = null,
 }: {
   initialMembers?: Student[];
   initialMembersError?: string | null;
@@ -55,6 +59,9 @@ export function MembersGrid({
   canManageMembers?: boolean;
   canUseStaffActions?: boolean;
   canDeleteMembers?: boolean;
+  currentRole?: PlatformRole | null;
+  currentUserId?: string | null;
+  currentUserName?: string | null;
 }) {
   const activeClub = useActiveClub();
   const resolvedClubSlug = activeClub?.slug ?? initialClubSlug;
@@ -337,6 +344,9 @@ export function MembersGrid({
         canAwardPromotions={canUseStaffActions}
         canAwardBeltPromotions={canManageMembers}
         canDeleteMembers={canDeleteMembers}
+        currentRole={currentRole}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
       />
     </div>
   );
