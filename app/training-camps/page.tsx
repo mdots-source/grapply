@@ -44,7 +44,7 @@ export default async function TrainingCampsPage() {
       return [];
     }),
   ]);
-  const canManagePlanning = session.activeRole !== "member";
+  const canManagePlanning = session.activeRole === "owner" || session.activeRole === "admin";
   const canDeletePlanning = session.activeRole === "owner" || session.activeRole === "admin";
   const organizationId = session.activeClub.slug;
 
