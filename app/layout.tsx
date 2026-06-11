@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { CookieConsent } from "@/components/cookie-consent";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -36,7 +37,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <CookieConsent />
+        </ThemeProvider>
       </body>
     </html>
   );

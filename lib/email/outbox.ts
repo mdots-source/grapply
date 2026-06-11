@@ -12,6 +12,7 @@ const allowedTemplates = new Set([
   "password_reset",
   "coach_notification",
   "admin_notification",
+  "demo_request",
 ]);
 
 type QueueEmailInput = {

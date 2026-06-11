@@ -7,6 +7,7 @@ import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, Loader2, Refre
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgGridHost } from "@/components/ag-grid-host";
 import { useActiveClubState } from "@/components/use-active-club";
@@ -742,87 +743,6 @@ export function ScheduleGrid({
         )}
       </div>
 
-      {trainingDrawerOpen && canManageClasses && (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_18px_80px_rgba(0,0,0,0.22)]">
-          <div className="mb-4 flex flex-col gap-2 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--foreground)]">{trainingDefaults.title ?? "Add training"}</h3>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                {trainingDefaults.original ? "Update this class and manage attendance." : "Create a class for the selected academy."}
-              </p>
-            </div>
-            <Button type="button" variant="ghost" size="sm" onClick={closeTrainingEditor}>
-              Cancel
-            </Button>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <CreateClassForm
-              key={`${trainingDefaults.original?.id ?? "new"}-${trainingDefaults.day ?? "Mon"}-${trainingDefaults.time ?? "18:00"}`}
-              forceOpen
-              initialValue={trainingDefaults}
-              onCreate={saveClassToTimetable}
-              validateClass={validateClassOverlap}
-              onCancel={closeTrainingEditor}
-              onSaved={closeTrainingEditor}
-              clubSlug={resolvedClubSlug}
-            />
-            {trainingDefaults.original ? (
-              <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Class actions</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Check in a member or remove this training.</p>
-                </div>
-                {classActionMessage && (
-                  <div
-                    className={
-                      classActionMessage.tone === "success"
-                        ? "flex items-start gap-2 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
-                        : "flex items-start gap-2 rounded-lg border border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
-                    }
-                  >
-                    {classActionMessage.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
-                    <span>{classActionMessage.text}</span>
-                  </div>
-                )}
-                <div className="grid gap-2">
-                  <label className="sr-only" htmlFor="schedule-check-in-member">
-                    Member
-                  </label>
-                  <select
-                    id="schedule-check-in-member"
-                    value={selectedMemberId}
-                    onChange={(event) => setSelectedMemberId(event.target.value)}
-                    className="h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
-                  >
-                    <option value="">Select member</option>
-                    {members.map((member) => (
-                      <option key={member.id} value={member.id} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                        {member.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button type="button" variant="surface" disabled={!selectedMemberId || classActionLoading === "check-in"} onClick={checkInMember}>
-                    {classActionLoading === "check-in" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                    Check in
-                  </Button>
-                </div>
-                <Button type="button" variant={deleteConfirm ? "primary" : "outline"} className="w-full justify-center" disabled={classActionLoading === "delete"} onClick={deleteClass}>
-                  {classActionLoading === "delete" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  {deleteConfirm ? "Confirm delete training" : "Delete training"}
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Validation</p>
-                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                  Grapply checks mat and time overlaps before saving. Backend conflicts are shown directly in the form.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         {classesError && resolvedClubSlug && (
           <div className="flex items-center justify-end border-b border-[var(--border)] px-4 py-3">
@@ -882,6 +802,88 @@ export function ScheduleGrid({
           </div>
         )}
       </div>
+
+      <Drawer
+        open={trainingDrawerOpen && canManageClasses}
+        onOpenChange={(open) => {
+          if (!open) closeTrainingEditor();
+        }}
+        className="right-0 top-0 ml-auto h-full w-full max-w-[760px] border-l border-[var(--border)] bg-[var(--surface)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.35)]"
+      >
+        <DrawerHeader onClose={closeTrainingEditor}>
+          <div>
+            <DrawerTitle className="text-lg font-semibold text-[var(--foreground)]">{trainingDefaults.title ?? "Add training"}</DrawerTitle>
+            <DrawerDescription className="mt-1 text-sm text-[var(--muted)]">
+              {trainingDefaults.original ? "Update this class and manage attendance." : `${trainingDefaults.day ?? "Mon"} at ${trainingDefaults.time ?? "18:00"}`}
+            </DrawerDescription>
+          </div>
+        </DrawerHeader>
+        <div className="mt-5 grid gap-4">
+          <CreateClassForm
+            key={`${trainingDefaults.original?.id ?? "new"}-${trainingDefaults.day ?? "Mon"}-${trainingDefaults.time ?? "18:00"}`}
+            forceOpen
+            initialValue={trainingDefaults}
+            onCreate={saveClassToTimetable}
+            validateClass={validateClassOverlap}
+            onCancel={closeTrainingEditor}
+            onSaved={closeTrainingEditor}
+            clubSlug={resolvedClubSlug}
+          />
+          {trainingDefaults.original ? (
+            <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+              <div>
+                <p className="text-sm font-semibold text-[var(--foreground)]">Class actions</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Check in a member or remove this training.</p>
+              </div>
+              {classActionMessage && (
+                <div
+                  className={
+                    classActionMessage.tone === "success"
+                      ? "flex items-start gap-2 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
+                      : "flex items-start gap-2 rounded-lg border border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
+                  }
+                >
+                  {classActionMessage.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                  <span>{classActionMessage.text}</span>
+                </div>
+              )}
+              <div className="grid gap-2">
+                <label className="sr-only" htmlFor="schedule-check-in-member">
+                  Member
+                </label>
+                <select
+                  id="schedule-check-in-member"
+                  value={selectedMemberId}
+                  onChange={(event) => setSelectedMemberId(event.target.value)}
+                  className="h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
+                >
+                  <option value="">Select member</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+                <Button type="button" variant="surface" disabled={!selectedMemberId || classActionLoading === "check-in"} onClick={checkInMember}>
+                  {classActionLoading === "check-in" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                  Check in
+                </Button>
+              </div>
+              <Button type="button" variant={deleteConfirm ? "primary" : "outline"} className="w-full justify-center" disabled={classActionLoading === "delete"} onClick={deleteClass}>
+                {classActionLoading === "delete" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                {deleteConfirm ? "Confirm delete training" : "Delete training"}
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Validation</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                Grapply checks mat and time overlaps before saving. Backend conflicts are shown directly in the form.
+              </p>
+            </div>
+          )}
+        </div>
+      </Drawer>
     </div>
   );
 }
@@ -912,7 +914,20 @@ function ScheduleCell(
   const blocks = params.value ?? [];
 
   if (!blocks.length) {
-    return <div className="h-full w-full" />;
+    if (!params.canManageClasses) return <div className="h-full w-full" />;
+    const time = params.data?.time ?? "18:00";
+    return (
+      <button
+        type="button"
+        className="group flex h-full min-h-[78px] w-full items-center justify-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition hover:border-[var(--accent)]/45 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+        onClick={() => params.onOpenSlot?.(time)}
+        aria-label={`Add training on ${params.day ?? "this day"} at ${time}`}
+      >
+        <span className="grid size-8 place-items-center rounded-full border border-current/30 bg-[var(--panel)] transition group-hover:scale-105">
+          <CalendarPlus size={16} />
+        </span>
+      </button>
+    );
   }
 
   return (

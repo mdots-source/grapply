@@ -17,7 +17,7 @@ const publicPrefixes = [
   "/avatars",
 ];
 
-const publicPaths = ["/"];
+const publicPaths = ["/", "/privacy"];
 const demoAccessToken = "mock:usr-sofia";
 const demoActiveClub = "grapply-bjj";
 const platformAdminPrefix = "/platform-admin";
@@ -41,6 +41,7 @@ const reservedTopLevelPaths = new Set([
   "register",
   "invite",
   "platform-admin",
+  "privacy",
   "students",
   "ui",
   ...unscopedWorkspacePrefixes.map((prefix) => prefix.slice(1)),

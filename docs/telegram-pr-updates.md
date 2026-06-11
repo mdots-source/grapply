@@ -22,3 +22,10 @@ TELEGRAM_CHAT_ID=-5273888010
 ```
 
 The old Vercel webhook is disabled. Keep one notification path active to avoid duplicate Telegram messages.
+
+Message format:
+
+- PR number is shown near the top when GitHub can associate the production commit with a pull request.
+- Direct pushes are marked as `direct push`.
+- Each message uses concise release-note sections: title, stats, what changed, main areas, touched files, and footer links.
+- Footer links include the production site, GitHub repository, and the exact PR or compare view.

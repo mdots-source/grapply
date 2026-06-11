@@ -29,27 +29,86 @@ jobs:
               const text = String(value ?? "").trim();
               return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
             };
+            const appUrl = "https://grapply.me";
+            const repoUrl = `https://github.com/${owner}/${repo}`;
+            const sectionLimit = 6;
             const filePrefix = (status) => {
-              if (status === "added") return "+";
-              if (status === "removed") return "-";
-              if (status === "renamed") return ">";
-              return "~";
+              if (status === "added") return "🆕";
+              if (status === "removed") return "🧹";
+              if (status === "renamed") return "🔁";
+              return "🛠";
             };
+            const areaForFile = (filename) => {
+              if (filename.startsWith(".github/workflows/")) return "Automation";
+              if (filename.startsWith("app/api/auth/") || filename.includes("auth")) return "Auth";
+              if (filename.startsWith("app/api/")) return "Backend API";
+              if (filename.startsWith("app/")) return "App screens";
+              if (filename.startsWith("components/admin/")) return "Admin";
+              if (filename.startsWith("components/")) return "UI";
+              if (filename.startsWith("data/")) return "Product data";
+              if (filename.startsWith("lib/")) return "App logic";
+              if (filename.startsWith("supabase/")) return "Database";
+              if (filename.startsWith("docs/")) return "Docs";
+              return "Project";
+            };
+            const areaEmoji = (area) => ({
+              "Automation": "🤖",
+              "Auth": "🔐",
+              "Backend API": "🧩",
+              "App screens": "🖥",
+              "Admin": "👥",
+              "UI": "✨",
+              "Product data": "📊",
+              "App logic": "🧠",
+              "Database": "🗄",
+              "Docs": "📝",
+              "Project": "📦",
+            }[area] || "📦");
             const describeFile = (file) => {
               const filename = file.filename || file;
               const changes = typeof file.changes === "number" ? `${file.changes} lines` : "changed";
-              let area = "project file";
-
-              if (filename.startsWith(".github/workflows/")) area = "automation/workflow";
-              else if (filename.startsWith("app/api/")) area = "backend API route";
-              else if (filename.startsWith("app/")) area = "app page/route";
-              else if (filename.startsWith("components/")) area = "UI component";
-              else if (filename.startsWith("data/")) area = "domain/mock data";
-              else if (filename.startsWith("lib/")) area = "shared app logic";
-              else if (filename.startsWith("supabase/")) area = "database schema/seed";
-              else if (filename.startsWith("docs/")) area = "documentation";
+              const area = areaForFile(filename);
 
               return `${filePrefix(file.status)} ${filename} (${area}, ${changes})`;
+            };
+            const summarizeAreas = (files) => {
+              const counts = new Map();
+              for (const file of files || []) {
+                const filename = file.filename || file;
+                const area = areaForFile(filename);
+                counts.set(area, (counts.get(area) || 0) + 1);
+              }
+
+              return [...counts.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, sectionLimit)
+                .map(([area, count]) => `${areaEmoji(area)} ${area}: ${count} file${count === 1 ? "" : "s"}`);
+            };
+            const cleanBodyLines = (body) => String(body || "")
+              .split("\n")
+              .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
+              .filter((line) => line && !/^<!--/.test(line))
+              .slice(0, 6);
+            const humanizeCommit = (message) => {
+              const title = String(message || "").split("\n")[0].trim();
+              return title ? `• ${truncate(title, 150)}` : null;
+            };
+            const synthesizeHighlights = ({ prBody, headMessage, commits, files }) => {
+              const bodyLines = cleanBodyLines(prBody);
+              if (bodyLines.length) return bodyLines.map((line) => `• ${truncate(line, 180)}`);
+
+              const commitLines = (commits || [])
+                .map((commit) => humanizeCommit(commit.commit?.message || commit.message))
+                .filter(Boolean)
+                .slice(0, 5);
+              if (commitLines.length) return commitLines;
+
+              const areas = summarizeAreas(files);
+              if (areas.length) {
+                return areas.map((line) => `• Updated ${line.replace(/^.+? /, "")}.`);
+              }
+
+              return [`• ${truncate(headMessage || "Production update shipped.", 180)}`];
             };
 
             const after = context.payload.after || context.sha;
@@ -60,8 +119,8 @@ jobs:
 
             let title = "Production updated";
             let summary = commits.length
-              ? commits.slice(-8).map((commit) => `- ${truncate(commit.message.split("\n")[0], 110)}`).join("\n")
-              : `- ${truncate(headMessage || after, 110)}`;
+              ? commits.slice(-8).map((commit) => `• ${truncate(commit.message.split("\n")[0], 110)}`).join("\n")
+              : `• ${truncate(headMessage || after, 110)}`;
             let detailsUrl = context.payload.compare || `https://github.com/${owner}/${repo}/commit/${after}`;
             let stats = `${commits.length || 1} commit${commits.length === 1 ? "" : "s"}`;
             let touchedAreas = [];
@@ -69,9 +128,9 @@ jobs:
             let compareCommits = [];
 
             for (const commit of commits) {
-              for (const file of commit.added || []) touchedAreas.push(`+ ${file}`);
-              for (const file of commit.modified || []) touchedAreas.push(`~ ${file}`);
-              for (const file of commit.removed || []) touchedAreas.push(`- ${file}`);
+              for (const file of commit.added || []) touchedAreas.push(`🆕 ${file}`);
+              for (const file of commit.modified || []) touchedAreas.push(`🛠 ${file}`);
+              for (const file of commit.removed || []) touchedAreas.push(`🧹 ${file}`);
             }
 
             if (context.payload.before && after) {
@@ -122,11 +181,17 @@ jobs:
                   per_page: 30,
                 });
 
-                title = `#${pr.number}: ${pr.title}`;
-                summary = pr.body?.trim() || headMessage || "No release notes provided.";
+                title = `PR #${pr.number}: ${pr.title}`;
+                compareFiles = files;
+                summary = synthesizeHighlights({
+                  prBody: pr.body,
+                  headMessage,
+                  commits: compareCommits.length ? compareCommits : commits,
+                  files,
+                }).join("\n");
                 detailsUrl = pr.html_url;
                 stats = `${pr.changed_files} files changed | +${pr.additions} | -${pr.deletions}`;
-                touchedAreas = files.map((file) => `${filePrefix(file.status)} ${file.filename}`);
+                touchedAreas = files.map(describeFile);
               } catch (error) {
                 core.warning(`Could not enrich PR summary: ${error.message}`);
               }
@@ -146,46 +211,40 @@ jobs:
             }
 
             if (!prNumber) {
-              const commitTitles = (compareCommits.length ? compareCommits : commits)
-                .slice(-8)
-                .map((commit) => {
-                  const message = commit.commit?.message || commit.message || "";
-                  return `- ${truncate(message.split("\n")[0], 110)}`;
-                });
-              const impactAreas = [...new Set((compareFiles || []).map((file) => {
-                const filename = file.filename || "";
-                if (filename.startsWith("components/")) return "UI components";
-                if (filename.startsWith("app/api/")) return "backend/API routes";
-                if (filename.startsWith("app/")) return "app routes/pages";
-                if (filename.startsWith("data/")) return "domain/mock data";
-                if (filename.startsWith("lib/")) return "shared app logic";
-                if (filename.startsWith("supabase/")) return "database schema/seed";
-                if (filename.startsWith(".github/")) return "automation";
-                if (filename.startsWith("docs/")) return "documentation";
-                return null;
-              }).filter(Boolean))];
-
-              summary = [
-                commitTitles.length ? commitTitles.join("\n") : `- ${truncate(headMessage || after, 110)}`,
-                impactAreas.length ? `\nAreas: ${impactAreas.join(", ")}` : "",
-              ].join("").trim();
+              title = "Direct production push";
+              summary = synthesizeHighlights({
+                prBody: "",
+                headMessage,
+                commits: compareCommits.length ? compareCommits : commits,
+                files: compareFiles,
+              }).join("\n");
             }
 
             const fileLines = [...new Set(touchedAreas)].slice(0, 12);
+            const areaLines = summarizeAreas(compareFiles.length ? compareFiles : fileLines);
+            const prLine = prNumber
+              ? `🔢 PR: <a href="${escapeHtml(`https://github.com/${owner}/${repo}/pull/${prNumber}`)}">#${escapeHtml(prNumber)}</a>`
+              : "🔢 PR: direct push";
             const message = [
-              "<b>Grapply production update</b>",
+              "🥋 <b>Grapply production update</b>",
+              "━━━━━━━━━━━━━━━━",
               "",
-              `<b>${escapeHtml(title)}</b>`,
-              `Repo: ${escapeHtml(`${owner}/${repo}`)}`,
-              `Stats: ${escapeHtml(stats)}`,
+              `🚀 <b>${escapeHtml(title)}</b>`,
+              prLine,
+              `📦 Repo: <code>${escapeHtml(`${owner}/${repo}`)}</code>`,
+              `📊 Stats: ${escapeHtml(stats)}`,
               "",
-              "<b>What changed</b>",
+              "✨ <b>What changed</b>",
               escapeHtml(truncate(summary, 1200)),
               "",
-              "<b>Touched areas</b>",
+              areaLines.length ? "🧭 <b>Main areas</b>" : "",
+              areaLines.length ? escapeHtml(areaLines.join("\n")) : "",
+              areaLines.length ? "" : "",
+              "🗂 <b>Touched files</b>",
               escapeHtml(fileLines.length ? fileLines.join("\n") : "- No files listed"),
               "",
-              `<a href="${escapeHtml(detailsUrl)}">View changes</a>`,
+              "━━━━━━━━━━━━━━━━",
+              `🌐 <a href="${escapeHtml(appUrl)}">Open Grapply</a> · 🧑‍💻 <a href="${escapeHtml(repoUrl)}">GitHub</a> · 🔎 <a href="${escapeHtml(detailsUrl)}">View changes</a>`,
             ].join("\n").slice(0, 3900);
 
             core.setOutput("text", message);

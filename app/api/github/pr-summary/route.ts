@@ -51,6 +51,9 @@ type GitHubPullRequestFile = {
   status: string;
 };
 
+const APP_URL = "https://grapply.me";
+const REPO_URL = "https://github.com/mdots-source/grapply";
+
 export function GET() {
   const payload: Record<string, unknown> = {
     ok: true,
@@ -157,7 +160,7 @@ function formatPullRequestProductionMessage(
   pullRequest: GitHubPullRequest,
   files: GitHubPullRequestFile[],
 ) {
-  const summary = pullRequest.body?.trim() || "No release notes provided.";
+  const summary = formatSummaryLines(pullRequest.body, payload.head_commit?.message);
   const fileLines = formatFileLines(files);
   const stats = [
     `${pullRequest.changed_files} files changed`,
@@ -166,20 +169,26 @@ function formatPullRequestProductionMessage(
   ].join(" | ");
 
   return [
-    "<b>Grapply production update</b>",
+    "🥋 <b>Grapply production update</b>",
+    "━━━━━━━━━━━━━━━━",
     "",
-    `<b>#${pullRequest.number}: ${escapeHtml(pullRequest.title)}</b>`,
-    `Author: ${escapeHtml(pullRequest.user.login)}`,
-    `Repo: ${escapeHtml(payload.repository?.full_name ?? "unknown")}`,
-    `Stats: ${escapeHtml(stats)}`,
+    `🚀 <b>PR #${pullRequest.number}: ${escapeHtml(pullRequest.title)}</b>`,
+    `🔢 PR: <a href="${escapeHtml(pullRequest.html_url)}">#${pullRequest.number}</a>`,
+    `👤 Author: ${escapeHtml(pullRequest.user.login)}`,
+    `📦 Repo: <code>${escapeHtml(payload.repository?.full_name ?? "unknown")}</code>`,
+    `📊 Stats: ${escapeHtml(stats)}`,
     "",
-    "<b>What changed</b>",
+    "✨ <b>What changed</b>",
     escapeHtml(truncate(summary, 1200)),
     "",
-    "<b>Touched areas</b>",
+    "🧭 <b>Main areas</b>",
+    escapeHtml(formatAreaLines(files).join("\n") || "- Project files"),
+    "",
+    "🗂 <b>Touched files</b>",
     escapeHtml(fileLines.length ? fileLines.join("\n") : "- No files listed"),
     "",
-    `<a href="${escapeHtml(pullRequest.html_url)}">Open PR</a>`,
+    "━━━━━━━━━━━━━━━━",
+    `🌐 <a href="${APP_URL}">Open Grapply</a> · 🧑‍💻 <a href="${REPO_URL}">GitHub</a> · 🔎 <a href="${escapeHtml(pullRequest.html_url)}">Open PR</a>`,
   ].join("\n").slice(0, 3900);
 }
 
@@ -188,7 +197,7 @@ function formatDirectPushMessage(payload: GitHubPushPayload) {
   const commitLines = commits.slice(-8).map((commit) => {
     const title = commit.message.split("\n")[0] || commit.id.slice(0, 7);
     const author = commit.author?.username ?? commit.author?.name;
-    return `- ${truncate(title, 110)}${author ? ` (${author})` : ""}`;
+    return `• ${truncate(title, 110)}${author ? ` (${author})` : ""}`;
   });
   const moreCommits = commits.length > commitLines.length
     ? `\n...and ${commits.length - commitLines.length} more commits`
@@ -196,20 +205,24 @@ function formatDirectPushMessage(payload: GitHubPushPayload) {
   const fileLines = formatPushFileLines(commits);
 
   return [
-    "<b>Grapply production update</b>",
+    "🥋 <b>Grapply production update</b>",
+    "━━━━━━━━━━━━━━━━",
     "",
-    `Repo: ${escapeHtml(payload.repository?.full_name ?? "unknown")}`,
-    `Branch: main`,
-    `Pushed by: ${escapeHtml(payload.pusher?.name ?? "unknown")}`,
-    `Commits: ${commits.length}`,
+    "🚀 <b>Direct production push</b>",
+    "🔢 PR: direct push",
+    `📦 Repo: <code>${escapeHtml(payload.repository?.full_name ?? "unknown")}</code>`,
+    "🌿 Branch: main",
+    `👤 Pushed by: ${escapeHtml(payload.pusher?.name ?? "unknown")}`,
+    `📊 Commits: ${commits.length}`,
     "",
-    `<b>Commits</b>`,
+    "✨ <b>What changed</b>",
     escapeHtml(commitLines.length ? `${commitLines.join("\n")}${moreCommits}` : "- No commit details provided"),
     "",
-    `<b>Touched areas</b>`,
+    "🗂 <b>Touched files</b>",
     escapeHtml(fileLines.length ? fileLines.join("\n") : "- No files listed"),
     "",
-    payload.compare ? `<a href="${escapeHtml(payload.compare)}">View changes</a>` : "",
+    "━━━━━━━━━━━━━━━━",
+    `🌐 <a href="${APP_URL}">Open Grapply</a> · 🧑‍💻 <a href="${REPO_URL}">GitHub</a>${payload.compare ? ` · 🔎 <a href="${escapeHtml(payload.compare)}">View changes</a>` : ""}`,
   ].join("\n").slice(0, 3900);
 }
 
@@ -275,19 +288,79 @@ function formatPushFileLines(commits: NonNullable<GitHubPushPayload["commits"]>)
   const files = new Map<string, string>();
 
   for (const commit of commits) {
-    for (const file of commit.added ?? []) files.set(file, "+");
-    for (const file of commit.modified ?? []) files.set(file, "~");
-    for (const file of commit.removed ?? []) files.set(file, "-");
+    for (const file of commit.added ?? []) files.set(file, "🆕");
+    for (const file of commit.modified ?? []) files.set(file, "🛠");
+    for (const file of commit.removed ?? []) files.set(file, "🧹");
   }
 
   return Array.from(files.entries()).slice(0, 12).map(([file, prefix]) => `${prefix} ${file}`);
 }
 
+function formatSummaryLines(body: string | null | undefined, fallback?: string) {
+  const lines = (body ?? "")
+    .split("\n")
+    .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
+    .filter((line) => line && !line.startsWith("<!--"))
+    .slice(0, 6);
+
+  if (lines.length) {
+    return lines.map((line) => `• ${truncate(line, 180)}`).join("\n");
+  }
+
+  return `• ${truncate(fallback || "Production update shipped.", 180)}`;
+}
+
+function formatAreaLines(files: GitHubPullRequestFile[]) {
+  const counts = new Map<string, number>();
+
+  for (const file of files) {
+    const area = fileArea(file.filename);
+    counts.set(area, (counts.get(area) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([area, count]) => `${areaEmoji(area)} ${area}: ${count} file${count === 1 ? "" : "s"}`);
+}
+
+function fileArea(filename: string) {
+  if (filename.startsWith(".github/workflows/")) return "Automation";
+  if (filename.startsWith("app/api/auth/") || filename.includes("auth")) return "Auth";
+  if (filename.startsWith("app/api/")) return "Backend API";
+  if (filename.startsWith("app/")) return "App screens";
+  if (filename.startsWith("components/admin/")) return "Admin";
+  if (filename.startsWith("components/")) return "UI";
+  if (filename.startsWith("data/")) return "Product data";
+  if (filename.startsWith("lib/")) return "App logic";
+  if (filename.startsWith("supabase/")) return "Database";
+  if (filename.startsWith("docs/")) return "Docs";
+  return "Project";
+}
+
+function areaEmoji(area: string) {
+  const emojiByArea: Record<string, string> = {
+    Automation: "🤖",
+    Auth: "🔐",
+    "Backend API": "🧩",
+    "App screens": "🖥",
+    Admin: "👥",
+    UI: "✨",
+    "Product data": "📊",
+    "App logic": "🧠",
+    Database: "🗄",
+    Docs: "📝",
+    Project: "📦",
+  };
+
+  return emojiByArea[area] ?? "📦";
+}
+
 function fileStatusPrefix(status: string) {
-  if (status === "added") return "+";
-  if (status === "removed") return "-";
-  if (status === "renamed") return ">";
-  return "~";
+  if (status === "added") return "🆕";
+  if (status === "removed") return "🧹";
+  if (status === "renamed") return "🔁";
+  return "🛠";
 }
 
 async function sendTelegramMessage(text: string) {
