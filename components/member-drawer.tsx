@@ -29,6 +29,7 @@ type MemberDrawerProps = {
   canManageMembers?: boolean;
   canUseStaffActions?: boolean;
   canAwardPromotions?: boolean;
+  canAwardBeltPromotions?: boolean;
   canDeleteMembers?: boolean;
   clubSlug?: string;
 };
@@ -69,6 +70,7 @@ export function MemberDrawer({
   canManageMembers = false,
   canUseStaffActions = false,
   canAwardPromotions = false,
+  canAwardBeltPromotions = false,
   canDeleteMembers = false,
   clubSlug,
 }: MemberDrawerProps) {
@@ -152,6 +154,7 @@ export function MemberDrawer({
             <MemberActions
               member={member}
               canAwardPromotions={canAwardPromotions}
+              canAwardBeltPromotions={canAwardBeltPromotions}
               onLocalMemberChange={onLocalMemberChange}
               clubSlug={resolvedClubSlug}
             />
@@ -393,11 +396,13 @@ function MemberProfileForm({
 function MemberActions({
   member,
   canAwardPromotions,
+  canAwardBeltPromotions,
   onLocalMemberChange,
   clubSlug,
 }: {
   member: Student;
   canAwardPromotions: boolean;
+  canAwardBeltPromotions: boolean;
   onLocalMemberChange?: (member: Student) => void;
   clubSlug?: string;
 }) {
@@ -413,7 +418,11 @@ function MemberActions({
   const nextStripe = Math.min(member.stripes + 1, 4);
   const promotionBlocked =
     (promotionType === "stripe" && member.stripes >= 4) ||
-    (promotionType === "belt" && !nextBelt);
+    (promotionType === "belt" && (!canAwardBeltPromotions || !nextBelt));
+
+  useEffect(() => {
+    if (!canAwardBeltPromotions && promotionType === "belt") setPromotionType("stripe");
+  }, [canAwardBeltPromotions, promotionType]);
 
   useEffect(() => {
     let alive = true;
@@ -496,7 +505,6 @@ function MemberActions({
       ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}),
       memberId: member.id,
       type: promotionType,
-      awardedByName: "Current coach",
       belt: promotionType === "belt" ? nextBelt : null,
       stripes: promotionType === "stripe" ? nextStripe : promotionType === "belt" ? 0 : null,
       detail:
@@ -566,9 +574,11 @@ function MemberActions({
               <option value="stripe" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
                 Stripe{member.stripes < 4 ? ` (${nextStripe}/4)` : " (maxed)"}
               </option>
-              <option value="belt" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                Belt{nextBelt ? ` (${beltStyles[nextBelt].label})` : " (black belt)"}
-              </option>
+              {canAwardBeltPromotions && (
+                <option value="belt" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                  Belt{nextBelt ? ` (${beltStyles[nextBelt].label})` : " (black belt)"}
+                </option>
+              )}
               <option value="achievement" className="bg-[var(--panel-strong)] text-[var(--foreground)]">
                 Achievement
               </option>

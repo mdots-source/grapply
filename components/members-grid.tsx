@@ -334,7 +334,8 @@ export function MembersGrid({
         clubSlug={resolvedClubSlug}
         canManageMembers={canManageMembers}
         canUseStaffActions={canUseStaffActions}
-        canAwardPromotions={canManageMembers}
+        canAwardPromotions={canUseStaffActions}
+        canAwardBeltPromotions={canManageMembers}
         canDeleteMembers={canDeleteMembers}
       />
     </div>
