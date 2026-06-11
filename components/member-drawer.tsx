@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActiveClub } from "@/components/use-active-club";
 import { beltStyles, type Belt, type MemberRole, type Student } from "@/data/academy";
+import type { PlatformRole } from "@/data/platform";
 import { formatApiError, readApiJson } from "@/lib/api-client";
 import { getWorkspaceHref } from "@/lib/workspace-url";
 
@@ -31,6 +32,9 @@ type MemberDrawerProps = {
   canAwardPromotions?: boolean;
   canAwardBeltPromotions?: boolean;
   canDeleteMembers?: boolean;
+  currentRole?: PlatformRole | null;
+  currentUserId?: string | null;
+  currentUserName?: string | null;
   clubSlug?: string;
 };
 
@@ -51,6 +55,7 @@ const emptyForm = {
 
 type ClassOption = {
   id: string;
+  userId?: string | null;
   name: string;
   coach: string;
   day: string;
@@ -72,6 +77,9 @@ export function MemberDrawer({
   canAwardPromotions = false,
   canAwardBeltPromotions = false,
   canDeleteMembers = false,
+  currentRole = null,
+  currentUserId = null,
+  currentUserName = null,
   clubSlug,
 }: MemberDrawerProps) {
   const activeClub = useActiveClub();
@@ -156,6 +164,9 @@ export function MemberDrawer({
               canAwardPromotions={canAwardPromotions}
               canAwardBeltPromotions={canAwardBeltPromotions}
               onLocalMemberChange={onLocalMemberChange}
+              currentRole={currentRole}
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
               clubSlug={resolvedClubSlug}
             />
           )}
@@ -398,12 +409,18 @@ function MemberActions({
   canAwardPromotions,
   canAwardBeltPromotions,
   onLocalMemberChange,
+  currentRole,
+  currentUserId,
+  currentUserName,
   clubSlug,
 }: {
   member: Student;
   canAwardPromotions: boolean;
   canAwardBeltPromotions: boolean;
   onLocalMemberChange?: (member: Student) => void;
+  currentRole?: PlatformRole | null;
+  currentUserId?: string | null;
+  currentUserName?: string | null;
   clubSlug?: string;
 }) {
   const activeClub = useActiveClub();
@@ -432,9 +449,11 @@ function MemberActions({
       .then((response) => readApiJson<{ classes?: ClassOption[]; error?: string; requestId?: string }>(response, "Could not load classes."))
       .then((payload: { classes?: ClassOption[] }) => {
         if (!alive) return;
-        const nextClasses = payload.classes ?? [];
+        const nextClasses = (payload.classes ?? []).filter((item) =>
+          canCheckInClass(item, currentRole, currentUserId, currentUserName),
+        );
         setClasses(nextClasses);
-        setClassId((value) => value || nextClasses[0]?.id || "");
+        setClassId((value) => (nextClasses.some((item) => item.id === value) ? value : nextClasses[0]?.id || ""));
       })
       .catch(() => {
         if (alive) setMessage({ tone: "error", text: "Could not load classes." });
@@ -442,7 +461,7 @@ function MemberActions({
     return () => {
       alive = false;
     };
-  }, [resolvedClubSlug]);
+  }, [currentRole, currentUserId, currentUserName, resolvedClubSlug]);
 
   async function submitAction(action: "check-in" | "note" | "promotion") {
     setLoading(action);
@@ -610,4 +629,20 @@ function MemberActions({
       )}
     </div>
   );
+}
+
+function canCheckInClass(
+  classItem: ClassOption,
+  currentRole?: PlatformRole | null,
+  currentUserId?: string | null,
+  currentUserName?: string | null,
+) {
+  if (currentRole === "owner" || currentRole === "admin") return true;
+  if (currentRole !== "coach") return false;
+  if (classItem.userId) return Boolean(currentUserId && classItem.userId === currentUserId);
+  return Boolean(currentUserName && normalizeDrawerValue(classItem.coach) === normalizeDrawerValue(currentUserName));
+}
+
+function normalizeDrawerValue(value: string) {
+  return value.trim().toLowerCase();
 }

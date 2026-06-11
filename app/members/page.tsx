@@ -46,6 +46,9 @@ export default async function MembersPage({ searchParams }: { searchParams?: Pro
           canManageMembers={canManageMembers}
           canUseStaffActions={canUseStaffActions}
           canDeleteMembers={canDeleteMembers}
+          currentRole={session.activeRole}
+          currentUserId={session.user.id}
+          currentUserName={session.user.name}
         />
       </PageTransition>
     </AppShell>
