@@ -24,6 +24,7 @@ export function MemberProfile({
   member,
   viewerRole,
   viewerUserId,
+  viewerUserName,
   initialLiveData,
   initialLiveDataError = null,
   initialClubSlug,
@@ -31,6 +32,7 @@ export function MemberProfile({
   member: Student;
   viewerRole: PlatformRole | null;
   viewerUserId?: string | null;
+  viewerUserName?: string | null;
   initialLiveData?: MemberProfileLiveData | null;
   initialLiveDataError?: string | null;
   initialClubSlug?: string;
@@ -159,6 +161,7 @@ export function MemberProfile({
         member={member}
         viewerRole={viewerRole}
         viewerUserId={viewerUserId}
+        viewerUserName={viewerUserName}
         mode="details"
         initialLiveData={initialLiveData}
         initialLiveDataError={initialLiveDataError}
@@ -353,6 +356,7 @@ function MemberLiveHistory({
   member,
   viewerRole,
   viewerUserId,
+  viewerUserName,
   mode = "details",
   initialLiveData,
   initialLiveDataError = null,
@@ -361,6 +365,7 @@ function MemberLiveHistory({
   member: Student;
   viewerRole: PlatformRole | null;
   viewerUserId?: string | null;
+  viewerUserName?: string | null;
   mode?: "details";
   initialLiveData?: MemberProfileLiveData | null;
   initialLiveDataError?: string | null;
@@ -588,7 +593,7 @@ function MemberLiveHistory({
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge variant="muted">{item.source}</Badge>
-                      {canDeleteCheckInRow(item, viewerRole, viewerUserId) && (
+                      {canDeleteCheckInRow(item, classItem, viewerRole, viewerUserId, viewerUserName) && (
                         <Button type="button" variant="ghost" size="icon" disabled={deleting === `check-in:${item.id}`} onClick={() => deleteHistory("check-in", item.id)} aria-label="Remove check-in">
                           {deleting === `check-in:${item.id}` ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                         </Button>
@@ -899,10 +904,19 @@ function EmptyHistory({ text }: { text: string }) {
   return <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--muted)]">{text}</div>;
 }
 
-function canDeleteCheckInRow(row: CheckInRow, viewerRole: PlatformRole | null, viewerUserId?: string | null) {
+function canDeleteCheckInRow(
+  row: CheckInRow,
+  classRow: ClassRow | undefined | null,
+  viewerRole: PlatformRole | null,
+  viewerUserId?: string | null,
+  viewerUserName?: string | null,
+) {
   if (viewerRole === "owner" || viewerRole === "admin") return true;
   if (viewerRole !== "coach" || !viewerUserId) return false;
-  return row.checked_in_by === viewerUserId && row.checked_in_date === getTodayDate();
+  if (row.checked_in_by !== viewerUserId || row.checked_in_date !== getTodayDate()) return false;
+  if (!classRow) return false;
+  if (classRow.userId) return classRow.userId === viewerUserId;
+  return Boolean(viewerUserName && normalizeProfileValue(classRow.coach) === normalizeProfileValue(viewerUserName));
 }
 
 function canEditCoachNoteRow(row: CoachNoteRow, viewerRole: PlatformRole | null, viewerUserId?: string | null) {
@@ -913,6 +927,10 @@ function canEditCoachNoteRow(row: CoachNoteRow, viewerRole: PlatformRole | null,
 
 function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function normalizeProfileValue(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function formatDateTime(value: string) {

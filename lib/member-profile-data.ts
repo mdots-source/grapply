@@ -14,6 +14,7 @@ export type MemberProfileCheckIn = TableRow<"class_checkins"> & {
 
 export type MemberProfileClass = {
   id: string;
+  userId?: string | null;
   name: string;
   day: string;
   time: string;
@@ -48,6 +49,7 @@ export async function getMemberProfileLiveData({
       checkIns: [],
       classes: clubClasses.filter((item) => item.clubId === mockClubId).map((item) => ({
         id: item.id,
+        userId: item.userId,
         name: item.name,
         day: item.day,
         time: item.time,
@@ -92,6 +94,7 @@ export async function getMemberProfileLiveData({
     checkIns: await enrichCheckIns(clubId, checkIns),
     classes: classes.map(toClubClass).map((item) => ({
       id: item.id,
+      userId: item.userId,
       name: item.name,
       day: item.day,
       time: item.time,
@@ -121,7 +124,7 @@ async function enrichCheckIns(clubId: string, rows: TableRow<"class_checkins">[]
   const memberIds = Array.from(new Set(rows.map((row) => row.member_id).filter(Boolean)));
   const [classes, members] = await Promise.all([
     classIds.length
-      ? selectRows("club_classes", `select=id,name,day,time,coach,mat&club_id=eq.${clubId}&id=in.(${classIds.map(encodeURIComponent).join(",")})`)
+      ? selectRows("club_classes", `select=id,user_id,name,day,time,coach,mat&club_id=eq.${clubId}&id=in.(${classIds.map(encodeURIComponent).join(",")})`)
       : Promise.resolve([]),
     memberIds.length
       ? selectRows("academy_members", `select=id,name,belt,stripes,role&club_id=eq.${clubId}&id=in.(${memberIds.map(encodeURIComponent).join(",")})`)
@@ -138,6 +141,7 @@ async function enrichCheckIns(clubId: string, rows: TableRow<"class_checkins">[]
       class: classRow
         ? {
             id: classRow.id,
+            userId: classRow.user_id,
             name: classRow.name,
             day: classRow.day,
             time: classRow.time,

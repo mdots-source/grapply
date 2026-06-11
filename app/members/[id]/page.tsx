@@ -36,6 +36,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
           member={member}
           viewerRole={session.activeRole}
           viewerUserId={session.user.id}
+          viewerUserName={session.user.name}
           initialLiveData={liveData}
           initialLiveDataError={liveDataError}
           initialClubSlug={session.activeClub.slug}
