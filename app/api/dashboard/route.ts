@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiAccess } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireSupabaseBackendData } from "@/lib/api-access";
 import { noStoreJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { getDashboardData } from "@/lib/backend-data";
@@ -7,6 +7,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiAccess(searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Dashboard");
+  if (backendError) return backendError;
   const clubSlug = access.session.activeClub.slug;
   let clubId: string | null = null;
 

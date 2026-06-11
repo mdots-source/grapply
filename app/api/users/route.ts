@@ -1,5 +1,5 @@
 import { clubMemberships, clubs, platformUsers } from "@/data/platform";
-import { apiSupabaseError, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabaseBackendData } from "@/lib/api-access";
 import { noStoreJson, readJsonObject } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
@@ -9,6 +9,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiRole(["owner", "admin"], searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Club users");
+  if (backendError) return backendError;
 
   if (isSupabaseConfigured()) {
     let clubId: string | null = null;

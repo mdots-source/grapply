@@ -1,5 +1,5 @@
 import { clubMemberships, clubs, roleDefinitions } from "@/data/platform";
-import { apiSupabaseError, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabaseBackendData, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { queueEmail, staffNotificationEmailBody } from "@/lib/email/outbox";
@@ -17,6 +17,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiRole(["owner", "admin"], searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Role management");
+  if (backendError) return backendError;
 
   if (isSupabaseConfigured()) {
     let clubId: string | null = null;

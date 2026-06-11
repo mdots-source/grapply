@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabaseBackendData, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -10,6 +10,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiAccess(searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Training goals");
+  if (backendError) return backendError;
 
   const memberId = optionalString(searchParams.get("memberId"), "Member id", 120);
   if (memberId.error) return validationError(memberId.error);

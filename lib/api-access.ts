@@ -3,6 +3,7 @@ import type { Club, PlatformRole } from "@/data/platform";
 import { getCurrentSession } from "@/lib/auth-session";
 import { isProductionRuntime } from "@/lib/auth-mode";
 import { recordErrorEvent } from "@/lib/observability";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 type ApiSession = NonNullable<Awaited<ReturnType<typeof getCurrentSession>>> & {
   activeClub: Club;
@@ -78,6 +79,19 @@ export function apiSupabaseError(
 
 export function requireSupabasePersistence(feature: string) {
   if (!isProductionRuntime()) return null;
+
+  return noStoreJson(
+    {
+      ok: false,
+      source: "supabase",
+      error: `${feature} requires the Supabase backend in production.`,
+    },
+    { status: 503 },
+  );
+}
+
+export function requireSupabaseBackendData(feature: string) {
+  if (!isProductionRuntime() || isSupabaseConfigured()) return null;
 
   return noStoreJson(
     {

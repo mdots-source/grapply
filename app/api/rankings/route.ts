@@ -1,5 +1,5 @@
 import { getClubRoster } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireSupabaseBackendData } from "@/lib/api-access";
 import { noStoreJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -10,6 +10,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiAccess(searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Rankings");
+  if (backendError) return backendError;
   const clubSlug = access.session.activeClub.slug;
 
   if (isSupabaseConfigured()) {

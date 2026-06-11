@@ -1,7 +1,7 @@
 import type { NextResponse } from "next/server";
 import { compareMemberHierarchy, type Student } from "@/data/academy";
 import { getClubRoster, platformUsers } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabaseBackendData, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
@@ -17,6 +17,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiAccess(searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Members");
+  if (backendError) return backendError;
   const clubSlug = access.session.activeClub.slug;
 
   if (isSupabaseConfigured()) {
