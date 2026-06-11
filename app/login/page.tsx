@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth-session";
 import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
-import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo } from "@/lib/workspace-intent";
+import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
 export default async function LoginPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string; error?: string; invite?: string }> }) {
   const params = await searchParams;
-  const returnTo = normalizeWorkspaceReturnTo(params?.returnTo);
+  const returnTo = normalizeLoginReturnTo(params?.returnTo);
   const error = params?.error ? String(params.error) : null;
   const inviteToken = params?.invite ? String(params.invite) : undefined;
   const session = await getCurrentSession();
@@ -19,6 +19,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
     if (inviteToken) {
       redirect(`/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`);
     }
+    if (splitOrganizationWorkspacePath(new URL(returnTo, "https://grapply.local").pathname)) redirect(returnTo);
     redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
   }
 
@@ -102,4 +103,17 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
       </Card>
     </AuthShell>
   );
+}
+
+function normalizeLoginReturnTo(rawReturnTo?: string | null) {
+  const normalizedReturnTo = normalizeWorkspaceReturnTo(rawReturnTo);
+  if (!rawReturnTo?.startsWith("/")) return normalizedReturnTo;
+
+  try {
+    const destination = new URL(rawReturnTo, "https://grapply.local");
+    const route = splitOrganizationWorkspacePath(destination.pathname);
+    return route ? scopeWorkspaceReturnTo(normalizedReturnTo, route.organizationId) : normalizedReturnTo;
+  } catch {
+    return normalizedReturnTo;
+  }
 }
