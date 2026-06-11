@@ -29,6 +29,21 @@ const criticalTables = [
   { table: "training_posts", column: "id" },
 ] as const satisfies ReadonlyArray<{ table: TableName; column: string }>;
 
+const criticalSchemaShapes = [
+  { table: "academy_members", columns: ["id", "user_id", "profile"] },
+  { table: "app_users", columns: ["id", "auth_user_id", "belt", "stripes"] },
+  { table: "class_checkins", columns: ["id", "checked_in_date", "checked_in_by"] },
+  { table: "club_billing_subscriptions", columns: ["id", "billing_email", "member_limit"] },
+  { table: "club_classes", columns: ["id", "user_id", "duration_minutes", "checked_in"] },
+  { table: "coach_notes", columns: ["id", "coach_user_id", "visibility"] },
+  { table: "email_outbox", columns: ["id", "provider_message_id", "attempts", "sent_at"] },
+  { table: "member_goals", columns: ["id", "status", "completed_at"] },
+  { table: "member_promotions", columns: ["id", "previous_belt", "previous_stripes"] },
+  { table: "strava_activities", columns: ["id", "activity_id", "synced_at", "raw"] },
+  { table: "strava_connections", columns: ["id", "club_id", "scopes", "expires_at"] },
+  { table: "training_posts", columns: ["id", "coach_user_id", "tagged_students"] },
+] as const satisfies ReadonlyArray<{ table: TableName; columns: readonly string[] }>;
+
 export async function GET() {
   const startedAt = Date.now();
   const requestId = crypto.randomUUID();
@@ -38,9 +53,15 @@ export async function GET() {
   const stravaConfigured = isStravaConfigured();
   const appUrlConfigured = isAppUrlConfigured();
   const stravaConfig = getStravaConfig();
-  const tableChecks = supabaseConfigured ? await Promise.all(criticalTables.map((check) => checkTable(check, requestId))) : [];
+  const [tableChecks, schemaChecks] = supabaseConfigured
+    ? await Promise.all([
+        Promise.all(criticalTables.map((check) => checkTable(check, requestId))),
+        Promise.all(criticalSchemaShapes.map((check) => checkSchemaShape(check, requestId))),
+      ])
+    : [[], []];
   const failedTables = tableChecks.filter((check) => check.status !== "ok");
-  const criticalOk = supabaseConfigured && failedTables.length === 0 && appUrlConfigured;
+  const failedSchemaShapes = schemaChecks.filter((check) => check.status !== "ok");
+  const criticalOk = supabaseConfigured && failedTables.length === 0 && failedSchemaShapes.length === 0 && appUrlConfigured;
   const warnings = [
     ...(!emailDeliveryConfigured ? ["emailDelivery:missing-config"] : []),
     ...(!stravaConfigured ? ["stravaOAuth:missing-config"] : []),
@@ -60,6 +81,7 @@ export async function GET() {
         warnings,
         checks: {
           supabaseRest: supabaseConfigured ? (failedTables.length ? "degraded" : "ok") : "missing-config",
+          supabaseSchema: supabaseConfigured ? (failedSchemaShapes.length ? "degraded" : "ok") : "missing-config",
           emailDelivery: emailDeliveryConfigured ? "ok" : "missing-config",
           stravaOAuth: stravaConfigured ? "ok" : "missing-config",
           appUrl: appUrlConfigured ? "ok" : "missing-config",
@@ -90,10 +112,12 @@ export async function GET() {
       warnings,
       checks: {
         supabaseRest: supabaseConfigured ? (failedTables.length ? "degraded" : "ok") : "missing-config",
+        supabaseSchema: supabaseConfigured ? (failedSchemaShapes.length ? "degraded" : "ok") : "missing-config",
         emailDelivery: emailDeliveryConfigured ? "ok" : "missing-config",
         stravaOAuth: stravaConfigured ? "ok" : "missing-config",
         appUrl: appUrlConfigured ? "ok" : "missing-config",
         tables: tableChecks,
+        schema: schemaChecks,
       },
     },
     { status: criticalOk ? 200 : 503 },
@@ -139,6 +163,30 @@ async function checkTable(check: (typeof criticalTables)[number], requestId: str
       status: "error" as const,
       latencyMs: Date.now() - startedAt,
       error: isProductionRuntime() ? "Unavailable" : message,
+    };
+  }
+}
+
+async function checkSchemaShape(check: (typeof criticalSchemaShapes)[number], requestId: string) {
+  const startedAt = Date.now();
+
+  try {
+    await selectRows(check.table, `select=${check.columns.join(",")}&limit=1`);
+    return {
+      table: check.table,
+      columns: check.columns,
+      status: "ok" as const,
+      latencyMs: Date.now() - startedAt,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[grapply:health:${requestId}:${check.table}:schema]`, message);
+    return {
+      table: check.table,
+      columns: check.columns,
+      status: "error" as const,
+      latencyMs: Date.now() - startedAt,
+      error: isProductionRuntime() ? "Schema mismatch" : message,
     };
   }
 }
