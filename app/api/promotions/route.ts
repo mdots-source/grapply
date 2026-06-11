@@ -4,7 +4,7 @@ import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { getReadableMemberIds } from "@/lib/member-visibility";
 import { toStudent } from "@/lib/supabase/mappers";
-import { deleteRows, insertRow, isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
+import { deleteRows, insertRow, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
 
 const validBelts = new Set(["white", "blue", "purple", "brown", "black"]);
 const beltOrder = { white: 0, blue: 1, purple: 2, brown: 3, black: 4 } satisfies Record<PromotionBelt, number>;
@@ -122,6 +122,7 @@ export async function POST(request: Request) {
         previous_stripes: member.stripes,
         detail: promotion.detail,
       });
+      await applyPromotionRankToMember(clubId, promotion.memberId, promotion);
       const updatedMember = await getPromotionMember(clubId, promotion.memberId);
 
       return noStoreJson({ ok: true, source: "supabase", promotion: row, member: updatedMember });
@@ -232,6 +233,7 @@ export async function DELETE(request: Request) {
 
       const removed = await deleteRows("member_promotions", `id=eq.${encodeURIComponent(promotionId)}&club_id=eq.${clubId}`);
       if (removed.length === 0) return noStoreJson({ ok: false, error: "Promotion not found in this club." }, { status: 404 });
+      await restorePromotionRankAfterDelete(clubId, promotion);
       const updatedMember = await getPromotionMember(clubId, promotion.member_id);
       return noStoreJson({ ok: true, source: "supabase", removed, member: updatedMember });
     } catch (error) {
@@ -342,4 +344,65 @@ function isUuid(value: unknown) {
 async function getPromotionMember(clubId: string, memberId: string) {
   const [member] = await selectRows("academy_members", `select=*&id=eq.${encodeURIComponent(memberId)}&club_id=eq.${clubId}&limit=1`);
   return member ? toStudent(member) : null;
+}
+
+async function applyPromotionRankToMember(clubId: string, memberId: string, promotion: PromotionPayload) {
+  if (promotion.type === "stripe" && typeof promotion.stripes === "number") {
+    await updateRows(
+      "academy_members",
+      { stripes: promotion.stripes },
+      `id=eq.${encodeURIComponent(memberId)}&club_id=eq.${clubId}`,
+    );
+  }
+
+  if (promotion.type === "belt" && promotion.belt) {
+    await updateRows(
+      "academy_members",
+      { belt: promotion.belt, stripes: promotion.stripes ?? 0 },
+      `id=eq.${encodeURIComponent(memberId)}&club_id=eq.${clubId}`,
+    );
+  }
+}
+
+async function restorePromotionRankAfterDelete(
+  clubId: string,
+  promotion: {
+    member_id: string;
+    type: string;
+    previous_belt: PromotionBelt | null;
+    previous_stripes: number | null;
+  },
+) {
+  if (promotion.type !== "stripe" && promotion.type !== "belt") return;
+
+  const [latestRankPromotion] = await selectRows(
+    "member_promotions",
+    `select=*&club_id=eq.${clubId}&member_id=eq.${encodeURIComponent(promotion.member_id)}&type=in.(stripe,belt)&order=awarded_at.desc,id.desc&limit=1`,
+  );
+
+  if (latestRankPromotion?.type === "stripe" && typeof latestRankPromotion.stripes === "number") {
+    await updateRows(
+      "academy_members",
+      { stripes: latestRankPromotion.stripes },
+      `id=eq.${encodeURIComponent(promotion.member_id)}&club_id=eq.${clubId}`,
+    );
+    return;
+  }
+
+  if (latestRankPromotion?.type === "belt" && latestRankPromotion.belt) {
+    await updateRows(
+      "academy_members",
+      { belt: latestRankPromotion.belt, stripes: latestRankPromotion.stripes ?? 0 },
+      `id=eq.${encodeURIComponent(promotion.member_id)}&club_id=eq.${clubId}`,
+    );
+    return;
+  }
+
+  if (promotion.previous_belt && typeof promotion.previous_stripes === "number") {
+    await updateRows(
+      "academy_members",
+      { belt: promotion.previous_belt, stripes: promotion.previous_stripes },
+      `id=eq.${encodeURIComponent(promotion.member_id)}&club_id=eq.${clubId}`,
+    );
+  }
 }

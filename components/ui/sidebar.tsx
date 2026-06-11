@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export function Sidebar({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
@@ -38,7 +37,7 @@ export function SidebarMenuButton({
   href: string;
 }) {
   return (
-    <Link
+    <a
       href={href}
       className={cn(
         "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]",
@@ -48,6 +47,6 @@ export function SidebarMenuButton({
       {...props}
     >
       {children}
-    </Link>
+    </a>
   );
 }

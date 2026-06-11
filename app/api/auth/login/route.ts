@@ -6,6 +6,7 @@ import { clubMemberships, clubs, getDemoSafeRole, platformUsers } from "@/data/p
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { noStoreJson, readJsonObject } from "@/lib/api-json";
 import { getAuthEmailError, normalizeAuthEmail } from "@/lib/auth-validation";
+import { noStorePostAuthRedirect } from "@/lib/auth-post-redirect";
 import { getRequestUrl } from "@/lib/request-origin";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
         ? `/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`
         : returnTo ? await getSupabasePostAuthDestination(user.id, returnTo) : null;
       const response = isFormSubmit && redirectTo
-        ? noStoreRedirect(getRequestUrl(redirectTo, request), 303)
+        ? noStorePostAuthRedirect(getRequestUrl(redirectTo, request))
         : noStoreJson({
             ok: true,
             source: "supabase",
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
 function createMockLoginResponse(request: Request, user: (typeof platformUsers)[number], returnTo: string | null, isFormSubmit: boolean) {
   const redirectTo = returnTo ? getMockPostAuthDestination(user.id, returnTo) : null;
   const response = isFormSubmit && redirectTo
-    ? noStoreRedirect(getRequestUrl(redirectTo, request), 303)
+    ? noStorePostAuthRedirect(getRequestUrl(redirectTo, request))
     : noStoreJson({ ok: true, source: "mock", user, ...(redirectTo ? { redirectTo } : {}) });
   setMockAuthCookie(response, user.id);
   setDestinationActiveClubCookie(response, redirectTo);

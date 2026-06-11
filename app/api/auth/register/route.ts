@@ -3,6 +3,7 @@ import { setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
 import { recordAuthFailure } from "@/lib/auth-observability";
 import { isMockAuthFallbackAllowed, isProductionRuntime } from "@/lib/auth-mode";
 import { getAuthEmailError, getPasswordError, normalizeAuthEmail } from "@/lib/auth-validation";
+import { noStorePostAuthRedirect } from "@/lib/auth-post-redirect";
 import { inviteAcceptedEmailBody, queueEmail, welcomeEmailBody } from "@/lib/email/outbox";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { noStoreJson, readJsonObject } from "@/lib/api-json";
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
         const destinationUrl = getRequestUrl(destination, request);
         destinationUrl.searchParams.set("invite", existingMembership.role === nextRole ? "already-member" : "role-updated");
         const response = isFormSubmit
-          ? noStoreRedirect(destinationUrl, 303)
+          ? noStorePostAuthRedirect(destinationUrl)
           : noStoreJson({ ok: true, source: "supabase", user, club, membership: { ...existingMembership, role: nextRole }, redirectTo: destinationUrl.pathname + destinationUrl.search });
         setAuthCookies(response, session);
         setActiveClubCookie(response, club.slug);
@@ -152,7 +153,7 @@ export async function POST(request: Request) {
         const destinationUrl = getRequestUrl(destination, request);
         destinationUrl.searchParams.set("invite", "already-accepted");
         const response = isFormSubmit
-          ? noStoreRedirect(destinationUrl, 303)
+          ? noStorePostAuthRedirect(destinationUrl)
           : noStoreJson({ ok: true, source: "supabase", user, club, membership, redirectTo: destinationUrl.pathname + destinationUrl.search });
         setAuthCookies(response, session);
         setActiveClubCookie(response, club.slug);
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
         membershipId: membership.id,
       });
       const response = isFormSubmit
-        ? noStoreRedirect(getRequestUrl(destination, request), 303)
+        ? noStorePostAuthRedirect(getRequestUrl(destination, request))
         : noStoreJson({ ok: true, source: "supabase", user, club, membership, redirectTo: destination });
       setAuthCookies(response, session);
       setActiveClubCookie(response, club.slug);
@@ -188,7 +189,7 @@ export async function POST(request: Request) {
     session ??= await signInWithPassword(userEmail, password);
     const destination = await getAccountRegistrationDestination(user.id, rawReturnTo, returnTo);
     const response = isFormSubmit
-      ? noStoreRedirect(getRequestUrl(destination, request), 303)
+      ? noStorePostAuthRedirect(getRequestUrl(destination, request))
       : noStoreJson({ ok: true, source: "supabase", user, redirectTo: destination });
     setAuthCookies(response, session);
     setDestinationActiveClubCookie(response, destination);

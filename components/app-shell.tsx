@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -114,7 +113,7 @@ export function AppShell({
       <div className="min-h-screen text-[var(--foreground)]">
       <Sidebar>
         <SidebarHeader>
-          <Link href={shellHomeHref} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--accent)]/25 hover:bg-[var(--surface-hover)]">
+          <a href={shellHomeHref} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--accent)]/25 hover:bg-[var(--surface-hover)]">
             <div className="grid size-10 place-items-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
               <Shield size={22} />
             </div>
@@ -122,7 +121,7 @@ export function AppShell({
               <div className="text-sm font-black tracking-[0.18em] text-[var(--foreground)]">Grapply</div>
               <div className="truncate text-xs text-[var(--muted)]">{session?.activeClub?.name ?? academyMeta.name}</div>
             </div>
-          </Link>
+          </a>
         </SidebarHeader>
 
         <SidebarContent>
@@ -173,13 +172,13 @@ export function AppShell({
         </SidebarContent>
 
         <SidebarFooter>
-          <Link
+          <a
             href="/api/auth/logout"
             className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent-coral)]/30 hover:text-[var(--foreground)]"
           >
             <LogOut size={14} />
             Logout
-          </Link>
+          </a>
         </SidebarFooter>
       </Sidebar>
 
@@ -227,7 +226,7 @@ export function AppShell({
                 const belt = getNavBeltAccent(item.href);
                 const href = getWorkspaceHref(item.href, organizationId);
                 return (
-                  <Link
+                  <a
                     key={item.href}
                     href={href}
                     aria-current={active ? "page" : undefined}
@@ -247,7 +246,7 @@ export function AppShell({
                     }
                   >
                     {item.label}
-                  </Link>
+                  </a>
                 );
               })}
             </div>}
@@ -301,7 +300,7 @@ function ProfileDrawer({
             {memberships.map((membership) => {
               const active = membership.club.slug === activeSlug;
               return (
-                <Link
+                <a
                   key={membership.club.slug}
                   href={`/clubs/select?club=${membership.club.slug}&returnTo=${encodeURIComponent(currentPath)}`}
                   onClick={close}
@@ -314,30 +313,30 @@ function ProfileDrawer({
                 >
                   <span className="min-w-0 truncate">{membership.club.name}</span>
                   {active && <span className="text-xs font-semibold text-[var(--accent)]">Current</span>}
-                </Link>
+                </a>
               );
             })}
           </div>
         )}
 
         {session?.activeClub?.slug && (
-          <Link
+          <a
             href={getWorkspaceHref("/account", session.activeClub.slug)}
             onClick={close}
             className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]/30 hover:bg-[var(--surface-hover)]"
           >
             <UserRound size={15} />
             Account settings
-          </Link>
+          </a>
         )}
 
-        <Link
+        <a
           href="/api/auth/logout"
           className="flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent-coral)]/30 hover:text-[var(--foreground)]"
         >
           <LogOut size={15} />
           Logout
-        </Link>
+        </a>
       </div>
     </Drawer>
   );
