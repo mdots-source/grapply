@@ -27,8 +27,8 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
     return null;
   }
 
-  if (!accessDenied && memberships.length === 1) {
-    const clubSlug = memberships[0].club.slug;
+  if (!accessDenied && memberships.length > 0) {
+    const clubSlug = session?.activeClub?.slug ?? memberships[0].club.slug;
     redirect(`/clubs/select?club=${clubSlug}&returnTo=${encodeURIComponent(workspaceReturnTo)}`);
   }
 

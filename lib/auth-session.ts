@@ -33,15 +33,15 @@ export function getDemoWorkspaceSession(activeClubSlug = "grapply-bjj") {
 }
 
 export async function getCurrentSession() {
-  const result = await getCurrentSessionResult();
+  const result = await getCurrentSessionResult(false);
   return result.session;
 }
 
 export async function getCurrentSessionWithRefresh() {
-  return getCurrentSessionResult();
+  return getCurrentSessionResult(true);
 }
 
-async function getCurrentSessionResult() {
+async function getCurrentSessionResult(allowRefresh: boolean) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(authCookieNames.accessToken)?.value;
   const refreshToken = cookieStore.get(authCookieNames.refreshToken)?.value;
@@ -82,7 +82,7 @@ async function getCurrentSessionResult() {
 
   let authUser = await getAuthUser(accessToken);
   let refreshedSession: Awaited<ReturnType<typeof refreshPasswordSession>> | null = null;
-  if (!authUser?.email && refreshToken) {
+  if (!authUser?.email && refreshToken && allowRefresh) {
     refreshedSession = await refreshPasswordSession(refreshToken).catch(() => null);
     authUser = refreshedSession?.user ?? null;
   }
