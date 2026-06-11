@@ -88,6 +88,7 @@ export function toClubClass(row: TableRow<"club_classes">): ClubClass {
   return {
     id: row.id,
     clubId: row.club_id,
+    userId: row.user_id,
     name: row.name,
     coach: row.coach,
     day: row.day,

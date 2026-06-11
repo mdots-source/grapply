@@ -44,6 +44,7 @@ export type RoleDefinition = {
 export type ClubClass = {
   id: string;
   clubId: string;
+  userId?: string | null;
   name: string;
   coach: string;
   day: string;

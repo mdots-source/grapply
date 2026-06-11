@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 export type ClassFormValue = {
   id?: string;
+  userId?: string | null;
   name: string;
   coach: string;
   day: string;
@@ -130,11 +131,12 @@ export function CreateClassForm({
         try {
           const validationError = validateClass?.(form);
           if (validationError) throw new Error(validationError);
+          const { checkedIn: _checkedIn, userId: _userId, ...classPayload } = form;
 
           const response = await fetch("/api/classes", {
             method: form.id ? "PATCH" : "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...form, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
+            body: JSON.stringify({ ...classPayload, ...(resolvedClubSlug ? { clubSlug: resolvedClubSlug } : {}) }),
           });
           const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string; class?: Partial<ClassFormValue> }>(response, "Training creation failed.");
           if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Training creation failed.", payload.requestId));
