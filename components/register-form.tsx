@@ -18,14 +18,14 @@ export function RegisterForm({ returnTo = "/schedule", inviteToken }: { returnTo
         <Label htmlFor="user-name">Full name</Label>
         <div className="relative">
           <User className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-          <Input id="user-name" name="ownerName" className="pl-9" placeholder="Sofia Almeida" required />
+          <Input id="user-name" name="fullName" className="pl-9" placeholder="Sofia Almeida" required />
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="owner">Email</Label>
+        <Label htmlFor="user-email">Email</Label>
         <div className="relative">
           <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-          <Input id="owner" name="ownerEmail" className="pl-9" placeholder="you@academy.com" type="email" required />
+          <Input id="user-email" name="email" className="pl-9" placeholder="you@academy.com" type="email" required />
         </div>
       </div>
       <div className="space-y-2">

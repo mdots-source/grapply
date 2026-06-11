@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageTransition } from "@/components/page-transition";
 import { ScheduleGrid } from "@/components/schedule-grid";
 import { Card } from "@/components/ui/card";
-import { getClassesData, getCompetitionsData, getVisibleMembersData } from "@/lib/backend-data";
+import { getClassesData, getVisibleMembersData } from "@/lib/backend-data";
 import { getWorkspaceDestinationLabel } from "@/lib/workspace-intent";
 import { requireWorkspaceRole } from "@/lib/workspace-access";
 
@@ -21,12 +21,11 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
     role: session.activeRole,
   };
   let initialScheduleError: string | null = null;
-  const [initialClasses, initialCompetitions, initialMembers] = await Promise.all([
+  const [initialClasses, initialMembers] = await Promise.all([
     getClassesData(session.activeClub.slug).catch((error) => {
       initialScheduleError = error instanceof Error ? error.message : "Could not load classes.";
       return [];
     }),
-    getCompetitionsData(session.activeClub.slug, viewer).catch(() => []),
     getVisibleMembersData({
       clubSlug: session.activeClub.slug,
       userId: session.user.id,
@@ -47,7 +46,6 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
           currentUserId={session.user.id}
           currentUserName={session.user.name}
           initialClasses={initialClasses}
-          initialCompetitionEvents={initialCompetitions}
           initialMembers={initialMembers}
           initialScheduleError={initialScheduleError}
           initialClubSlug={session.activeClub.slug}

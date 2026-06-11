@@ -53,6 +53,7 @@ export function proxy(request: NextRequest) {
   if (publicPrefixes.some((prefix) => pathname.startsWith(prefix))) return NextResponse.next();
 
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;
+  const refreshToken = request.cookies.get(authCookieNames.refreshToken)?.value;
   const segments = pathname.split("/").filter(Boolean);
 
   if (segments.length === 1 && !reservedTopLevelPaths.has(segments[0])) {
@@ -60,6 +61,8 @@ export function proxy(request: NextRequest) {
     const dashboardPath = `/${organizationId}/dashboard`;
 
     if (!accessToken && !isAutomaticDemoLoginEnabled()) {
+      if (refreshToken) return redirectToSessionRefresh(request, dashboardPath);
+
       const loginUrl = getRequestUrl("/login", request);
       loginUrl.searchParams.set("returnTo", dashboardPath);
       return NextResponse.redirect(loginUrl);
@@ -86,6 +89,8 @@ export function proxy(request: NextRequest) {
 
   if (organizationRoute) {
     if (!accessToken && !isAutomaticDemoLoginEnabled()) {
+      if (refreshToken) return redirectToSessionRefresh(request, `${pathname}${search}`);
+
       const loginUrl = getRequestUrl("/login", request);
       loginUrl.searchParams.set("returnTo", `${pathname}${search}`);
       return NextResponse.redirect(loginUrl);
@@ -128,6 +133,8 @@ export function proxy(request: NextRequest) {
     const activeClub = request.cookies.get(authCookieNames.activeClub)?.value;
     const organizationId = activeClub ?? (isAutomaticDemoLoginEnabled() ? demoActiveClub : null);
     if (!organizationId) {
+      if (refreshToken) return redirectToSessionRefresh(request, `${pathname}${search}`);
+
       const clubsUrl = getRequestUrl("/clubs", request);
       clubsUrl.searchParams.set("returnTo", `${pathname}${search}`);
       return NextResponse.redirect(clubsUrl);
@@ -139,6 +146,13 @@ export function proxy(request: NextRequest) {
   }
 
   if (!accessToken) {
+    if (refreshToken) {
+      const requestedDestination = pathname === "/clubs/select"
+        ? normalizeWorkspaceReturnTo(request.nextUrl.searchParams.get("returnTo"))
+        : `${pathname}${search}`;
+      return redirectToSessionRefresh(request, requestedDestination);
+    }
+
     if (isAutomaticDemoLoginEnabled()) {
       const requestHeaders = new Headers(request.headers);
       let cookieHeader = requestHeaders.get("cookie") ?? "";
@@ -175,6 +189,12 @@ export function proxy(request: NextRequest) {
   }
 
   return NextResponse.next();
+}
+
+function redirectToSessionRefresh(request: NextRequest, returnTo: string) {
+  const refreshUrl = getRequestUrl("/api/auth/refresh", request);
+  refreshUrl.searchParams.set("returnTo", returnTo);
+  return NextResponse.redirect(refreshUrl);
 }
 
 export const config = {

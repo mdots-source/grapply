@@ -23,12 +23,12 @@ export async function POST(request: Request) {
   const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await readJsonObject(request);
   const rawReturnTo = String(payload?.returnTo ?? "");
   const returnTo = normalizeWorkspaceReturnTo(rawReturnTo);
-  const ownerEmail = normalizeAuthEmail(payload?.ownerEmail);
-  const ownerName = String(payload?.ownerName ?? ownerEmail.split("@")[0] ?? "Owner").trim();
+  const userEmail = normalizeAuthEmail(payload?.email ?? payload?.ownerEmail);
+  const userName = String(payload?.fullName ?? payload?.name ?? payload?.ownerName ?? userEmail.split("@")[0] ?? "User").trim();
   const password = String(payload?.password ?? "demo");
   const inviteToken = String(payload?.inviteToken ?? "").trim();
 
-  const emailError = getAuthEmailError(ownerEmail);
+  const emailError = getAuthEmailError(userEmail);
   const passwordError = getPasswordError(password);
 
   if (inviteToken && (emailError || passwordError)) {
@@ -37,8 +37,8 @@ export async function POST(request: Request) {
     return noStoreJson({ ok: false, error }, { status: 400 });
   }
 
-  if (!inviteToken && (!ownerName || emailError || passwordError)) {
-    const error = !ownerName
+  if (!inviteToken && (!userName || emailError || passwordError)) {
+    const error = !userName
       ? "Full name is required."
       : emailError ?? passwordError ?? "Name, email, and password are required.";
     if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/register", returnTo, error), 303);
@@ -71,23 +71,23 @@ export async function POST(request: Request) {
 
   try {
     const inviteContext = inviteToken
-      ? await getValidInviteRegistrationContext(inviteToken, ownerEmail)
+      ? await getValidInviteRegistrationContext(inviteToken, userEmail)
       : null;
     let authUser: Awaited<ReturnType<typeof createAuthUser>>;
     let session: Awaited<ReturnType<typeof signInWithPassword>> | null = null;
 
     try {
-      authUser = await createAuthUser({ email: ownerEmail, password, name: ownerName });
+      authUser = await createAuthUser({ email: userEmail, password, name: userName });
     } catch {
-      session = await signInWithPassword(ownerEmail, password);
+      session = await signInWithPassword(userEmail, password);
       authUser = session.user;
     }
 
     const user = await upsertRow(
       "app_users",
       {
-        name: ownerName,
-        email: ownerEmail,
+        name: userName,
+        email: userEmail,
         auth_user_id: authUser.id,
         avatar_url: null,
       },
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     if (inviteContext) {
       const { invite, club } = inviteContext;
       const [existingMembership] = await selectRows("club_memberships", `select=*&club_id=eq.${club.id}&user_id=eq.${user.id}&limit=1`);
-      session ??= await signInWithPassword(ownerEmail, password);
+      session ??= await signInWithPassword(userEmail, password);
 
       if (existingMembership) {
         const nextRole = getInviteAppliedRole(existingMembership.role, invite.role);
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
       await queueWelcomeEmail(request, {
         clubId: club.id,
         clubName: club.name,
-        toEmail: ownerEmail,
+        toEmail: userEmail,
         destination,
         template: "invite_welcome",
       });
@@ -171,8 +171,8 @@ export async function POST(request: Request) {
         clubId: club.id,
         clubName: club.name,
         invitedBy: invite.invited_by,
-        invitedName: ownerName,
-        invitedEmail: ownerEmail,
+        invitedName: userName,
+        invitedEmail: userEmail,
         role: invite.role,
         destination,
         membershipId: membership.id,
@@ -185,7 +185,7 @@ export async function POST(request: Request) {
       return response;
     }
 
-    session ??= await signInWithPassword(ownerEmail, password);
+    session ??= await signInWithPassword(userEmail, password);
     const destination = await getAccountRegistrationDestination(user.id, rawReturnTo, returnTo);
     const response = isFormSubmit
       ? noStoreRedirect(getRequestUrl(destination, request), 303)
@@ -307,7 +307,7 @@ async function queueInviteAcceptedNotification(input: {
   });
 }
 
-async function getValidInviteRegistrationContext(inviteToken: string, ownerEmail: string): Promise<InviteRegistrationContext> {
+async function getValidInviteRegistrationContext(inviteToken: string, inviteEmail: string): Promise<InviteRegistrationContext> {
   const [invite] = await selectRows("club_invites", `select=*&token=eq.${encodeURIComponent(inviteToken)}&status=eq.pending&limit=1`);
   if (!invite) throw new Error("Invite not found or already used.");
   if (!isInviteMembershipRole(invite.role)) throw new Error("Invite role is not supported.");
@@ -315,7 +315,7 @@ async function getValidInviteRegistrationContext(inviteToken: string, ownerEmail
     await updateRows("club_invites", { status: "expired" }, `id=eq.${invite.id}`);
     throw new Error("Invite expired.");
   }
-  if (invite.email.toLowerCase() !== ownerEmail) throw new Error("Invite email does not match this account.");
+  if (invite.email.toLowerCase() !== inviteEmail) throw new Error("Invite email does not match this account.");
 
   const [club] = await selectRows("clubs", `select=*&id=eq.${invite.club_id}&limit=1`);
   if (!club) throw new Error("Invited club not found.");

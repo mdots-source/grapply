@@ -47,12 +47,20 @@ async function getCurrentSessionResult(allowRefresh: boolean) {
   const refreshToken = cookieStore.get(authCookieNames.refreshToken)?.value;
   const activeClubSlug = cookieStore.get(authCookieNames.activeClub)?.value;
 
-  if (!accessToken) return { session: null, refreshedSession: null };
+  let refreshedSession: Awaited<ReturnType<typeof refreshPasswordSession>> | null = null;
+  let authUser: Awaited<ReturnType<typeof getAuthUser>> | null = null;
 
-  if (accessToken.startsWith("mock:") && !isMockAuthFallbackAllowed()) return { session: null, refreshedSession: null };
+  if (!accessToken) {
+    if (!allowRefresh || !refreshToken || !isSupabaseConfigured()) return { session: null, refreshedSession: null };
+    refreshedSession = await refreshPasswordSession(refreshToken).catch(() => null);
+    authUser = refreshedSession?.user ?? null;
+    if (!authUser?.email) return { session: null, refreshedSession: null };
+  }
 
-  if (!isSupabaseConfigured() || accessToken.startsWith("mock:")) {
-    const userId = accessToken.startsWith("mock:") ? accessToken.slice("mock:".length) : platformUsers[0]?.id;
+  if (accessToken?.startsWith("mock:") && !isMockAuthFallbackAllowed()) return { session: null, refreshedSession: null };
+
+  if (!isSupabaseConfigured() || accessToken?.startsWith("mock:")) {
+    const userId = accessToken?.startsWith("mock:") ? accessToken.slice("mock:".length) : platformUsers[0]?.id;
     const user = platformUsers.find((candidate) => candidate.id === userId);
     if (!user) return { session: null, refreshedSession: null };
 
@@ -80,8 +88,9 @@ async function getCurrentSessionResult(allowRefresh: boolean) {
     };
   }
 
-  let authUser = await getAuthUser(accessToken);
-  let refreshedSession: Awaited<ReturnType<typeof refreshPasswordSession>> | null = null;
+  if (!authUser?.email && accessToken) {
+    authUser = await getAuthUser(accessToken);
+  }
   if (!authUser?.email && refreshToken && allowRefresh) {
     refreshedSession = await refreshPasswordSession(refreshToken).catch(() => null);
     authUser = refreshedSession?.user ?? null;

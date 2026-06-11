@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, Loader2, RefreshCw, RotateCcw, Trash2, Trophy } from "lucide-react";
+import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, Loader2, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -56,16 +55,6 @@ export type ScheduleApiMember = {
   name: string;
   belt?: string;
   role?: string;
-};
-
-export type ScheduleApiCompetition = {
-  id: string;
-  name: string;
-  date: string;
-  city: string;
-  venue: string;
-  type: string;
-  status: string;
 };
 
 type TrainingDrawerDefaults = Partial<ClassFormValue> & {
@@ -261,15 +250,6 @@ function isDateInWeek(date: Date, weekStart: Date) {
   return value.getTime() >= start && value.getTime() <= end.getTime();
 }
 
-function dayKeyForDate(date: Date): DayKey {
-  return dayKeys[(date.getDay() + 6) % 7];
-}
-
-function parseCalendarDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function updateCheckedIn(blocks: SessionBlock[], classId: string, checkedIn: number) {
   return blocks.map((block) => (block.id === classId ? { ...block, checkedIn } : block));
 }
@@ -300,7 +280,6 @@ export function ScheduleGrid({
   initialCreateClass = false,
   canManageClasses = false,
   initialClasses,
-  initialCompetitionEvents,
   initialMembers,
   initialScheduleError = null,
   initialClubSlug,
@@ -315,14 +294,12 @@ export function ScheduleGrid({
   currentUserId?: string;
   currentUserName?: string;
   initialClasses?: ScheduleApiClass[];
-  initialCompetitionEvents?: ScheduleApiCompetition[];
   initialMembers?: ScheduleApiMember[];
   initialScheduleError?: string | null;
   initialClubSlug?: string;
 }) {
   const hasInitialSchedule = Array.isArray(initialClasses);
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>(() => classesToScheduleRows(initialClasses, false));
-  const [competitionEvents, setCompetitionEvents] = useState<ScheduleApiCompetition[]>(() => initialCompetitionEvents ?? []);
   const [members, setMembers] = useState<ScheduleApiMember[]>(() => initialMembers ?? []);
   const [loadingSchedule, setLoadingSchedule] = useState(!hasInitialSchedule && !initialScheduleError);
   const [scheduleReloadKey, setScheduleReloadKey] = useState(0);
@@ -358,21 +335,6 @@ export function ScheduleGrid({
     const allSessions = scheduleRows.flatMap((row) => dayKeys.flatMap((key) => row[key]));
     return allSessions.length > 0;
   }, [scheduleRows]);
-
-  const competitionsByDay = useMemo(() => {
-    const events = new Map<DayKey, ScheduleApiCompetition[]>();
-
-    for (const competition of competitionEvents) {
-      const date = parseCalendarDate(competition.date);
-      if (!date || !isDateInWeek(date, weekStart)) continue;
-      const key = dayKeyForDate(date);
-      events.set(key, [...(events.get(key) ?? []), competition]);
-    }
-
-    return events;
-  }, [competitionEvents, weekStart]);
-
-  const hasCompetitionEvents = competitionsByDay.size > 0;
 
   const saveClassToTimetable = (value: ClassFormValue) => {
     const day = dayKeyFromLabel(value.day);
@@ -638,7 +600,6 @@ export function ScheduleGrid({
 
     if (!resolvedClubSlug) {
       setScheduleRows([]);
-      setCompetitionEvents([]);
       setMembers([]);
       setClassesError("Choose an academy to load the schedule.");
       setLoadingSchedule(false);
@@ -660,15 +621,6 @@ export function ScheduleGrid({
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadingSchedule(false);
-      });
-
-    fetch(`/api/competitions${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
-      .then((response) => readApiJson<{ competitions?: ScheduleApiCompetition[] }>(response, "Could not load competitions."))
-      .then((payload: { competitions?: ScheduleApiCompetition[] }) => {
-        setCompetitionEvents(payload.competitions ?? []);
-      })
-      .catch((error: Error) => {
-        if (error.name !== "AbortError") setCompetitionEvents([]);
       });
 
     fetch(`/api/members${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
@@ -809,50 +761,8 @@ export function ScheduleGrid({
         </div>
       </Card>
 
-      {hasCompetitionEvents && (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Trophy size={16} className="text-[var(--accent)]" />
-            <p className="text-sm font-semibold text-[var(--foreground)]">Competition events this week</p>
-          </div>
-          <div className="grid gap-2 md:grid-cols-7">
-            {dayKeys.map((key, index) => {
-              const date = addDays(weekStart, index);
-              const events = competitionsByDay.get(key) ?? [];
-              if (!events.length) return null;
-
-              return (
-                <div key={key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-                  <p className="text-xs font-semibold text-[var(--foreground)]">
-                    {dayLabels[index]} {date.getDate()}
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {events.map((event) => (
-                      <div key={event.id} className="rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/10 p-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <Badge variant="accent">
-                            <Trophy size={12} />
-                            {event.type}
-                          </Badge>
-                        </div>
-                        <p className="mt-2 text-xs font-semibold leading-4 text-[var(--foreground)]">{event.name}</p>
-                        <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">{event.city || event.venue}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Class timetable</p>
-            <p className="text-xs text-[var(--muted)]">Horizontal scroll keeps the full week readable.</p>
-          </div>
+        <div className="flex items-center justify-end border-b border-[var(--border)] px-4 py-3">
           {classesError && resolvedClubSlug && (
             <Button type="button" variant="surface" size="sm" onClick={() => setScheduleReloadKey((value) => value + 1)}>
               <RefreshCw size={14} />
@@ -877,7 +787,12 @@ export function ScheduleGrid({
               theme="legacy"
               suppressCellFocus={false}
               animateRows
-              rowHeight={104}
+              getRowHeight={(params) => {
+                const row = params.data;
+                if (!row) return 104;
+                const maxBlocks = Math.max(...dayKeys.map((key) => row[key].length));
+                return Math.max(104, maxBlocks * 88 + 24);
+              }}
               headerHeight={50}
             />
           </AgGridHost>
@@ -1020,14 +935,14 @@ function ScheduleCell(
   }
 
   return (
-    <div className="flex h-full w-full flex-col justify-center py-2">
+    <div className="flex h-full w-full flex-col justify-center gap-2 py-2">
       {blocks.map((block) => {
         const canManageThisBlock = params.canManageBlock?.(block) ?? Boolean(params.canManageClasses);
         return (
           <button
             key={block.id ?? `${block.name}-${block.room}`}
             type="button"
-            className="grid h-[74px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default disabled:opacity-75"
+            className="grid min-h-[76px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default disabled:opacity-75"
             onClick={() => params.onEditBlock?.(block)}
             disabled={!canManageThisBlock}
             aria-label={canManageThisBlock ? `Edit ${block.name}` : block.name}
