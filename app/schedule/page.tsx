@@ -43,6 +43,9 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
           initialCheckInClassId={canManageClasses ? params?.checkIn : undefined}
           initialCreateClass={canManageClasses && params?.create === "class"}
           canManageClasses={canManageClasses}
+          classManagementScope={session.activeRole === "coach" ? "own" : canManageClasses ? "all" : "none"}
+          currentUserId={session.user.id}
+          currentUserName={session.user.name}
           initialClasses={initialClasses}
           initialCompetitionEvents={initialCompetitions}
           initialMembers={initialMembers}

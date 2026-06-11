@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
 import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, Loader2, RefreshCw, RotateCcw, Trash2, Trophy } from "lucide-react";
@@ -17,6 +17,7 @@ import { formatApiError, readApiJson } from "@/lib/api-client";
 
 type SessionBlock = {
   id?: string;
+  userId?: string | null;
   time: string;
   name: string;
   coach: string;
@@ -39,6 +40,7 @@ type ScheduleRow = {
 
 export type ScheduleApiClass = {
   id?: string;
+  userId?: string | null;
   name: string;
   coach: string;
   day: string;
@@ -70,6 +72,7 @@ type TrainingDrawerDefaults = Partial<ClassFormValue> & {
   title?: string;
   original?: {
     id?: string;
+    userId?: string | null;
     day: string;
     time: string;
     name: string;
@@ -146,8 +149,18 @@ const initialRows: ScheduleRow[] = [
   },
 ];
 
-function session(time: string, name: string, coach: string, room: string, level: string, id?: string, checkedIn?: number, durationMinutes = 60): SessionBlock {
-  return { id, time, name, coach, room, level, durationMinutes, checkedIn };
+function session(
+  time: string,
+  name: string,
+  coach: string,
+  room: string,
+  level: string,
+  id?: string,
+  checkedIn?: number,
+  durationMinutes = 60,
+  userId?: string | null,
+): SessionBlock {
+  return { id, userId, time, name, coach, room, level, durationMinutes, checkedIn };
 }
 
 function emptyRow(time: string): ScheduleRow {
@@ -165,11 +178,11 @@ function compareTimes(a: string, b: string) {
 }
 
 function classToSessionBlock(value: ClassFormValue): SessionBlock {
-  return session(value.time, value.name, value.coach, value.mat, value.level, value.id, value.checkedIn, value.durationMinutes);
+  return session(value.time, value.name, value.coach, value.mat, value.level, value.id, value.checkedIn, value.durationMinutes, value.userId);
 }
 
 function classApiToSessionBlock(value: ScheduleApiClass): SessionBlock {
-  return session(value.time, value.name, value.coach, value.mat, value.level, value.id, value.checkedIn, value.durationMinutes ?? 60);
+  return session(value.time, value.name, value.coach, value.mat, value.level, value.id, value.checkedIn, value.durationMinutes ?? 60, value.userId);
 }
 
 function normalizeScheduleValue(value: string) {
@@ -291,10 +304,16 @@ export function ScheduleGrid({
   initialMembers,
   initialScheduleError = null,
   initialClubSlug,
+  classManagementScope = "none",
+  currentUserId,
+  currentUserName,
 }: {
   initialCheckInClassId?: string;
   initialCreateClass?: boolean;
   canManageClasses?: boolean;
+  classManagementScope?: "all" | "own" | "none";
+  currentUserId?: string;
+  currentUserName?: string;
   initialClasses?: ScheduleApiClass[];
   initialCompetitionEvents?: ScheduleApiCompetition[];
   initialMembers?: ScheduleApiMember[];
@@ -327,6 +346,13 @@ export function ScheduleGrid({
 
   const selectedDay = useMemo(() => addDays(weekStart, 3), [weekStart]);
   const isCurrentWeek = weekStart.getTime() === startOfWeek(new Date()).getTime();
+
+  const canManageBlock = useCallback((block: SessionBlock) => {
+    if (!canManageClasses || classManagementScope === "none") return false;
+    if (classManagementScope === "all") return true;
+    if (block.userId) return Boolean(currentUserId && block.userId === currentUserId);
+    return Boolean(currentUserName && normalizeScheduleValue(block.coach) === normalizeScheduleValue(currentUserName));
+  }, [canManageClasses, classManagementScope, currentUserId, currentUserName]);
 
   const hasClasses = useMemo(() => {
     const allSessions = scheduleRows.flatMap((row) => dayKeys.flatMap((key) => row[key]));
@@ -441,6 +467,14 @@ export function ScheduleGrid({
   };
 
   const openTrainingEditor = (day: string, block: SessionBlock) => {
+    if (!canManageBlock(block)) {
+      setClassActionMessage({
+        tone: "error",
+        text: "Coaches can only manage classes assigned to them.",
+      });
+      return;
+    }
+
     openTrainingDrawer({
       name: block.name,
       coach: block.coach,
@@ -450,10 +484,12 @@ export function ScheduleGrid({
       level: block.level,
       durationMinutes: block.durationMinutes,
       id: block.id,
+      userId: block.userId,
       checkedIn: block.checkedIn,
       title: `Edit ${block.name}`,
       original: {
         id: block.id,
+        userId: block.userId,
         day,
         time: block.time,
         name: block.name,
@@ -477,13 +513,22 @@ export function ScheduleGrid({
       return;
     }
 
+    if (!canManageBlock(match.block)) {
+      setClassActionMessage({
+        tone: "error",
+        text: "Coaches can only check members into classes assigned to them.",
+      });
+      setPendingCheckInClassId(null);
+      return;
+    }
+
     openTrainingEditor(match.day, match.block);
     setClassActionMessage({
       tone: "success",
       text: "This class was opened from the check-in link. Pick a member to mark attendance.",
     });
     setPendingCheckInClassId(null);
-  }, [canManageClasses, loadingSchedule, pendingCheckInClassId, scheduleRows]);
+  }, [canManageBlock, canManageClasses, loadingSchedule, pendingCheckInClassId, scheduleRows]);
 
   const deleteClass = async () => {
     const classId = trainingDefaults.id ?? trainingDefaults.original?.id;
@@ -651,6 +696,7 @@ export function ScheduleGrid({
       cellRendererParams: {
         day: dayLabels[index],
         canManageClasses,
+        canManageBlock,
         onOpenSlot: (time: string) => openTrainingDrawer({ day: dayLabels[index], time, title: `Add ${dayLabels[index]} training` }),
         onEditBlock: (block: SessionBlock) => openTrainingEditor(dayLabels[index], block),
       },
@@ -669,7 +715,7 @@ export function ScheduleGrid({
       },
       ...dayColumns,
     ];
-  }, [canManageClasses, weekStart]);
+  }, [canManageBlock, canManageClasses, weekStart]);
 
   return (
     <div className="space-y-4">
@@ -948,6 +994,7 @@ function ScheduleCell(
   params: ICellRendererParams<ScheduleRow, SessionBlock[]> & {
     day?: string;
     canManageClasses?: boolean;
+    canManageBlock?: (block: SessionBlock) => boolean;
     onOpenSlot?: (time: string) => void;
     onEditBlock?: (block: SessionBlock) => void;
   },
@@ -974,35 +1021,38 @@ function ScheduleCell(
 
   return (
     <div className="flex h-full w-full flex-col justify-center py-2">
-      {blocks.map((block) => (
-        <button
-          key={block.id ?? `${block.name}-${block.room}`}
-          type="button"
-          className="grid h-[74px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default"
-          onClick={() => params.onEditBlock?.(block)}
-          disabled={!params.canManageClasses}
-          aria-label={params.canManageClasses ? `Edit ${block.name}` : block.name}
-        >
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <span className="font-mono text-[11px] font-bold leading-none text-[var(--accent)]">{block.time}</span>
-            <span className={`max-w-[116px] shrink-0 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium ${levelTone(block.level)}`}>{block.level}</span>
-          </div>
-          <div className="min-w-0 pt-1">
-            <p className="truncate text-[13px] font-semibold leading-4 text-[var(--foreground)]">{block.name}</p>
-            <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--muted)]">{block.coach}</p>
-          </div>
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <p className="truncate text-[11px] leading-none text-[var(--muted)]">
-              {block.room} · {block.durationMinutes} min
-            </p>
-            {typeof block.checkedIn === "number" && block.checkedIn > 0 && (
-              <span className="shrink-0 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
-                {block.checkedIn} in
-              </span>
-            )}
-          </div>
-        </button>
-      ))}
+      {blocks.map((block) => {
+        const canManageThisBlock = params.canManageBlock?.(block) ?? Boolean(params.canManageClasses);
+        return (
+          <button
+            key={block.id ?? `${block.name}-${block.room}`}
+            type="button"
+            className="grid h-[74px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default disabled:opacity-75"
+            onClick={() => params.onEditBlock?.(block)}
+            disabled={!canManageThisBlock}
+            aria-label={canManageThisBlock ? `Edit ${block.name}` : block.name}
+          >
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <span className="font-mono text-[11px] font-bold leading-none text-[var(--accent)]">{block.time}</span>
+              <span className={`max-w-[116px] shrink-0 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium ${levelTone(block.level)}`}>{block.level}</span>
+            </div>
+            <div className="min-w-0 pt-1">
+              <p className="truncate text-[13px] font-semibold leading-4 text-[var(--foreground)]">{block.name}</p>
+              <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--muted)]">{block.coach}</p>
+            </div>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <p className="truncate text-[11px] leading-none text-[var(--muted)]">
+                {block.room} · {block.durationMinutes} min
+              </p>
+              {typeof block.checkedIn === "number" && block.checkedIn > 0 && (
+                <span className="shrink-0 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+                  {block.checkedIn} in
+                </span>
+              )}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
