@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabaseBackendData, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { isSupabaseConfigured, selectRows, upsertRow } from "@/lib/supabase/server";
@@ -14,6 +14,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiAccess(searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Club settings");
+  if (backendError) return backendError;
 
   if (isSupabaseConfigured()) {
     let clubId: string | null = null;

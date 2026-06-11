@@ -1,5 +1,5 @@
 import { getClubRoster } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess, requireApiRole, requireSupabasePersistence } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabaseBackendData, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId, getMockClubId } from "@/lib/backend";
 import { deleteRows, insertRow, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
@@ -11,6 +11,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiRole(["owner", "admin", "coach"], searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Coach notes");
+  if (backendError) return backendError;
   const memberId = searchParams.get("memberId");
 
   if (memberId !== null && !isNonEmptyText(memberId)) {

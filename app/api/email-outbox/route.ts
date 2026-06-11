@@ -1,4 +1,4 @@
-import { apiSupabaseError, requireApiRole } from "@/lib/api-access";
+import { apiSupabaseError, requireApiRole, requireSupabaseBackendData } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { deliverEmail, isEmailDeliveryConfigured } from "@/lib/email/delivery";
@@ -9,6 +9,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const access = await requireApiRole(["owner", "admin"], searchParams.get("club"));
   if (access.error) return access.error;
+  const backendError = requireSupabaseBackendData("Email outbox");
+  if (backendError) return backendError;
 
   if (!isSupabaseConfigured()) {
     return noStoreJson({ source: "mock", emails: [] });
