@@ -4,6 +4,7 @@ import { compareMemberHierarchy, currentSession, tvCheckedInAthletes, type Stude
 import { dashboardStats } from "@/data/dashboard";
 import { clubClasses, clubs, getClubRoster, platformUsers, type ClubClass } from "@/data/platform";
 import { getMockCompetitionsForClub, getMockTrainingCampsForClub, getMockTrainingPostsForClub } from "@/lib/mock-club-content";
+import { isProductionRuntime } from "@/lib/auth-mode";
 import { getReadableMemberIds } from "@/lib/member-visibility";
 import { toClubClass, toCompetition, toStudent, toTrainingCamp, toTrainingPost } from "@/lib/supabase/mappers";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
@@ -18,6 +19,12 @@ type ViewerScope = {
   userName?: string | null;
   role: PlatformRole;
 };
+
+function assertProductBackendAvailable(feature: string) {
+  if (isProductionRuntime() && !isSupabaseConfigured()) {
+    throw new Error(`${feature} requires Supabase configuration in production.`);
+  }
+}
 
 export type RankedMember = Student & { rank: number };
 
@@ -56,6 +63,7 @@ export type DashboardData = {
 
 export async function getClassesData(clubSlug?: string | null) {
   const requestedClubSlug = clubSlug ?? (await getRequestedClubSlug());
+  assertProductBackendAvailable("Classes");
   if (!isSupabaseConfigured()) {
     const clubId = getMockClubId(requestedClubSlug);
     return clubClasses.filter((item) => item.clubId === clubId);
@@ -139,6 +147,7 @@ export async function getDashboardData(clubSlug?: string | null, viewer?: Viewer
   const requestedClubSlug = await getRequestedClubSlug(clubSlug);
   const role = viewer?.role ?? "owner";
 
+  assertProductBackendAvailable("Dashboard");
   if (!isSupabaseConfigured()) return getMockDashboardData(requestedClubSlug, role, viewer?.userEmail ?? undefined);
 
   const clubId = await getBackendClubId(requestedClubSlug);
@@ -225,6 +234,7 @@ export async function getDashboardData(clubSlug?: string | null, viewer?: Viewer
 
 export async function getCompetitionsData(clubSlug?: string | null, viewer?: ViewerScope) {
   const requestedClubSlug = await getRequestedClubSlug(clubSlug);
+  assertProductBackendAvailable("Competitions");
   if (!isSupabaseConfigured()) {
     const competitions = getMockCompetitionsForClub(requestedClubSlug);
     return viewer ? filterRegisteredMembersForViewer(competitions, getMockReadableMemberIds(requestedClubSlug, viewer)) : competitions;
@@ -243,6 +253,7 @@ export async function getCompetitionsData(clubSlug?: string | null, viewer?: Vie
 
 export async function getMembersData(clubSlug?: string | null) {
   const requestedClubSlug = clubSlug ?? (await getRequestedClubSlug());
+  assertProductBackendAvailable("Members");
   if (!isSupabaseConfigured()) return getClubRoster(getMockClubId(requestedClubSlug));
   try {
     const clubId = await getBackendClubId(requestedClubSlug);
@@ -266,6 +277,7 @@ export async function getVisibleMembersData({
   role: PlatformRole;
 }) {
   const requestedClubSlug = clubSlug ?? (await getRequestedClubSlug());
+  assertProductBackendAvailable("Members");
   if (!isSupabaseConfigured()) {
     return filterMockRosterForViewer(getClubRoster(getMockClubId(requestedClubSlug)), { userId, userEmail, role });
   }
@@ -298,6 +310,7 @@ export async function getVisibleRankingsData({
 }): Promise<RankedMember[]> {
   const requestedClubSlug = clubSlug ?? (await getRequestedClubSlug());
 
+  assertProductBackendAvailable("Rankings");
   if (!isSupabaseConfigured()) {
     const rankings = getClubRoster(getMockClubId(requestedClubSlug))
       .sort((a, b) => b.points - a.points)
@@ -329,6 +342,7 @@ export async function getVisibleRankingsData({
 
 export async function getMemberData(memberId: string, clubSlug?: string | null) {
   const requestedClubSlug = clubSlug ?? (await getRequestedClubSlug());
+  assertProductBackendAvailable("Member profile");
   if (!isSupabaseConfigured()) return getClubRoster(getMockClubId(requestedClubSlug)).find((member) => member.id === memberId) ?? null;
   try {
     const clubId = await getBackendClubId(requestedClubSlug);
@@ -355,6 +369,7 @@ export async function getVisibleMemberData({
 }) {
   const requestedClubSlug = clubSlug ?? (await getRequestedClubSlug());
 
+  assertProductBackendAvailable("Member profile");
   if (!isSupabaseConfigured()) {
     return filterMockRosterForViewer(getClubRoster(getMockClubId(requestedClubSlug)), { userId, userEmail, role })
       .find((member) => member.id === memberId) ?? null;
@@ -383,6 +398,7 @@ export async function getVisibleMemberData({
 
 export async function getTrainingCampsData(clubSlug?: string | null, viewer?: ViewerScope) {
   const requestedClubSlug = await getRequestedClubSlug(clubSlug);
+  assertProductBackendAvailable("Training camps");
   if (!isSupabaseConfigured()) {
     const camps = getMockTrainingCampsForClub(requestedClubSlug);
     return viewer ? filterRegisteredMembersForViewer(camps, getMockReadableMemberIds(requestedClubSlug, viewer)) : camps;
@@ -401,6 +417,7 @@ export async function getTrainingCampsData(clubSlug?: string | null, viewer?: Vi
 
 export async function getTrainingPostsData(clubSlug?: string | null, viewer?: ViewerScope) {
   const requestedClubSlug = await getRequestedClubSlug(clubSlug);
+  assertProductBackendAvailable("Training feed");
   if (!isSupabaseConfigured()) {
     const posts = getMockTrainingPostsForClub(requestedClubSlug);
     return viewer ? filterMockTrainingPostsForViewer(posts, requestedClubSlug, viewer) : posts;
