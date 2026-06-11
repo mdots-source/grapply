@@ -192,7 +192,15 @@ function isInviteMembershipRole(role: string): role is "admin" | "coach" | "memb
 }
 
 function getInviteAppliedRole(existingRole: string, inviteRole: "admin" | "coach" | "member"): "owner" | "admin" | "coach" | "member" {
-  if (existingRole === "owner") return "owner";
+  const roleRank = {
+    owner: 4,
+    admin: 3,
+    coach: 2,
+    member: 1,
+  } satisfies Record<"owner" | "admin" | "coach" | "member", number>;
+  if (existingRole === "owner" || existingRole === "admin" || existingRole === "coach" || existingRole === "member") {
+    return roleRank[existingRole] >= roleRank[inviteRole] ? existingRole : inviteRole;
+  }
   return inviteRole;
 }
 
