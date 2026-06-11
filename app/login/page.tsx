@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth-session";
 import { hasRefreshSessionCookie, redirectToSessionRefreshIfPossible } from "@/lib/auth-refresh-redirect";
 import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
+import { getPlatformAdminRole, isPlatformAdminPath } from "@/lib/platform-admin";
 import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
 export default async function LoginPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string; error?: string; invite?: string }> }) {
@@ -17,6 +18,9 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
   const inviteToken = params?.invite ? String(params.invite) : undefined;
   const session = await getCurrentSession();
   if (session) {
+    if (isPlatformAdminPath(new URL(returnTo, "https://grapply.local").pathname) && getPlatformAdminRole(session.user.email)) {
+      redirect(returnTo);
+    }
     if (inviteToken) {
       redirect(`/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`);
     }
@@ -62,6 +66,13 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
 }
 
 function normalizeLoginReturnTo(rawReturnTo?: string | null) {
+  if (rawReturnTo?.startsWith("/")) {
+    try {
+      const destination = new URL(rawReturnTo, "https://grapply.local");
+      if (isPlatformAdminPath(destination.pathname)) return `${destination.pathname}${destination.search}`;
+    } catch {}
+  }
+
   const normalizedReturnTo = normalizeWorkspaceReturnTo(rawReturnTo);
   if (!rawReturnTo?.startsWith("/")) return normalizedReturnTo;
 

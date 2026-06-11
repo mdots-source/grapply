@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   CalendarDays,
   CheckCircle2,
@@ -200,9 +199,9 @@ function CampCard({
               <EditTrainingCampButton camp={camp} clubSlug={organizationId} />
               {canDeletePlanning && <DeleteTrainingCampButton camp={camp} clubSlug={organizationId} />}
               <Button variant="surface" size="sm" asChild>
-                <Link href={getWorkspaceHref(`/members?filter=camp&camp=${camp.id}`, organizationId)}>
+                <a href={getWorkspaceHref(`/members?filter=camp&camp=${camp.id}`, organizationId)}>
                   Plan roster
-                </Link>
+                </a>
               </Button>
             </div>
           ) : (

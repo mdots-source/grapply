@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AlertTriangle, CalendarDays, KeyRound, MailCheck, ShieldCheck, UserCog, Users } from "lucide-react";
 import { AssignExistingUserForm } from "@/components/admin/assign-existing-user-form";
 import { ClubUsersList } from "@/components/admin/club-users-list";
@@ -65,7 +64,7 @@ export default async function AdminPage() {
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <Badge variant="accent" className="capitalize">{session.activeRole}</Badge>
                 <Button variant="primary" size="sm" asChild>
-                  <Link href={getWorkspaceHref("/members?add=1", organizationId)}>Add member</Link>
+                  <a href={getWorkspaceHref("/members?add=1", organizationId)}>Add member</a>
                 </Button>
               </div>
             </div>
@@ -222,7 +221,7 @@ export default async function AdminPage() {
                 <CardDescription>People with access to this academy.</CardDescription>
               </div>
               <Button variant="surface" size="sm" asChild>
-                <Link href={getWorkspaceHref("/members", organizationId)}>Open roster</Link>
+                <a href={getWorkspaceHref("/members", organizationId)}>Open roster</a>
               </Button>
             </CardHeader>
             <ClubUsersList
@@ -248,7 +247,7 @@ export default async function AdminPage() {
                 <CardDescription>Current classes available to members.</CardDescription>
               </div>
               <Button variant="surface" size="sm" asChild>
-                <Link href={getWorkspaceHref("/schedule?create=class", organizationId)}>Create class</Link>
+                <a href={getWorkspaceHref("/schedule?create=class", organizationId)}>Create class</a>
               </Button>
             </CardHeader>
             <div className="grid gap-3 lg:grid-cols-2">

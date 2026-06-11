@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CalendarClock, ClipboardList, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,31 +51,31 @@ export function AdminOverview({
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Button variant="surface" asChild>
-              <Link href={workspaceHref("/schedule")}>
+              <a href={workspaceHref("/schedule")}>
                 <CalendarClock size={16} />
                 View schedule
-              </Link>
+              </a>
             </Button>
             <Button variant="surface" asChild>
-              <Link href={workspaceHref("/members")}>
+              <a href={workspaceHref("/members")}>
                 <Users size={16} />
                 View members
-              </Link>
+              </a>
             </Button>
             {canManageSchedule && (
               <Button variant="primary" asChild>
-                <Link href={workspaceHref("/schedule?create=class")}>
+                <a href={workspaceHref("/schedule?create=class")}>
                   <ClipboardList size={16} />
                   Create class
-                </Link>
+                </a>
               </Button>
             )}
             {canManageClub && (
               <Button variant="outline" asChild>
-                <Link href={workspaceHref("/admin")}>
+                <a href={workspaceHref("/admin")}>
                   <ShieldCheck size={16} />
                   Manage roles
-                </Link>
+                </a>
               </Button>
             )}
           </div>

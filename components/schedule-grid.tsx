@@ -7,7 +7,6 @@ import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, Loader2, Refre
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgGridHost } from "@/components/ag-grid-host";
 import { useActiveClubState } from "@/components/use-active-club";
@@ -435,6 +434,22 @@ export function ScheduleGrid({
       ...defaults,
     });
     setTrainingDrawerOpen(true);
+    if (!defaults?.original && typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("create", "class");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }
+  };
+
+  const closeTrainingEditor = () => {
+    setTrainingDrawerOpen(false);
+    setDeleteConfirm(false);
+    setSelectedMemberId("");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("create");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }
   };
 
   const openTrainingEditor = (day: string, block: SessionBlock) => {
@@ -474,6 +489,13 @@ export function ScheduleGrid({
   useEffect(() => {
     setPendingCheckInClassId(initialCheckInClassId ?? null);
   }, [initialCheckInClassId]);
+
+  useEffect(() => {
+    if (!initialCreateClass || !canManageClasses) return;
+    openTrainingDrawer({ day: "Mon", time: "18:00", title: "Add training" });
+    // This intentionally responds only to server-provided route intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCreateClass, canManageClasses]);
 
   useEffect(() => {
     if (!pendingCheckInClassId || !canManageClasses) return;
@@ -532,7 +554,7 @@ export function ScheduleGrid({
           return { ...row, [day]: row[day].filter((item) => item.id !== classId) };
         }),
       );
-      setTrainingDrawerOpen(false);
+      closeTrainingEditor();
       setDeleteConfirm(false);
     } catch (error) {
       setClassActionMessage({ tone: "error", text: error instanceof Error ? error.message : "Class deletion failed." });
@@ -720,6 +742,87 @@ export function ScheduleGrid({
         )}
       </div>
 
+      {trainingDrawerOpen && canManageClasses && (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_18px_80px_rgba(0,0,0,0.22)]">
+          <div className="mb-4 flex flex-col gap-2 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-[var(--foreground)]">{trainingDefaults.title ?? "Add training"}</h3>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                {trainingDefaults.original ? "Update this class and manage attendance." : "Create a class for the selected academy."}
+              </p>
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={closeTrainingEditor}>
+              Cancel
+            </Button>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <CreateClassForm
+              key={`${trainingDefaults.original?.id ?? "new"}-${trainingDefaults.day ?? "Mon"}-${trainingDefaults.time ?? "18:00"}`}
+              forceOpen
+              initialValue={trainingDefaults}
+              onCreate={saveClassToTimetable}
+              validateClass={validateClassOverlap}
+              onCancel={closeTrainingEditor}
+              onSaved={closeTrainingEditor}
+              clubSlug={resolvedClubSlug}
+            />
+            {trainingDefaults.original ? (
+              <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">Class actions</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Check in a member or remove this training.</p>
+                </div>
+                {classActionMessage && (
+                  <div
+                    className={
+                      classActionMessage.tone === "success"
+                        ? "flex items-start gap-2 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
+                        : "flex items-start gap-2 rounded-lg border border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
+                    }
+                  >
+                    {classActionMessage.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                    <span>{classActionMessage.text}</span>
+                  </div>
+                )}
+                <div className="grid gap-2">
+                  <label className="sr-only" htmlFor="schedule-check-in-member">
+                    Member
+                  </label>
+                  <select
+                    id="schedule-check-in-member"
+                    value={selectedMemberId}
+                    onChange={(event) => setSelectedMemberId(event.target.value)}
+                    className="h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
+                  >
+                    <option value="">Select member</option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="button" variant="surface" disabled={!selectedMemberId || classActionLoading === "check-in"} onClick={checkInMember}>
+                    {classActionLoading === "check-in" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                    Check in
+                  </Button>
+                </div>
+                <Button type="button" variant={deleteConfirm ? "primary" : "outline"} className="w-full justify-center" disabled={classActionLoading === "delete"} onClick={deleteClass}>
+                  {classActionLoading === "delete" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                  {deleteConfirm ? "Confirm delete training" : "Delete training"}
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Validation</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Grapply checks mat and time overlaps before saving. Backend conflicts are shown directly in the form.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         {classesError && resolvedClubSlug && (
           <div className="flex items-center justify-end border-b border-[var(--border)] px-4 py-3">
@@ -779,68 +882,6 @@ export function ScheduleGrid({
           </div>
         )}
       </div>
-      <Drawer open={trainingDrawerOpen} onOpenChange={setTrainingDrawerOpen}>
-        <DrawerHeader onClose={() => setTrainingDrawerOpen(false)}>
-          <DrawerTitle>{trainingDefaults.title ?? "Add training"}</DrawerTitle>
-          <DrawerDescription>{trainingDefaults.original ? "Update this training session." : "Create a class."}</DrawerDescription>
-        </DrawerHeader>
-        <div className="mt-6">
-          <CreateClassForm
-            forceOpen
-            initialValue={trainingDefaults}
-            onCreate={saveClassToTimetable}
-            validateClass={validateClassOverlap}
-            onCancel={() => setTrainingDrawerOpen(false)}
-            onSaved={() => setTrainingDrawerOpen(false)}
-            clubSlug={resolvedClubSlug}
-          />
-          {trainingDefaults.original && (
-            <div className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-              <div>
-                <p className="text-sm font-semibold text-[var(--foreground)]">Class actions</p>
-              </div>
-              {classActionMessage && (
-                <div
-                  className={
-                    classActionMessage.tone === "success"
-                      ? "flex items-start gap-2 rounded-lg border border-[var(--status-success)]/25 bg-[var(--status-success)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
-                      : "flex items-start gap-2 rounded-lg border border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10 px-3 py-2 text-xs font-semibold text-[var(--foreground)]"
-                  }
-                >
-                  {classActionMessage.tone === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
-                  <span>{classActionMessage.text}</span>
-                </div>
-              )}
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <label className="sr-only" htmlFor="schedule-check-in-member">
-                  Member
-                </label>
-                <select
-                  id="schedule-check-in-member"
-                  value={selectedMemberId}
-                  onChange={(event) => setSelectedMemberId(event.target.value)}
-                  className="h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15"
-                >
-                  <option value="">Select member</option>
-                  {members.map((member) => (
-                    <option key={member.id} value={member.id} className="bg-[var(--panel-strong)] text-[var(--foreground)]">
-                      {member.name}
-                    </option>
-                  ))}
-                </select>
-                <Button type="button" variant="surface" disabled={!selectedMemberId || classActionLoading === "check-in"} onClick={checkInMember}>
-                  {classActionLoading === "check-in" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                  Check in
-                </Button>
-              </div>
-              <Button type="button" variant={deleteConfirm ? "primary" : "outline"} className="w-full justify-center" disabled={classActionLoading === "delete"} onClick={deleteClass}>
-                {classActionLoading === "delete" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                {deleteConfirm ? "Confirm delete training" : "Delete training"}
-              </Button>
-            </div>
-          )}
-        </div>
-      </Drawer>
     </div>
   );
 }

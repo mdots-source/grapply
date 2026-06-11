@@ -8,6 +8,7 @@ import { noStoreJson, readJsonObject } from "@/lib/api-json";
 import { getAuthEmailError, normalizeAuthEmail } from "@/lib/auth-validation";
 import { noStorePostAuthRedirect } from "@/lib/auth-post-redirect";
 import { getRequestUrl } from "@/lib/request-origin";
+import { getPlatformAdminRole, isPlatformAdminPath } from "@/lib/platform-admin";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
 
       const redirectTo = inviteToken
         ? `/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`
-        : returnTo ? await getSupabasePostAuthDestination(user.id, returnTo) : null;
+        : returnTo ? await getSupabasePostAuthDestination(user.id, user.email, returnTo) : null;
       const response = isFormSubmit && redirectTo
         ? noStorePostAuthRedirect(getRequestUrl(redirectTo, request))
         : noStoreJson({
@@ -134,7 +135,11 @@ function setDestinationActiveClubCookie(response: NextResponse, destination: str
   if (route?.organizationId) setActiveClubCookie(response, route.organizationId);
 }
 
-async function getSupabasePostAuthDestination(userId: string, returnTo: string) {
+async function getSupabasePostAuthDestination(userId: string, userEmail: string, returnTo: string) {
+  if (isPlatformAdminPath(new URL(returnTo, "https://grapply.local").pathname)) {
+    return getPlatformAdminRole(userEmail) ? returnTo : clubsPath("/schedule");
+  }
+
   const memberships = await selectRows("club_memberships", `select=*&user_id=eq.${userId}`);
   const requestedWorkspace = getRequestedWorkspace(returnTo);
   if (requestedWorkspace) {
@@ -161,6 +166,11 @@ async function getSupabasePostAuthDestination(userId: string, returnTo: string) 
 }
 
 function getMockPostAuthDestination(userId: string, returnTo: string) {
+  if (isPlatformAdminPath(new URL(returnTo, "https://grapply.local").pathname)) {
+    const user = platformUsers.find((candidate) => candidate.id === userId);
+    return getPlatformAdminRole(user?.email) ? returnTo : clubsPath("/schedule");
+  }
+
   const userMemberships = requireMockMemberships(userId);
   const requestedWorkspace = getRequestedWorkspace(returnTo);
   if (requestedWorkspace) {
@@ -183,6 +193,13 @@ function clubsPath(returnTo: string) {
 }
 
 function normalizeLoginReturnTo(rawReturnTo: string) {
+  if (rawReturnTo.startsWith("/")) {
+    try {
+      const destination = new URL(rawReturnTo, "https://grapply.local");
+      if (isPlatformAdminPath(destination.pathname)) return `${destination.pathname}${destination.search}`;
+    } catch {}
+  }
+
   const normalizedReturnTo = normalizeWorkspaceReturnTo(rawReturnTo);
   const requestedWorkspace = getRequestedWorkspace(rawReturnTo);
   return requestedWorkspace ? scopeWorkspaceReturnTo(normalizedReturnTo, requestedWorkspace.organizationId) : normalizedReturnTo;

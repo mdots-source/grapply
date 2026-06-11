@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { motion } from "framer-motion";
@@ -68,22 +67,22 @@ export function MemberProfile({
                 {canAwardProgress && (
                   <>
                     <Button variant="primary" size="sm" className="gap-1.5" asChild>
-                      <Link href={membersHref(`?member=${member.id}&filter=promotion`)}>
+                      <a href={membersHref(`?member=${member.id}&filter=promotion`)}>
                         <Award size={14} /> Award stripe
-                      </Link>
+                      </a>
                     </Button>
                     <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                      <Link href={membersHref(`?member=${member.id}&filter=promotion`)}>
+                      <a href={membersHref(`?member=${member.id}&filter=promotion`)}>
                         <TrendingUp size={14} /> Promote belt
-                      </Link>
+                      </a>
                     </Button>
                   </>
                 )}
                 {canAddStaffNote && (
                   <Button variant="ghost" size="sm" className="gap-1.5" asChild>
-                    <Link href={membersHref(`?member=${member.id}`)}>
+                    <a href={membersHref(`?member=${member.id}`)}>
                       <MessageSquarePlus size={14} /> Add note
-                    </Link>
+                    </a>
                   </Button>
                 )}
               </>

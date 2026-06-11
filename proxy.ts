@@ -20,6 +20,7 @@ const publicPrefixes = [
 const publicPaths = ["/"];
 const demoAccessToken = "mock:usr-sofia";
 const demoActiveClub = "grapply-bjj";
+const platformAdminPrefix = "/platform-admin";
 const unscopedWorkspacePrefixes = [
   "/account",
   "/admin",
@@ -39,6 +40,8 @@ const reservedTopLevelPaths = new Set([
   "login",
   "register",
   "invite",
+  "platform-admin",
+  "students",
   "ui",
   ...unscopedWorkspacePrefixes.map((prefix) => prefix.slice(1)),
 ]);
@@ -55,6 +58,30 @@ export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;
   const refreshToken = request.cookies.get(authCookieNames.refreshToken)?.value;
   const segments = pathname.split("/").filter(Boolean);
+
+  if (pathname === "/students" || pathname.startsWith("/students/")) {
+    const legacyUrl = request.nextUrl.clone();
+    legacyUrl.pathname = pathname === "/students" ? "/members" : `/members/${pathname.slice("/students/".length)}`;
+    return NextResponse.redirect(legacyUrl);
+  }
+
+  if (pathname === platformAdminPrefix) {
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = `${platformAdminPrefix}/dashboard`;
+    return NextResponse.redirect(dashboardUrl);
+  }
+
+  if (pathname.startsWith(`${platformAdminPrefix}/`)) {
+    if (!accessToken && !isAutomaticDemoLoginEnabled()) {
+      if (refreshToken) return redirectToSessionRefresh(request, `${pathname}${search}`);
+
+      const loginUrl = getRequestUrl("/login", request);
+      loginUrl.searchParams.set("returnTo", `${pathname}${search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return NextResponse.next();
+  }
 
   if (segments.length === 1 && !reservedTopLevelPaths.has(segments[0])) {
     const organizationId = segments[0];
@@ -135,9 +162,9 @@ export function proxy(request: NextRequest) {
     if (!organizationId) {
       if (refreshToken) return redirectToSessionRefresh(request, `${pathname}${search}`);
 
-      const clubsUrl = getRequestUrl("/clubs", request);
-      clubsUrl.searchParams.set("returnTo", `${pathname}${search}`);
-      return NextResponse.redirect(clubsUrl);
+      const loginUrl = getRequestUrl("/login", request);
+      loginUrl.searchParams.set("returnTo", `${pathname}${search}`);
+      return NextResponse.redirect(loginUrl);
     }
 
     const scopedUrl = request.nextUrl.clone();

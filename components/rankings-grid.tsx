@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
@@ -306,14 +305,14 @@ function AthleteCell(params: ICellRendererParams<RankedStudent>) {
   if (!student) return null;
 
   return (
-    <Link
+    <a
       href={getWorkspaceHref(`/members/${student.id}`, clubSlug)}
       className="flex h-full items-center gap-3 py-2"
       onClick={(event) => event.stopPropagation()}
     >
       <StudentAvatar student={student} size="sm" />
       <span className="text-sm font-semibold text-[var(--foreground)]">{student.name}</span>
-    </Link>
+    </a>
   );
 }
 

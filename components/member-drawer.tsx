@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type Dispatch, type FormEventHandler, type SetStateAction } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Medal, NotebookPen, Pencil, Trash2, UserPlus } from "lucide-react";
 import { BeltPill, formatBeltRank } from "@/components/belt-pill";
@@ -213,9 +212,9 @@ export function MemberDrawer({
               </Button>
             )}
             <Button variant="primary" className="w-full" asChild>
-              <Link href={getWorkspaceHref(`/members/${member.id}`, resolvedClubSlug)}>
+              <a href={getWorkspaceHref(`/members/${member.id}`, resolvedClubSlug)}>
                 Open full profile <ExternalLink size={16} />
-              </Link>
+              </a>
             </Button>
             <Button variant="ghost" className="w-full" onClick={close}>
               Close

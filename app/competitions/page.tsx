@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AlertTriangle, CalendarDays, CheckCircle2, Clock, MapPin, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CreateCompetitionForm, DeleteCompetitionButton, EditCompetitionButton } from "@/components/planning/create-competition-form";
@@ -177,9 +176,9 @@ function CompetitionCard({
               <EditCompetitionButton event={event} clubSlug={organizationId} />
               {canDeletePlanning && <DeleteCompetitionButton event={event} clubSlug={organizationId} />}
               <Button variant="surface" size="sm" asChild>
-                <Link href={getWorkspaceHref(`/members?filter=competition&event=${event.id}`, organizationId)}>
+                <a href={getWorkspaceHref(`/members?filter=competition&event=${event.id}`, organizationId)}>
                   Manage roster
-                </Link>
+                </a>
               </Button>
             </div>
           ) : (

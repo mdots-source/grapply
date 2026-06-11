@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { clearActiveClubCookie, clearAuthCookies, setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
 import { getCurrentSessionWithRefresh } from "@/lib/auth-session";
+import { getPlatformAdminRole, isPlatformAdminPath } from "@/lib/platform-admin";
 import { getRequestUrl } from "@/lib/request-origin";
 import { normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     return response;
   }
 
-  const destination = getSessionDestination(returnTo, session.activeClub?.slug);
+  const destination = getSessionDestination(returnTo, session.activeClub?.slug, session.user.email);
   const response = noStoreRedirect(getRequestUrl(destination, request), 303);
   if (refreshedSession) setAuthCookies(response, refreshedSession);
   if (session.activeClub?.slug) setActiveClubCookie(response, session.activeClub.slug);
@@ -26,7 +27,11 @@ export async function GET(request: Request) {
   return response;
 }
 
-function getSessionDestination(returnTo: string, activeClubSlug?: string | null) {
+function getSessionDestination(returnTo: string, activeClubSlug?: string | null, userEmail?: string | null) {
+  if (isPlatformAdminPath(new URL(returnTo, "https://grapply.local").pathname)) {
+    return getPlatformAdminRole(userEmail) ? returnTo : activeClubSlug ? scopeWorkspaceReturnTo("/schedule", activeClubSlug) : "/clubs?returnTo=%2Fschedule";
+  }
+
   const requestedWorkspace = splitOrganizationWorkspacePath(new URL(returnTo, "https://grapply.local").pathname);
   if (requestedWorkspace) return returnTo;
   return activeClubSlug ? scopeWorkspaceReturnTo(returnTo, activeClubSlug) : `/clubs?returnTo=${encodeURIComponent(returnTo)}`;
@@ -37,6 +42,8 @@ function normalizeRefreshReturnTo(rawReturnTo: string | null) {
 
   try {
     const destination = new URL(rawReturnTo, "https://grapply.local");
+    if (isPlatformAdminPath(destination.pathname)) return `${destination.pathname}${destination.search}`;
+
     const requestedWorkspace = splitOrganizationWorkspacePath(destination.pathname);
     if (requestedWorkspace) {
       const normalizedWorkspacePath = normalizeWorkspaceReturnTo(`${requestedWorkspace.workspacePath}${destination.search}`);

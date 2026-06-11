@@ -41,19 +41,15 @@ export function DashboardGrid({
   const resolvedClubSlug = activeClub?.slug ?? initialClubSlug;
   const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(initialError);
-  const [dashboard, setDashboard] = useState<DashboardPayload>(
-    initialDashboard ?? {
-      meta: academyMeta,
-      stats: dashboardStats,
-      classes: [],
-    },
-  );
+  const [dashboard, setDashboard] = useState<DashboardPayload | null>(initialDashboard);
+  const [dashboardLoading, setDashboardLoading] = useState(!initialDashboard && !initialError);
 
   useEffect(() => {
     if (loading && !resolvedClubSlug) return;
     if (reloadKey === 0 && initialDashboard && resolvedClubSlug === initialClubSlug) return;
     if (!resolvedClubSlug) {
       setError("Choose a club to load the dashboard.");
+      setDashboardLoading(false);
       return;
     }
 
@@ -61,29 +57,61 @@ export function DashboardGrid({
     const params = new URLSearchParams();
     params.set("club", resolvedClubSlug);
     setError(null);
+    setDashboardLoading(true);
 
     fetch(`/api/dashboard${params.size ? `?${params}` : ""}`, { cache: "no-store", signal: controller.signal })
       .then((response) => readApiJson<Partial<DashboardPayload> | null>(response, "Dashboard data failed."))
       .then((payload: Partial<DashboardPayload> | null) => {
         if (payload?.meta && payload?.stats) {
           setDashboard({ meta: payload.meta, stats: payload.stats, classes: payload.classes ?? [] });
+          setError(null);
+        } else {
+          setDashboard(null);
+          setError("Dashboard data is empty for this club.");
         }
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setError(error instanceof Error ? error.message : "Dashboard data failed.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDashboardLoading(false);
       });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, [initialClubSlug, initialDashboard, loading, reloadKey, resolvedClubSlug]);
 
-  if (loading) {
+  if (loading || dashboardLoading) {
     return (
       <div className="grid gap-4 pb-4 lg:grid-cols-3">
         <CardSkeleton />
         <CardSkeleton />
         <CardSkeleton />
       </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <Card className="border-[var(--status-danger)]/30 bg-[var(--status-danger)]/10 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--status-danger)]/25 bg-[var(--status-danger)]/10 text-[var(--status-danger)]">
+              <AlertTriangle size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">Dashboard could not load live data</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">{error ?? "Try loading this club again."}</p>
+            </div>
+          </div>
+          <Button type="button" variant="surface" size="sm" onClick={() => setReloadKey((value) => value + 1)}>
+            <RefreshCw size={14} />
+            Retry
+          </Button>
+        </div>
+      </Card>
     );
   }
 
