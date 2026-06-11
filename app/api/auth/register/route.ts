@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setActiveClubCookie, setAuthCookies, setMockAuthCookie } from "@/lib/auth-cookies";
+import { setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
 import { recordAuthFailure } from "@/lib/auth-observability";
 import { isMockAuthFallbackAllowed, isProductionRuntime } from "@/lib/auth-mode";
 import { getAuthEmailError, getPasswordError, normalizeAuthEmail } from "@/lib/auth-validation";
@@ -8,10 +8,9 @@ import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { noStoreJson, readJsonObject } from "@/lib/api-json";
 import { ensureClubMemberProfile } from "@/lib/member-profiles";
 import { getRequestUrl } from "@/lib/request-origin";
-import { insertRow, isSupabaseConfigured, selectRows, updateRows, upsertRow } from "@/lib/supabase/server";
+import { isSupabaseConfigured, selectRows, updateRows, upsertRow } from "@/lib/supabase/server";
 import type { TableRow } from "@/lib/supabase/types";
-import { slugify } from "@/lib/slug";
-import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
+import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
 type InviteRegistrationContext = {
   invite: TableRow<"club_invites">;
@@ -22,11 +21,10 @@ export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   const isFormSubmit = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
   const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await readJsonObject(request);
-  const returnTo = normalizeWorkspaceReturnTo(String(payload?.returnTo ?? ""));
-  const academyName = String(payload?.academyName ?? "").trim();
+  const rawReturnTo = String(payload?.returnTo ?? "");
+  const returnTo = normalizeWorkspaceReturnTo(rawReturnTo);
   const ownerEmail = normalizeAuthEmail(payload?.ownerEmail);
   const ownerName = String(payload?.ownerName ?? ownerEmail.split("@")[0] ?? "Owner").trim();
-  const location = String(payload?.location ?? "").trim();
   const password = String(payload?.password ?? "demo");
   const inviteToken = String(payload?.inviteToken ?? "").trim();
 
@@ -39,10 +37,10 @@ export async function POST(request: Request) {
     return noStoreJson({ ok: false, error }, { status: 400 });
   }
 
-  if (!inviteToken && (!academyName || !location || emailError || passwordError)) {
-    const error = !academyName || !location
-      ? "Academy name and city are required."
-      : emailError ?? passwordError ?? "Registration details are required.";
+  if (!inviteToken && (!ownerName || emailError || passwordError)) {
+    const error = !ownerName
+      ? "Full name is required."
+      : emailError ?? passwordError ?? "Name, email, and password are required.";
     if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/register", returnTo, error), 303);
     return noStoreJson({ ok: false, error }, { status: 400 });
   }
@@ -60,19 +58,14 @@ export async function POST(request: Request) {
       return noStoreJson({ ok: false, source: "mock", error }, { status: 500 });
     }
 
-    const club = { slug: slugify(academyName), name: academyName, location };
-    const destination = scopeWorkspaceReturnTo(returnTo, club.slug);
+    const error = "Account registration requires the Supabase backend.";
     const response = isFormSubmit
-      ? noStoreRedirect(getRequestUrl(destination, request), 303)
+      ? noStoreRedirect(authErrorUrl(request, "/register", returnTo, error), 303)
       : noStoreJson({
-          ok: true,
+          ok: false,
           source: "mock",
-          user: { id: "usr-empty", name: ownerName, email: ownerEmail },
-          club,
-          redirectTo: destination,
-        });
-    setMockAuthCookie(response, "usr-empty");
-    setActiveClubCookie(response, club.slug);
+          error,
+        }, { status: 500 });
     return response;
   }
 
@@ -192,97 +185,13 @@ export async function POST(request: Request) {
       return response;
     }
 
-    const slug = `${slugify(academyName)}-${Date.now().toString(36)}`;
-
-    const club = await insertRow("clubs", {
-      slug,
-      name: academyName,
-      location,
-      status: "active",
-      member_count: 1,
-      primary_coach: ownerName,
-    });
-
-    const membership = await upsertRow(
-      "club_memberships",
-      {
-        user_id: user.id,
-        club_id: club.id,
-        role: "owner",
-        invited_by: null,
-        joined_at: new Date().toISOString().slice(0, 10),
-      },
-      "user_id,club_id",
-    );
-    await ensureClubMemberProfile({
-      clubId: club.id,
-      clubName: club.name,
-      user,
-      membershipRole: "owner",
-    });
-
-    await Promise.all([
-      upsertRow(
-        "club_settings",
-        {
-          club_id: club.id,
-          key: "brand",
-          value: {
-            academyName,
-            location,
-            description: `${academyName} runs Brazilian Jiu-Jitsu classes, member progression, and academy operations in Grapply.`,
-            logoLabel: initials(academyName),
-            mats: "Main Mat",
-            classTypes: "Gi, No-Gi, Fundamentals, Competition, Open Mat",
-            primaryColor: "#7c3aed",
-            accentColor: "#22c55e",
-          },
-        },
-        "club_id,key",
-      ),
-      upsertRow(
-        "club_settings",
-        {
-          club_id: club.id,
-          key: "tv",
-          value: {
-            displayName: `${academyName} Live Mat`,
-            showActiveAthletes: true,
-            liveCheckInQr: true,
-            rotatingAthleteCards: true,
-            liveActivityTicker: true,
-            showCoachAndMat: true,
-          },
-        },
-        "club_id,key",
-      ),
-      upsertRow(
-        "club_settings",
-        {
-          club_id: club.id,
-          key: "coaches",
-          value: [{ name: ownerName, role: "Owner / Coach", focus: "Academy onboarding", mat: "Main Mat" }],
-        },
-        "club_id,key",
-      ),
-      upsertRow("club_settings", { club_id: club.id, key: "appearance", value: { theme: "dark", accent: "purple" } }, "club_id,key"),
-      upsertRow("club_settings", { club_id: club.id, key: "integrations", value: { strava: false, supabase: true } }, "club_id,key"),
-    ]);
-
     session ??= await signInWithPassword(ownerEmail, password);
-    const destination = scopeWorkspaceReturnTo(returnTo, club.slug);
-    await queueWelcomeEmail(request, {
-      clubId: club.id,
-      clubName: club.name,
-      toEmail: ownerEmail,
-      destination,
-      template: "owner_welcome",
-    });
+    const destination = await getAccountRegistrationDestination(user.id, rawReturnTo, returnTo);
     const response = isFormSubmit
       ? noStoreRedirect(getRequestUrl(destination, request), 303)
-      : noStoreJson({ ok: true, source: "supabase", user, club, membership, redirectTo: destination });
+      : noStoreJson({ ok: true, source: "supabase", user, redirectTo: destination });
     setAuthCookies(response, session);
-    setActiveClubCookie(response, club.slug);
+    setDestinationActiveClubCookie(response, destination);
     return response;
   } catch (error) {
     if (isFormSubmit) return noStoreRedirect(authErrorUrl(request, "/register", returnTo, getAuthErrorMessage(error), inviteToken), 303);
@@ -313,6 +222,52 @@ function noStoreRedirect(url: URL, status?: number) {
   const response = NextResponse.redirect(url, status);
   response.headers.set("Cache-Control", "no-store");
   return response;
+}
+
+function setDestinationActiveClubCookie(response: NextResponse, destination: string) {
+  const route = splitOrganizationWorkspacePath(new URL(destination, "https://grapply.local").pathname);
+  if (route?.organizationId) setActiveClubCookie(response, route.organizationId);
+}
+
+async function getAccountRegistrationDestination(userId: string, rawReturnTo: string, returnTo: string) {
+  const memberships = await selectRows("club_memberships", `select=*&user_id=eq.${userId}`);
+  const requestedWorkspace = getRequestedWorkspace(rawReturnTo);
+  if (requestedWorkspace) {
+    const [requestedClub] = await selectRows("clubs", `select=*&slug=eq.${encodeURIComponent(requestedWorkspace.organizationId)}&limit=1`);
+    const membership = requestedClub ? memberships.find((item) => item.club_id === requestedClub.id) : null;
+    if (requestedClub && membership) {
+      return scopeWorkspaceReturnTo(
+        getRoleSafeWorkspaceReturnTo(requestedWorkspace.workspaceReturnTo, membership.role),
+        requestedClub.slug,
+      );
+    }
+
+    return clubsPath(requestedWorkspace.workspaceReturnTo);
+  }
+
+  if (memberships.length === 1) {
+    const [club] = await selectRows("clubs", `select=*&id=eq.${memberships[0].club_id}&limit=1`);
+    if (club) return scopeWorkspaceReturnTo(getRoleSafeWorkspaceReturnTo(returnTo, memberships[0].role), club.slug);
+  }
+
+  return clubsPath(returnTo);
+}
+
+function getRequestedWorkspace(returnTo: string) {
+  if (!returnTo.startsWith("/")) return null;
+
+  try {
+    const destination = new URL(returnTo, "https://grapply.local");
+    const route = splitOrganizationWorkspacePath(destination.pathname);
+    if (!route) return null;
+
+    return {
+      organizationId: route.organizationId,
+      workspaceReturnTo: `${route.workspacePath}${destination.search}`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function queueInviteAcceptedNotification(input: {
@@ -409,14 +364,8 @@ function authErrorUrl(request: Request, path: string, returnTo: string, error: s
   return url;
 }
 
-function initials(value: string) {
-  const next = value
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-  return next || "G";
+function clubsPath(returnTo: string) {
+  return `/clubs?returnTo=${encodeURIComponent(normalizeWorkspaceReturnTo(returnTo))}`;
 }
 
 function getAuthErrorMessage(error: unknown) {

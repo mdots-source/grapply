@@ -44,7 +44,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
           Sign into the Grapply workspace, review the room, and keep athlete activity connected.
         </p>
         <div className="mt-5 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-4 py-3 text-sm text-[var(--foreground)]">
-          After sign in, choose an academy to {intentLabel}.
+          After sign in, Grapply opens your academy to {intentLabel}.
         </div>
         <Link
           href={registerHref}
@@ -55,9 +55,9 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
               <Sparkles size={18} />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-semibold">{inviteToken ? "Create account to join" : "Create academy workspace"}</span>
+              <span className="block text-sm font-semibold">{inviteToken ? "Create account to join" : "Create user account"}</span>
               <span className="mt-0.5 block text-xs leading-5 text-[var(--muted)]">
-                {inviteToken ? "Register and accept this club invite." : "New club owner? Start with registration."}
+                {inviteToken ? "Register and accept this club invite." : "Register your user account. Academy access is assigned separately."}
               </span>
             </span>
           </span>
@@ -91,7 +91,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
             {inviteToken ? "Need a Grapply account?" : "No Grapply account yet?"}
           </p>
           <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-            {inviteToken ? "Create one and Grapply will attach this invite to the right club." : "Register a new academy workspace with owner access."}
+            {inviteToken ? "Create one and Grapply will attach this invite to the right club." : "Create a user account, then use an invite or assigned club access."}
           </p>
           <Button asChild variant="outline" className="mt-3 w-full">
             <Link href={registerHref}>
