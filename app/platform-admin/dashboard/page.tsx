@@ -1,5 +1,6 @@
 import { Activity, Building2, CreditCard, HeartPulse, Mail, ShieldCheck, UsersRound } from "lucide-react";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
+import { BrandLogo } from "@/components/brand-logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,15 +36,18 @@ export default async function PlatformAdminDashboardPage() {
     <main className="min-h-screen px-4 py-6 text-[var(--foreground)] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Badge variant="accent">Platform admin</Badge>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{session.platformRole}</span>
+          <div className="flex gap-4">
+            <BrandLogo className="mt-1 size-12 rounded-xl border border-[var(--border)]" priority />
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge variant="accent">Platform admin</Badge>
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{session.platformRole}</span>
+              </div>
+              <h1 className="mt-3 text-3xl font-semibold md:text-4xl">Grapply Platform Admin</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                Internal control room for the Grapply team. This is separate from academy admin workspaces.
+              </p>
             </div>
-            <h1 className="mt-3 text-3xl font-semibold md:text-4xl">Grapply Platform Admin</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Internal control room for the Grapply team. This is separate from academy admin workspaces.
-            </p>
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="surface">

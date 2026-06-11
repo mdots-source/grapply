@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Shield } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
@@ -19,9 +19,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           transition={{ duration: 0.45 }}
         >
           <div className="mb-5 flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
-              <Shield size={22} />
-            </div>
+            <BrandLogo className="size-11 rounded-xl border border-[var(--border)] shadow-[var(--glow-accent)]" priority />
             <div>
               <p className="font-black tracking-[0.22em]">Grapply</p>
             </div>

@@ -15,8 +15,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://grapply.me"),
   title: "Grapply",
   description: "Premium academy platform for Brazilian Jiu-Jitsu schools.",
+  icons: {
+    icon: "/grapply-logo.png",
+    apple: "/grapply-logo.png",
+  },
+  openGraph: {
+    title: "Grapply",
+    description: "Premium academy platform for Brazilian Jiu-Jitsu schools.",
+    images: ["/grapply-logo.png"],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

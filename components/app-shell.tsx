@@ -12,7 +12,6 @@ import {
   MonitorPlay,
   Mountain,
   Settings,
-  Shield,
   LogOut,
   Building2,
   Trophy,
@@ -20,6 +19,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenuButton } from "@/components/ui/sidebar";
 import { ActiveClubProvider } from "@/components/use-active-club";
@@ -114,9 +114,7 @@ export function AppShell({
       <Sidebar>
         <SidebarHeader>
           <a href={shellHomeHref} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--accent)]/25 hover:bg-[var(--surface-hover)]">
-            <div className="grid size-10 place-items-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
-              <Shield size={22} />
-            </div>
+            <BrandLogo className="size-10 border border-[var(--border)]" priority />
             <div className="min-w-0 flex-1">
               <div className="text-sm font-black tracking-[0.18em] text-[var(--foreground)]">Grapply</div>
               <div className="truncate text-xs text-[var(--muted)]">{session?.activeClub?.name ?? academyMeta.name}</div>

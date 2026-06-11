@@ -18,7 +18,6 @@ import {
   MonitorPlay,
   Network,
   Radio,
-  Shield,
   Sparkles,
   Trophy,
   UserCog,
@@ -27,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { BrandLogo } from "@/components/brand-logo";
 import { StudentAvatar } from "@/components/student-avatar";
 import { academyMeta } from "@/data/academy-meta";
 import { attendance, beltStyles, currentSession, recentActivity, schedule, students, tvCheckedInAthletes } from "@/data/academy";
@@ -166,9 +166,7 @@ function Header() {
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--background)_86%,transparent)] backdrop-blur-2xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[var(--glow-accent)]">
-            <Shield size={22} />
-          </span>
+          <BrandLogo className="size-10 shadow-[var(--glow-accent)]" priority />
           <span className="min-w-0">
             <span className="block text-sm font-black tracking-[0.18em]">Grapply</span>
             <span className="block truncate text-xs text-[var(--muted)]">Jiu-Jitsu Academy</span>
@@ -815,9 +813,7 @@ function Footer() {
     <footer className="border-t border-[var(--border)] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-[var(--muted)] md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
-            <Shield size={18} />
-          </span>
+          <BrandLogo className="size-9" />
           <span>Grapply · Built for Brazilian Jiu-Jitsu academies.</span>
         </div>
         <div className="flex flex-wrap gap-4">
