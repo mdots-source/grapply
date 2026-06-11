@@ -14,7 +14,6 @@ type PromotionBelt = "white" | "blue" | "purple" | "brown" | "black";
 type PromotionPayload = {
   memberId: string;
   type: PromotionType;
-  awardedByName?: string;
   detail: string;
   belt?: PromotionBelt | null;
   stripes?: number | null;
@@ -64,13 +63,17 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const payload = await readJsonObject(request);
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
-  const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
+  const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
   if (access.error) return access.error;
 
   const validation = validatePromotionPayload(payload);
   if (validation.error) return validation.error;
   const promotion = validation.data;
   const promotionType = promotion.type;
+
+  if (access.session.activeRole === "coach" && promotionType === "belt") {
+    return noStoreJson({ ok: false, error: "Only owners and admins can record belt promotions." }, { status: 403 });
+  }
 
   if (promotionType === "stripe" && (typeof promotion.stripes !== "number" || promotion.stripes < 1 || promotion.stripes > 4)) {
     return noStoreJson({ ok: false, error: "Stripe awards must be between 1 and 4." }, { status: 400 });
