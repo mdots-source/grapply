@@ -220,7 +220,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
-  const forbidden = getForbiddenMemberField(payload);
+  const forbidden = getForbiddenMemberField(payload, "delete");
   if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
 
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
@@ -288,7 +288,7 @@ type ValidatedMemberPayload = Partial<Student> & { id: string; clubSlug?: string
 type FieldResult<T> = { value: T; error?: never } | { value?: never; error: string };
 
 function validateMemberPayload(payload: Record<string, unknown>, mode: MemberValidationMode): { data: ValidatedMemberPayload; error?: never } | { data?: never; error: NextResponse } {
-  const forbidden = getForbiddenMemberField(payload);
+  const forbidden = getForbiddenMemberField(payload, "write");
   if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
 
   const id = optionalMemberId(payload.id);
@@ -346,17 +346,46 @@ function validationError(error: string) {
   return validationErrorJson(error);
 }
 
-function getForbiddenMemberField(payload: Record<string, unknown>) {
-  const labels: Record<string, string> = {
+function getForbiddenMemberField(payload: Record<string, unknown>, mode: "write" | "delete") {
+  const serverLabels: Record<string, string> = {
     clubId: "Member club",
     club_id: "Member club",
     createdAt: "Member creation time",
     created_at: "Member creation time",
+    profile: "Member profile metadata",
     updatedAt: "Member update time",
     updated_at: "Member update time",
     userId: "Linked user account",
     user_id: "Linked user account",
   };
+  const deleteOnlyLabels: Record<string, string> = mode === "delete"
+    ? {
+        avatar: "Avatar",
+        avatar_url: "Avatar",
+        belt: "Belt",
+        classes30: "Classes in last 30 days",
+        classes_30: "Classes in last 30 days",
+        focus: "Focus",
+        lastSeen: "Last seen",
+        last_seen: "Last seen",
+        losses: "Losses",
+        name: "Member name",
+        points: "Points",
+        role: "Role",
+        status: "Status",
+        streak: "Streak",
+        stripes: "Stripes",
+        totalHours: "Total hours",
+        total_hours: "Total hours",
+        wins: "Wins",
+      }
+    : {
+        avatar_url: "Avatar",
+        classes_30: "Classes in last 30 days",
+        last_seen: "Last seen",
+        total_hours: "Total hours",
+      };
+  const labels = { ...serverLabels, ...deleteOnlyLabels };
   const field = Object.keys(labels).find((key) => payload[key] !== undefined);
   return field ? labels[field] : null;
 }
