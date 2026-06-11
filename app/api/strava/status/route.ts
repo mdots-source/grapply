@@ -1,5 +1,5 @@
 import { platformUsers } from "@/data/platform";
-import { apiSupabaseError, requireApiAccess } from "@/lib/api-access";
+import { apiSupabaseError, requireApiAccess, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
 import { isStravaConfigured, refreshStravaToken, StravaApiError, STRAVA_SCOPES } from "@/lib/strava";
@@ -17,6 +17,9 @@ export async function GET(request: Request) {
     let clubId: string | null = null;
     try {
       if (!isUuid(access.session.user.id)) {
+        const persistenceError = requireSupabasePersistence("Strava status");
+        if (persistenceError) return persistenceError;
+
         return mockStravaStatus(access.session.user.email);
       }
 
@@ -96,6 +99,9 @@ export async function GET(request: Request) {
       return apiSupabaseError(error, { clubId });
     }
   }
+
+  const persistenceError = requireSupabasePersistence("Strava status");
+  if (persistenceError) return persistenceError;
 
   return mockStravaStatus(access.session.user.email);
 }

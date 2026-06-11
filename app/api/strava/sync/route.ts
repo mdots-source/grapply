@@ -13,6 +13,9 @@ export async function GET(request: Request) {
   if (access.error) return access.error;
 
   if (!isSupabaseConfigured() || !isUuid(access.session.user.id)) {
+    const persistenceError = requireSupabasePersistence("Strava activity sync");
+    if (persistenceError) return persistenceError;
+
     return noStoreJson({ source: "mock", activities: [], count: 0 });
   }
 
