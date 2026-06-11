@@ -70,7 +70,7 @@ export function AppShell({
 }: {
   children: React.ReactNode;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   mode?: "workspace" | "account";
   initialSession?: ShellSession | null;
 }) {
@@ -218,7 +218,7 @@ export function AppShell({
                 {isAccountMode ? "Account portal" : session?.activeClub?.name ?? "Grapply Jiu-Jitsu Academy"}
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-[var(--foreground)] md:text-4xl">{title}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{subtitle}</p>
+              {subtitle && <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{subtitle}</p>}
             </motion.div>
 
             {!isAccountMode && <div className="mt-4 flex items-center gap-2 overflow-x-auto lg:hidden">

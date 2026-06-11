@@ -2,9 +2,8 @@
 
 import { motion } from "framer-motion";
 import { Shield } from "lucide-react";
-import { academyMeta } from "@/data/academy-meta";
 
-export function AuthShell({ children, mode }: { children: React.ReactNode; mode: "login" | "register" }) {
+export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="relative grid min-h-screen place-items-center overflow-hidden px-4 py-8 text-[var(--foreground)]">
       <motion.div
@@ -25,7 +24,6 @@ export function AuthShell({ children, mode }: { children: React.ReactNode; mode:
             </div>
             <div>
               <p className="font-black tracking-[0.22em]">Grapply</p>
-              <p className="text-xs text-[var(--muted)]">{mode === "login" ? "Academy login" : "Account registration"} · {academyMeta.shortName}</p>
             </div>
           </div>
           {children}

@@ -35,7 +35,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
   ]);
 
   return (
-    <AppShell title="Schedule" subtitle="Weekly academy planner with classes, coaches, rooms, and training levels at a glance." initialSession={session}>
+    <AppShell title="Schedule" initialSession={session}>
       <PageTransition>
         {deniedFrom && <AccessNotice from={deniedFrom} />}
         <ScheduleGrid

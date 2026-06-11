@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Shield } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "@/components/login-form";
 import { Button } from "@/components/ui/button";
@@ -32,32 +32,13 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
   const registerHref = `/register?returnTo=${encodeURIComponent(returnTo)}${inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : ""}`;
 
   return (
-    <AuthShell mode="login">
+    <AuthShell>
       <Card className="w-full">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
-            <Shield size={22} />
-          </div>
-          <div>
-            <p className="font-black tracking-[0.22em]">Grapply</p>
-            <p className="text-xs text-[var(--muted)]">Academy workspace</p>
-          </div>
-        </div>
         <h1 className="text-3xl font-semibold">Sign in</h1>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Open your academy workspace.</p>
         {error && (
           <div className="mt-4 rounded-xl border border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/10 px-4 py-3 text-sm text-[var(--foreground)]">
             {error}
           </div>
-        )}
-        {showDemoLogin && (
-          <Link
-            href={`/api/auth/demo?returnTo=${encodeURIComponent(returnTo)}`}
-            className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--accent-foreground)] transition hover:-translate-y-0.5"
-          >
-            Open demo workspace
-            <ArrowRight size={16} />
-          </Link>
         )}
         <div className="mt-6" />
         <LoginForm returnTo={returnTo} inviteToken={inviteToken} showDemoCredentials={showDemoLogin} />

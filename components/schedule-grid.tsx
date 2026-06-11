@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, Loader2, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -275,6 +275,18 @@ function levelTone(level: string) {
   return "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]";
 }
 
+function formatLevelLabel(level: string) {
+  const normalized = level.toLowerCase();
+  if (normalized.includes("all")) return "All belts";
+  if (normalized.includes("competition")) return "Comp";
+  if (normalized.includes("kids") || normalized.includes("youth")) return "Youth";
+  if (normalized.includes("teen")) return "Teen";
+  if (normalized.includes("purple") && normalized.includes("brown") && normalized.includes("black")) return "Advanced";
+  if (normalized.includes("blue") && normalized.includes("purple") && normalized.includes("brown")) return "Advanced";
+  if (normalized.includes("white") && normalized.includes("blue")) return "Basics";
+  return level;
+}
+
 export function ScheduleGrid({
   initialCheckInClassId,
   initialCreateClass = false,
@@ -322,8 +334,6 @@ export function ScheduleGrid({
   const resolvedClubSlug = activeClub?.slug ?? initialClubSlug;
 
   const selectedDay = useMemo(() => addDays(weekStart, 3), [weekStart]);
-  const isCurrentWeek = weekStart.getTime() === startOfWeek(new Date()).getTime();
-
   const canManageBlock = useCallback((block: SessionBlock) => {
     if (!canManageClasses || classManagementScope === "none") return false;
     if (classManagementScope === "all") return true;
@@ -676,30 +686,14 @@ export function ScheduleGrid({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-2xl font-semibold text-[var(--foreground)]">{formatRange(weekStart)}</h2>
-              <Button
-                variant="surface"
-                size="icon"
-                onClick={() => {
-                  const next = addDays(weekStart, -7);
-                  setWeekStart(next);
-                  setCalendarMonth(next);
-                }}
-                aria-label="Previous week"
-              >
-                <ChevronLeft size={16} />
-              </Button>
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
                     <CalendarDays size={16} />
-                    Pick week
+                    Pick day
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-auto p-0">
-                  <div className="border-b border-[var(--border)] px-4 py-3">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">Jump to week</p>
-                    <p className="text-xs text-[var(--muted)]">Select any day to open that week in the planner.</p>
-                  </div>
                   <Calendar
                     mode="single"
                     selected={selectedDay}
@@ -720,30 +714,6 @@ export function ScheduleGrid({
                   />
                 </PopoverContent>
               </Popover>
-              <Button
-                variant="surface"
-                size="icon"
-                onClick={() => {
-                  const next = addDays(weekStart, 7);
-                  setWeekStart(next);
-                  setCalendarMonth(next);
-                }}
-                aria-label="Next week"
-              >
-                <ChevronRight size={16} />
-              </Button>
-              <Button
-                variant={isCurrentWeek ? "primary" : "ghost"}
-                size="sm"
-                onClick={() => {
-                  const today = startOfWeek(new Date());
-                  setWeekStart(today);
-                  setCalendarMonth(today);
-                }}
-              >
-                <RotateCcw size={16} />
-                This week
-              </Button>
             </div>
           </div>
           <div className="w-full lg:max-w-[340px]">
@@ -762,14 +732,14 @@ export function ScheduleGrid({
       </Card>
 
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-        <div className="flex items-center justify-end border-b border-[var(--border)] px-4 py-3">
-          {classesError && resolvedClubSlug && (
+        {classesError && resolvedClubSlug && (
+          <div className="flex items-center justify-end border-b border-[var(--border)] px-4 py-3">
             <Button type="button" variant="surface" size="sm" onClick={() => setScheduleReloadKey((value) => value + 1)}>
               <RefreshCw size={14} />
               Try again
             </Button>
-          )}
-        </div>
+          </div>
+        )}
         {classesError && (
           <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 text-sm text-[var(--foreground)]">
             <AlertTriangle size={16} className="shrink-0 text-[var(--accent-coral)]" />
@@ -917,21 +887,7 @@ function ScheduleCell(
   const blocks = params.value ?? [];
 
   if (!blocks.length) {
-    return (
-      <div className="grid h-full w-full place-items-center">
-        {params.canManageClasses ? (
-          <button
-            type="button"
-            className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)]/45 hover:text-[var(--foreground)]"
-            onClick={() => params.onOpenSlot?.(params.data?.time ?? "")}
-          >
-            Add training
-          </button>
-        ) : (
-          <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">Open slot</span>
-        )}
-      </div>
-    );
+    return <div className="h-full w-full" />;
   }
 
   return (
@@ -949,7 +905,7 @@ function ScheduleCell(
           >
             <div className="flex min-w-0 items-center justify-between gap-2">
               <span className="font-mono text-[11px] font-bold leading-none text-[var(--accent)]">{block.time}</span>
-              <span className={`max-w-[116px] shrink-0 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium ${levelTone(block.level)}`}>{block.level}</span>
+              <span className={`max-w-[94px] shrink-0 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium ${levelTone(block.level)}`}>{formatLevelLabel(block.level)}</span>
             </div>
             <div className="min-w-0 pt-1">
               <p className="truncate text-[13px] font-semibold leading-4 text-[var(--foreground)]">{block.name}</p>

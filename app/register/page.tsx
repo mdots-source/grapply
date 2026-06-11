@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { RegisterForm } from "@/components/register-form";
 import { Button } from "@/components/ui/button";
@@ -27,13 +27,9 @@ export default async function RegisterPage({ searchParams }: { searchParams?: Pr
   await redirectToSessionRefreshIfPossible(returnTo);
 
   return (
-    <AuthShell mode="register">
+    <AuthShell>
       <Card className="w-full">
-        <div className="mb-8 grid size-12 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
-          <Sparkles size={23} />
-        </div>
         <h1 className="text-3xl font-semibold">{inviteToken ? "Join academy" : "Create account"}</h1>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Use your invite or assigned academy access.</p>
         {error && (
           <div className="mt-4 rounded-xl border border-[var(--accent-coral)]/25 bg-[var(--accent-coral)]/10 px-4 py-3 text-sm text-[var(--foreground)]">
             {error}

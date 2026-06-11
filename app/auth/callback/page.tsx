@@ -9,7 +9,7 @@ export default async function AuthCallbackPage({ searchParams }: { searchParams?
   const inviteToken = params?.invite ? String(params.invite).trim() : undefined;
 
   return (
-    <AuthShell mode="login">
+    <AuthShell>
       <AuthCallbackCard mode={mode} returnTo={returnTo} inviteToken={inviteToken} />
     </AuthShell>
   );

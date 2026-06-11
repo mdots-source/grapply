@@ -41,7 +41,7 @@ export default async function InvitePage({ searchParams }: { searchParams?: Prom
   const authQuery = `returnTo=${encodeURIComponent(safeReturnTo)}${inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : ""}`;
 
   return (
-    <AuthShell mode="login">
+    <AuthShell>
       <Card className="w-full">
         <div className="mb-8 grid size-12 place-items-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]">
           <UserRoundCheck size={23} />
