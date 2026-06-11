@@ -62,7 +62,7 @@ function filterCompetitionRosters(
 export async function POST(request: Request) {
   const payload = await readJsonObject(request);
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
-  const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
+  const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
 
   const validation = validateCompetitionPayload(payload);
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const payload = await readJsonObject(request);
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
-  const access = await requireApiRole(["owner", "admin", "coach"], requestedClubSlug);
+  const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
 
   const validation = validateCompetitionPayload(payload);
