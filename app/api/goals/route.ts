@@ -72,6 +72,8 @@ export async function POST(request: Request) {
 
       return noStoreJson({ ok: true, source: "supabase", goal: row });
     } catch (error) {
+      const goalError = getGoalSupabaseValidationError(error);
+      if (goalError) return goalError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -138,6 +140,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = await readJsonObject(request);
+  const forbidden = getForbiddenGoalField(payload, "delete");
+  if (forbidden) return validationError(`${forbidden} is assigned by the server.`);
+
   const requestedClubSlug = typeof payload.clubSlug === "string" ? payload.clubSlug : null;
   const access = await requireApiRole(["owner", "admin"], requestedClubSlug);
   if (access.error) return access.error;
@@ -157,6 +162,8 @@ export async function DELETE(request: Request) {
       if (removed.length === 0) return noStoreJson({ ok: false, error: "Goal not found in this club." }, { status: 404 });
       return noStoreJson({ ok: true, source: "supabase", removed });
     } catch (error) {
+      const goalError = getGoalSupabaseValidationError(error);
+      if (goalError) return goalError;
       return apiSupabaseError(error, { clubId });
     }
   }
@@ -175,6 +182,9 @@ type GoalPayload = {
 };
 
 function validateGoalPayload(payload: Record<string, unknown>): { data: GoalPayload; error?: never } | { data?: never; error: Response } {
+  const forbidden = getForbiddenGoalField(payload, "write");
+  if (forbidden) return { error: validationError(`${forbidden} is assigned by the server.`) };
+
   const memberId = requiredString(payload.memberId, "Member id", 120);
   const title = requiredString(payload.title, "Goal title", 180);
   const status = optionalGoalStatus(payload.status);
@@ -199,6 +209,35 @@ function validationError(error: string) {
   return validationErrorJson(error);
 }
 
+function getForbiddenGoalField(payload: Record<string, unknown>, mode: "write" | "delete") {
+  const serverLabels: Record<string, string> = {
+    clubId: "Goal club",
+    club_id: "Goal club",
+    completedAt: "Goal completion time",
+    completed_at: "Goal completion time",
+    createdAt: "Goal creation time",
+    created_at: "Goal creation time",
+    updatedAt: "Goal update time",
+    updated_at: "Goal update time",
+  };
+  const deleteOnlyLabels: Record<string, string> = mode === "delete"
+    ? {
+        memberId: "Member id",
+        member_id: "Member id",
+        status: "Goal status",
+        targetDate: "Target date",
+        target_date: "Target date",
+        title: "Goal title",
+      }
+    : {
+        member_id: "Member id",
+        target_date: "Target date",
+      };
+  const labels = { ...serverLabels, ...deleteOnlyLabels };
+  const field = Object.keys(labels).find((key) => payload[key] !== undefined);
+  return field ? labels[field] : null;
+}
+
 function getGoalSupabaseValidationError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("coaches cannot move goals between members")) {
@@ -206,6 +245,12 @@ function getGoalSupabaseValidationError(error: unknown) {
       { ok: false, error: "Coaches cannot move goals between members. Ask an owner or admin to reassign this goal." },
       { status: 403 },
     );
+  }
+  if (message.includes("member_goals_status_valid")) {
+    return noStoreJson({ ok: false, error: "Goal status is not supported." }, { status: 400 });
+  }
+  if (message.includes("member_goals_completed_at_matches_status")) {
+    return noStoreJson({ ok: false, error: "Goal completion time is managed by the selected status." }, { status: 400 });
   }
   return null;
 }
