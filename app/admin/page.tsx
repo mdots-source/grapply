@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { clubClasses, clubs, clubMemberships, platformUsers, roleDefinitions, type ClubClass, type ClubMembership, type PlatformRole, type PlatformUser, type RoleDefinition } from "@/data/platform";
+import { isProductionRuntime } from "@/lib/auth-mode";
 import { getBackendClubId } from "@/lib/backend";
 import { isEmailDeliveryConfigured } from "@/lib/email/delivery";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
@@ -287,7 +288,9 @@ type AdminWorkspaceData = {
   loadError: string | null;
 };
 
-async function getAdminWorkspaceData(session: Awaited<ReturnType<typeof requireWorkspaceRole>>): Promise<AdminWorkspaceData> {
+type AdminSession = Awaited<ReturnType<typeof requireWorkspaceRole>>;
+
+async function getAdminWorkspaceData(session: AdminSession): Promise<AdminWorkspaceData> {
   if (isSupabaseConfigured()) {
     try {
       const clubId = await getBackendClubId(session.activeClub.slug);
@@ -360,6 +363,11 @@ async function getAdminWorkspaceData(session: Awaited<ReturnType<typeof requireW
         loadError: null,
       };
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not load team access data from Supabase.";
+      if (isProductionRuntime()) {
+        return getUnavailableAdminWorkspaceData(session, message);
+      }
+
       const club = clubs.find((item) => item.slug === session.activeClub.slug) ?? session.activeClub;
       const memberships = clubMemberships.filter(
         (membership) => membership.clubId === club.id && (session.activeRole === "owner" || membership.role === "coach" || membership.role === "member"),
@@ -380,9 +388,16 @@ async function getAdminWorkspaceData(session: Awaited<ReturnType<typeof requireW
         emailDeliveryConfigured: isEmailDeliveryConfigured(),
         errorEvents: [],
         invites: [],
-        loadError: error instanceof Error ? error.message : "Could not load team access data from Supabase.",
+        loadError: message,
       };
     }
+  }
+
+  if (isProductionRuntime()) {
+    return getUnavailableAdminWorkspaceData(
+      session,
+      "Supabase backend is not configured for Team Access. Add the Supabase service role environment before managing club roles.",
+    );
   }
 
   const club = clubs.find((item) => item.slug === session.activeClub.slug) ?? session.activeClub;
@@ -408,6 +423,25 @@ async function getAdminWorkspaceData(session: Awaited<ReturnType<typeof requireW
     invites: [],
     loadError: null,
   };
+}
+
+function getUnavailableAdminWorkspaceData(session: AdminSession, loadError: string): AdminWorkspaceData {
+  return {
+    club: session.activeClub,
+    memberships: [],
+    classes: [],
+    roleDefs: getVisibleRoleDefinitions(session.activeRole),
+    rosterUsers: [],
+    emailOutbox: [],
+    emailDeliveryConfigured: isEmailDeliveryConfigured(),
+    errorEvents: [],
+    invites: [],
+    loadError,
+  };
+}
+
+function getVisibleRoleDefinitions(role: PlatformRole) {
+  return roleDefinitions.filter((definition) => role === "owner" || definition.role === "coach" || definition.role === "member");
 }
 
 type EmailOutboxRow = TableRow<"email_outbox">;
