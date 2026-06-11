@@ -55,7 +55,7 @@ export function AuthCallbackCard({ mode, returnTo, inviteToken }: { mode: AuthCa
       const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Password update failed.");
       if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Password update failed.", payload.requestId));
       setStatus("success");
-      setMessage(inviteToken ? "Password updated. Accepting your academy invite..." : "Password updated. Opening your academy chooser...");
+      setMessage(inviteToken ? "Password updated. Accepting your academy invite..." : "Password updated. Opening your workspace...");
       window.location.assign(getPostAuthDestination(returnTo, inviteToken));
     } catch (error) {
       setStatus("error");
@@ -119,7 +119,7 @@ async function createSession(
     const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string }>(response, "Auth link failed.");
     if (!payload.ok) throw new Error(formatApiError(payload.error ?? "Auth link failed.", payload.requestId));
     setStatus("success");
-    setMessage(inviteToken ? "Signed in. Accepting your academy invite..." : "Signed in. Opening your academy chooser...");
+    setMessage(inviteToken ? "Signed in. Accepting your academy invite..." : "Signed in. Opening your workspace...");
     window.location.assign(getPostAuthDestination(returnTo, inviteToken));
   } catch (error) {
     setStatus("error");
@@ -132,7 +132,7 @@ function getPostAuthDestination(returnTo: string, inviteToken?: string) {
     return `/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`;
   }
 
-  return `/clubs?returnTo=${encodeURIComponent(returnTo)}`;
+  return `/api/auth/refresh?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
 function readTokensFromHash(): TokenPayload | null {

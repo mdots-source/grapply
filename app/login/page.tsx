@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth-session";
 import { hasRefreshSessionCookie, redirectToSessionRefreshIfPossible } from "@/lib/auth-refresh-redirect";
 import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
-import { normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
+import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
 export default async function LoginPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string; error?: string; invite?: string }> }) {
   const params = await searchParams;
@@ -21,6 +21,12 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
       redirect(`/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`);
     }
     if (splitOrganizationWorkspacePath(new URL(returnTo, "https://grapply.local").pathname)) redirect(returnTo);
+    const membership = session.activeClub
+      ? session.memberships.find((item) => item.club.slug === session.activeClub?.slug)
+      : session.memberships[0];
+    if (membership) {
+      redirect(scopeWorkspaceReturnTo(getRoleSafeWorkspaceReturnTo(returnTo, membership.role), membership.club.slug));
+    }
     redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
   }
   if (inviteToken && (await hasRefreshSessionCookie())) {

@@ -7,7 +7,6 @@ import { AlertTriangle, CalendarDays, CalendarPlus, CheckCircle2, Loader2, Refre
 import { CreateClassForm, type ClassFormValue } from "@/components/schedule/create-class-form";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card } from "@/components/ui/card";
 import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AgGridHost } from "@/components/ag-grid-host";
@@ -681,55 +680,45 @@ export function ScheduleGrid({
 
   return (
     <div className="space-y-4">
-      <Card className="p-4 sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-semibold text-[var(--foreground)]">{formatRange(weekStart)}</h2>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <CalendarDays size={16} />
-                    Pick day
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDay}
-                    month={calendarMonth}
-                    onMonthChange={setCalendarMonth}
-                    onSelect={(date) => {
-                      if (!date) return;
-                      setWeekStart(startOfWeek(date));
-                      setCalendarMonth(startOfWeek(date));
-                      setCalendarOpen(false);
-                    }}
-                    modifiers={{
-                      inSelectedWeek: (date) => isDateInWeek(date, weekStart),
-                    }}
-                    modifiersClassNames={{
-                      inSelectedWeek: "in-selected-week",
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-          <div className="w-full lg:max-w-[340px]">
-            {canManageClasses ? (
-              <Button variant="primary" className="w-full justify-center" onClick={() => openTrainingDrawer()}>
-                <CalendarPlus size={16} />
-                Add training
+      <div className="flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">{formatRange(weekStart)}</h2>
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarDays size={16} />
+                Pick day
               </Button>
-            ) : (
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-3 text-xs leading-5 text-[var(--muted)]">
-                Class changes are managed by academy admins.
-              </div>
-            )}
-          </div>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={selectedDay}
+                month={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                onSelect={(date) => {
+                  if (!date) return;
+                  setWeekStart(startOfWeek(date));
+                  setCalendarMonth(startOfWeek(date));
+                  setCalendarOpen(false);
+                }}
+                modifiers={{
+                  inSelectedWeek: (date) => isDateInWeek(date, weekStart),
+                }}
+                modifiersClassNames={{
+                  inSelectedWeek: "in-selected-week",
+                }}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
-      </Card>
+        {canManageClasses && (
+          <Button variant="primary" className="w-full justify-center sm:w-auto" onClick={() => openTrainingDrawer()}>
+            <CalendarPlus size={16} />
+            Add training
+          </Button>
+        )}
+      </div>
 
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         {classesError && resolvedClubSlug && (
@@ -759,9 +748,9 @@ export function ScheduleGrid({
               animateRows
               getRowHeight={(params) => {
                 const row = params.data;
-                if (!row) return 104;
+                if (!row) return 108;
                 const maxBlocks = Math.max(...dayKeys.map((key) => row[key].length));
-                return Math.max(104, maxBlocks * 88 + 24);
+                return Math.max(108, maxBlocks * 88 + 24);
               }}
               headerHeight={50}
             />
@@ -793,9 +782,7 @@ export function ScheduleGrid({
       <Drawer open={trainingDrawerOpen} onOpenChange={setTrainingDrawerOpen}>
         <DrawerHeader onClose={() => setTrainingDrawerOpen(false)}>
           <DrawerTitle>{trainingDefaults.title ?? "Add training"}</DrawerTitle>
-          <DrawerDescription>
-            {trainingDefaults.original ? "Update this training session from the weekly schedule." : "Create a class directly from the weekly schedule."}
-          </DrawerDescription>
+          <DrawerDescription>{trainingDefaults.original ? "Update this training session." : "Create a class."}</DrawerDescription>
         </DrawerHeader>
         <div className="mt-6">
           <CreateClassForm
@@ -811,9 +798,6 @@ export function ScheduleGrid({
             <div className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
               <div>
                 <p className="text-sm font-semibold text-[var(--foreground)]">Class actions</p>
-                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                  Check in a member or remove this training session from the active club schedule.
-                </p>
               </div>
               {classActionMessage && (
                 <div
@@ -891,36 +875,27 @@ function ScheduleCell(
   }
 
   return (
-    <div className="flex h-full w-full flex-col justify-center gap-2 py-2">
+    <div className="flex h-full w-full flex-col justify-center gap-2 py-1.5">
       {blocks.map((block) => {
         const canManageThisBlock = params.canManageBlock?.(block) ?? Boolean(params.canManageClasses);
         return (
           <button
             key={block.id ?? `${block.name}-${block.room}`}
             type="button"
-            className="grid min-h-[76px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default disabled:opacity-75"
+            className="grid min-h-[78px] w-full grid-rows-[auto_1fr_auto] rounded-lg border border-[var(--border)] bg-[var(--panel-strong)] px-2.5 py-2 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)] disabled:cursor-default disabled:opacity-75"
             onClick={() => params.onEditBlock?.(block)}
             disabled={!canManageThisBlock}
             aria-label={canManageThisBlock ? `Edit ${block.name}` : block.name}
           >
             <div className="flex min-w-0 items-center justify-between gap-2">
               <span className="font-mono text-[11px] font-bold leading-none text-[var(--accent)]">{block.time}</span>
-              <span className={`max-w-[94px] shrink-0 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium ${levelTone(block.level)}`}>{formatLevelLabel(block.level)}</span>
+              <span className={`max-w-[72px] shrink-0 truncate rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${levelTone(block.level)}`}>{formatLevelLabel(block.level)}</span>
             </div>
             <div className="min-w-0 pt-1">
               <p className="truncate text-[13px] font-semibold leading-4 text-[var(--foreground)]">{block.name}</p>
               <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--muted)]">{block.coach}</p>
             </div>
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              <p className="truncate text-[11px] leading-none text-[var(--muted)]">
-                {block.room} · {block.durationMinutes} min
-              </p>
-              {typeof block.checkedIn === "number" && block.checkedIn > 0 && (
-                <span className="shrink-0 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
-                  {block.checkedIn} in
-                </span>
-              )}
-            </div>
+            <p className="truncate text-[11px] leading-none text-[var(--muted)]">{block.room}</p>
           </button>
         );
       })}

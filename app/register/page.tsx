@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth-session";
 import { hasRefreshSessionCookie, redirectToSessionRefreshIfPossible } from "@/lib/auth-refresh-redirect";
-import { normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
+import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
 export default async function RegisterPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string; error?: string; invite?: string }> }) {
   const params = await searchParams;
@@ -18,6 +18,12 @@ export default async function RegisterPage({ searchParams }: { searchParams?: Pr
   if (session) {
     if (inviteToken) {
       redirect(`/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`);
+    }
+    const membership = session.activeClub
+      ? session.memberships.find((item) => item.club.slug === session.activeClub?.slug)
+      : session.memberships[0];
+    if (membership) {
+      redirect(scopeWorkspaceReturnTo(getRoleSafeWorkspaceReturnTo(returnTo, membership.role), membership.club.slug));
     }
     redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
   }
