@@ -7,7 +7,7 @@ export const authCookieNames = {
   stravaState: "grapply-strava-state",
 } as const;
 
-const cookieOptions = {
+export const authCookieOptions = {
   httpOnly: true,
   sameSite: "lax" as const,
   secure: process.env.VERCEL === "1" || process.env.COOKIE_SECURE === "true",
@@ -19,18 +19,18 @@ export function setAuthCookies(
   session: { access_token: string; refresh_token: string; expires_in: number },
 ) {
   response.cookies.set(authCookieNames.accessToken, session.access_token, {
-    ...cookieOptions,
+    ...authCookieOptions,
     maxAge: session.expires_in,
   });
   response.cookies.set(authCookieNames.refreshToken, session.refresh_token, {
-    ...cookieOptions,
+    ...authCookieOptions,
     maxAge: 60 * 60 * 24 * 30,
   });
 }
 
 export function setMockAuthCookie(response: NextResponse, userId: string) {
   response.cookies.set(authCookieNames.accessToken, `mock:${userId}`, {
-    ...cookieOptions,
+    ...authCookieOptions,
     maxAge: 60 * 60 * 24 * 7,
   });
 }
@@ -47,14 +47,14 @@ export function clearActiveClubCookie(response: NextResponse) {
 
 export function setActiveClubCookie(response: NextResponse, slug: string) {
   response.cookies.set(authCookieNames.activeClub, slug, {
-    ...cookieOptions,
+    ...authCookieOptions,
     maxAge: 60 * 60 * 24 * 90,
   });
 }
 
 export function setStravaStateCookie(response: NextResponse, nonce: string) {
   response.cookies.set(authCookieNames.stravaState, nonce, {
-    ...cookieOptions,
+    ...authCookieOptions,
     maxAge: 60 * 10,
   });
 }
