@@ -96,7 +96,7 @@ export default async function AdminPage() {
             <CardHeader>
               <div>
                 <CardTitle>Invite user</CardTitle>
-                <CardDescription>Invite staff or members into this academy with the right access.</CardDescription>
+                <CardDescription>Send an invite link for this academy.</CardDescription>
               </div>
             </CardHeader>
             <InviteUserForm currentRole={session.activeRole} clubSlug={organizationId} initialInvites={invites} />
@@ -319,7 +319,7 @@ async function getAdminWorkspaceData(session: AdminSession): Promise<AdminWorksp
         session.activeRole === "owner"
           ? selectRows("app_error_events", `select=*&club_id=eq.${clubId}&order=created_at.desc&limit=10`)
           : Promise.resolve([]),
-        selectRows("club_invites", `select=*&club_id=eq.${clubId}${inviteRoleFilter}&order=created_at.desc`),
+        selectRows("club_invites", `select=*&club_id=eq.${clubId}&status=eq.pending${inviteRoleFilter}&order=created_at.desc`),
       ]);
       const userIds = membershipRows.map((membership) => membership.user_id);
       const [userRows, stravaRows] = await Promise.all([

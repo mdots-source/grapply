@@ -36,7 +36,7 @@ export function InviteUserForm({
   const [role, setRole] = useState<"admin" | "coach" | "member">("member");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<InviteMessage | null>(null);
-  const [invites, setInvites] = useState(initialInvites);
+  const [invites, setInvites] = useState(() => initialInvites.filter((invite) => invite.status === "pending"));
   const [revokingInvite, setRevokingInvite] = useState<string | null>(null);
   const [copiedInvite, setCopiedInvite] = useState<string | null>(null);
 
@@ -69,7 +69,7 @@ export function InviteUserForm({
         <div className="space-y-2">
           <Label htmlFor="invite-email">Invite email</Label>
           <Input id="invite-email" value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="coach@academy.com" required />
-          <p className="text-[11px] text-[var(--muted)]">Invites are scoped to {activeClub?.name ?? "the active club"}.</p>
+          <p className="text-[11px] text-[var(--muted)]">{activeClub?.name ?? "Active academy"}</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="invite-role">Role</Label>
@@ -162,7 +162,7 @@ export function InviteUserForm({
                         });
                         const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string; invite?: InviteRow }>(response, "Could not revoke invite.");
                         if (!payload.ok || !payload.invite) throw new Error(formatApiError(payload.error ?? "Could not revoke invite.", payload.requestId));
-                        setInvites((current) => current.map((item) => (item.id === invite.id ? (payload.invite as InviteRow) : item)));
+                        setInvites((current) => current.filter((item) => item.id !== invite.id));
                         setMessage({ tone: "success", text: `Invite revoked for ${invite.email}.` });
                       } catch (error) {
                         setMessage({ tone: "error", text: error instanceof Error ? error.message : "Could not revoke invite." });
@@ -180,7 +180,7 @@ export function InviteUserForm({
           ))
         ) : (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--muted)]">
-            No invites yet.
+            No pending invites.
           </div>
         )}
       </div>
