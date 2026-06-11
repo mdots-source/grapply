@@ -1,14 +1,14 @@
 import { getUserClubContext } from "@/data/platform";
 import { apiSupabaseError } from "@/lib/api-access";
 import { noStoreJson } from "@/lib/api-json";
-import { clearActiveClubCookie } from "@/lib/auth-cookies";
-import { getCurrentSession } from "@/lib/auth-session";
+import { clearActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
+import { getCurrentSessionWithRefresh } from "@/lib/auth-session";
 import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
 import { toClub, toClubMembership, toPlatformUser } from "@/lib/supabase/mappers";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const session = await getCurrentSession();
+  const { session, refreshedSession } = await getCurrentSessionWithRefresh();
 
   if (!session) {
     if (!isSupabaseConfigured() && isMockAuthFallbackAllowed()) {
@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       const user = userRow ? toPlatformUser(userRow) : null;
       if (!user) {
         const response = noStoreJson({ user: null, memberships: [] });
+        if (refreshedSession) setAuthCookies(response, refreshedSession);
         clearActiveClubCookie(response);
         return response;
       }
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
           };
         }),
       });
+      if (refreshedSession) setAuthCookies(response, refreshedSession);
       if (!session.activeClub) clearActiveClubCookie(response);
       return response;
     } catch (error) {
@@ -62,6 +64,7 @@ export async function GET(request: Request) {
     user: session.user,
     memberships: session.memberships,
   });
+  if (refreshedSession) setAuthCookies(response, refreshedSession);
   if (!session.activeClub) clearActiveClubCookie(response);
   return response;
 }

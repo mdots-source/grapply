@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { authCookieNames, clearStravaStateCookie, getCookieValue, setActiveClubCookie } from "@/lib/auth-cookies";
-import { getCurrentSession } from "@/lib/auth-session";
+import { authCookieNames, clearStravaStateCookie, getCookieValue, setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
+import { getCurrentSessionWithRefresh } from "@/lib/auth-session";
 import { getBackendClubId } from "@/lib/backend";
 import { exchangeStravaCode, isStravaConfigured, STRAVA_SCOPES } from "@/lib/strava";
 import { isSupabaseConfigured, upsertRow } from "@/lib/supabase/server";
@@ -39,17 +39,22 @@ export async function GET(request: Request) {
       return redirectAndClearStravaState(redirectState.redirectUrl);
     }
 
-    const session = await getCurrentSession();
+    const { session, refreshedSession } = await getCurrentSessionWithRefresh();
+    const redirectWithAuthAndClearStrava = (redirectUrl: URL, status?: number) => {
+      const response = redirectAndClearStravaState(redirectUrl, status);
+      if (refreshedSession) setAuthCookies(response, refreshedSession);
+      return response;
+    };
     if (!session) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("returnTo", redirectState.workspaceReturnTo);
       loginUrl.searchParams.set("strava", "login-required");
-      return redirectAndClearStravaState(loginUrl, 303);
+      return redirectWithAuthAndClearStrava(loginUrl, 303);
     }
 
     if (!isUuid(session.user.id)) {
       redirectState.redirectUrl.searchParams.set("strava", "real-login-required");
-      return redirectAndClearStravaState(redirectState.redirectUrl);
+      return redirectWithAuthAndClearStrava(redirectState.redirectUrl);
     }
 
     const membership = redirectState.clubSlug
@@ -60,19 +65,19 @@ export async function GET(request: Request) {
 
     if (!membership) {
       redirectState.redirectUrl.searchParams.set("strava", "club-required");
-      return redirectAndClearStravaState(redirectState.redirectUrl);
+      return redirectWithAuthAndClearStrava(redirectState.redirectUrl);
     }
 
     const clubId = await getBackendClubId(membership.club.slug);
     if (!clubId) {
       redirectState.redirectUrl.searchParams.set("strava", "club-not-found");
-      return redirectAndClearStravaState(redirectState.redirectUrl);
+      return redirectWithAuthAndClearStrava(redirectState.redirectUrl);
     }
 
     const grantedScopes = parseScopes(url.searchParams.get("scope"));
     if (!hasRequiredScopes(grantedScopes)) {
       redirectState.redirectUrl.searchParams.set("strava", "missing-scope");
-      return redirectAndClearStravaState(redirectState.redirectUrl);
+      return redirectWithAuthAndClearStrava(redirectState.redirectUrl);
     }
 
     const token = await exchangeStravaCode(code);
@@ -93,9 +98,8 @@ export async function GET(request: Request) {
 
     const redirectUrl = getScopedRedirectUrl(request, redirectState.workspaceReturnTo, membership.club.slug);
     redirectUrl.searchParams.set("strava", "connected");
-    const response = noStoreRedirect(redirectUrl);
+    const response = redirectWithAuthAndClearStrava(redirectUrl);
     setActiveClubCookie(response, membership.club.slug);
-    clearStravaStateCookie(response);
     return response;
   } catch {
     redirectState.redirectUrl.searchParams.set("strava", "error");

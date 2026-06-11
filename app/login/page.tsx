@@ -6,6 +6,7 @@ import { LoginForm } from "@/components/login-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth-session";
+import { hasRefreshSessionCookie, redirectToSessionRefreshIfPossible } from "@/lib/auth-refresh-redirect";
 import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
 import { normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo, splitOrganizationWorkspacePath } from "@/lib/workspace-intent";
 
@@ -22,6 +23,10 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
     if (splitOrganizationWorkspacePath(new URL(returnTo, "https://grapply.local").pathname)) redirect(returnTo);
     redirect(`/clubs?returnTo=${encodeURIComponent(returnTo)}`);
   }
+  if (inviteToken && (await hasRefreshSessionCookie())) {
+    redirect(`/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`);
+  }
+  await redirectToSessionRefreshIfPossible(returnTo);
 
   const showDemoLogin = isMockAuthFallbackAllowed();
   const registerHref = `/register?returnTo=${encodeURIComponent(returnTo)}${inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : ""}`;

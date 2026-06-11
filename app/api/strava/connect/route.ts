@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { setActiveClubCookie, setStravaStateCookie } from "@/lib/auth-cookies";
-import { getCurrentSession } from "@/lib/auth-session";
+import { setActiveClubCookie, setAuthCookies, setStravaStateCookie } from "@/lib/auth-cookies";
+import { getCurrentSessionWithRefresh } from "@/lib/auth-session";
 import { getRequestUrl } from "@/lib/request-origin";
 import { buildStravaAuthorizationUrl } from "@/lib/strava";
 import {
@@ -13,13 +13,18 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rawReturnTo = searchParams.get("returnTo");
   const workspaceReturnTo = normalizeWorkspaceReturnTo(rawReturnTo);
-  const session = await getCurrentSession();
+  const { session, refreshedSession } = await getCurrentSessionWithRefresh();
+  const redirectWithAuth = (url: URL | string, status?: number) => {
+    const response = noStoreRedirect(url, status);
+    if (refreshedSession) setAuthCookies(response, refreshedSession);
+    return response;
+  };
 
   if (!session) {
     const loginUrl = getRequestUrl("/login", request);
     loginUrl.searchParams.set("returnTo", workspaceReturnTo);
     loginUrl.searchParams.set("strava", "login-required");
-    return noStoreRedirect(loginUrl, 303);
+    return redirectWithAuth(loginUrl, 303);
   }
 
   const requestedClubSlug = getRequestedClubSlug(rawReturnTo);
@@ -33,7 +38,7 @@ export async function GET(request: Request) {
     const clubsUrl = getRequestUrl("/clubs", request);
     clubsUrl.searchParams.set("returnTo", workspaceReturnTo);
     clubsUrl.searchParams.set("strava", "club-required");
-    return noStoreRedirect(clubsUrl, 303);
+    return redirectWithAuth(clubsUrl, 303);
   }
 
   const clubSlug = membership.club.slug;
@@ -47,12 +52,12 @@ export async function GET(request: Request) {
   if (!url) {
     const redirectUrl = getRequestUrl(scopeWorkspaceReturnTo(workspaceReturnTo, clubSlug), request);
     redirectUrl.searchParams.set("strava", "missing-config");
-    const response = noStoreRedirect(redirectUrl);
+    const response = redirectWithAuth(redirectUrl);
     setActiveClubCookie(response, clubSlug);
     return response;
   }
 
-  const response = noStoreRedirect(url);
+  const response = redirectWithAuth(url);
   setActiveClubCookie(response, clubSlug);
   setStravaStateCookie(response, nonce);
   return response;

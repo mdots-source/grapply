@@ -5,6 +5,7 @@ import { AuthShell } from "@/components/auth-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { hasRefreshSessionCookie } from "@/lib/auth-refresh-redirect";
 import { getCurrentSession } from "@/lib/auth-session";
 import { isSupabaseConfigured, selectRows } from "@/lib/supabase/server";
 import type { TableRow } from "@/lib/supabase/types";
@@ -28,6 +29,9 @@ export default async function InvitePage({ searchParams }: { searchParams?: Prom
   const session = await getCurrentSession();
 
   if (session && inviteToken) {
+    redirect(`/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`);
+  }
+  if (!session && inviteToken && (await hasRefreshSessionCookie())) {
     redirect(`/api/invites/accept?invite=${encodeURIComponent(inviteToken)}&returnTo=${encodeURIComponent(returnTo)}`);
   }
 

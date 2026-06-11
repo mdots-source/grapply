@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/oss/empty-state";
 import { getCurrentSession } from "@/lib/auth-session";
+import { redirectToSessionRefreshIfPossible } from "@/lib/auth-refresh-redirect";
 import { getWorkspaceIntentLabel, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export default async function ClubsPage({ searchParams }: { searchParams?: Promise<{ user?: string; strava?: string; returnTo?: string; access?: string }> }) {
@@ -24,7 +25,8 @@ export default async function ClubsPage({ searchParams }: { searchParams?: Promi
   )}`;
 
   if (!user) {
-    return null;
+    await redirectToSessionRefreshIfPossible(`/clubs?returnTo=${encodeURIComponent(workspaceReturnTo)}`);
+    redirect(`/login?returnTo=${encodeURIComponent(workspaceReturnTo)}`);
   }
 
   if (!accessDenied && memberships.length > 0) {

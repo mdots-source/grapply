@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { setActiveClubCookie } from "@/lib/auth-cookies";
-import { getCurrentSession } from "@/lib/auth-session";
+import { setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
+import { getCurrentSessionWithRefresh } from "@/lib/auth-session";
 import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
 import { apiSupabaseError } from "@/lib/api-access";
 import { inviteAcceptedEmailBody, queueEmail, welcomeEmailBody } from "@/lib/email/outbox";
@@ -18,48 +18,53 @@ export async function GET(request: Request) {
     return noStoreRedirect(authErrorUrl(request, returnTo, "Invite link is missing."), 303);
   }
 
-  const session = await getCurrentSession();
+  const { session, refreshedSession } = await getCurrentSessionWithRefresh();
+  const redirectWithAuth = (redirectUrl: URL, status?: number) => {
+    const response = noStoreRedirect(redirectUrl, status);
+    if (refreshedSession) setAuthCookies(response, refreshedSession);
+    return response;
+  };
   if (!session) {
     const loginUrl = getRequestUrl("/login", request);
     loginUrl.searchParams.set("returnTo", returnTo);
     loginUrl.searchParams.set("invite", inviteToken);
-    return noStoreRedirect(loginUrl, 303);
+    return redirectWithAuth(loginUrl, 303);
   }
 
   if (!isSupabaseConfigured()) {
     if (isMockAuthFallbackAllowed()) {
-      return noStoreRedirect(authErrorUrl(request, returnTo, "Club invites require the Supabase backend."), 303);
+      return redirectWithAuth(authErrorUrl(request, returnTo, "Club invites require the Supabase backend."), 303);
     }
-    return noStoreRedirect(authErrorUrl(request, returnTo, "Supabase backend is not configured."), 303);
+    return redirectWithAuth(authErrorUrl(request, returnTo, "Supabase backend is not configured."), 303);
   }
 
   let clubId: string | null = null;
   try {
     const [invite] = await selectRows("club_invites", `select=*&token=eq.${encodeURIComponent(inviteToken)}&status=eq.pending&limit=1`);
     if (!invite) {
-      return noStoreRedirect(authErrorUrl(request, returnTo, "This invite was already used, revoked, or does not exist."), 303);
+      return redirectWithAuth(authErrorUrl(request, returnTo, "This invite was already used, revoked, or does not exist."), 303);
     }
     clubId = invite.club_id;
 
     if (new Date(invite.expires_at).getTime() < Date.now()) {
       await updateRows("club_invites", { status: "expired" }, `id=eq.${invite.id}`);
-      return noStoreRedirect(authErrorUrl(request, returnTo, "This invite has expired. Ask the academy owner to send a new invite."), 303);
+      return redirectWithAuth(authErrorUrl(request, returnTo, "This invite has expired. Ask the academy owner to send a new invite."), 303);
     }
 
     if (invite.email.toLowerCase() !== session.user.email.toLowerCase()) {
-      return noStoreRedirect(authErrorUrl(request, returnTo, "This invite belongs to a different email address."), 303);
+      return redirectWithAuth(authErrorUrl(request, returnTo, "This invite belongs to a different email address."), 303);
     }
     if (!isInviteMembershipRole(invite.role)) {
-      return noStoreRedirect(authErrorUrl(request, returnTo, "This invite role is not supported."), 303);
+      return redirectWithAuth(authErrorUrl(request, returnTo, "This invite role is not supported."), 303);
     }
 
     const [club] = await selectRows("clubs", `select=*&id=eq.${invite.club_id}&limit=1`);
     if (!club) {
-      return noStoreRedirect(authErrorUrl(request, returnTo, "The invited academy could not be found."), 303);
+      return redirectWithAuth(authErrorUrl(request, returnTo, "The invited academy could not be found."), 303);
     }
     const [user] = await selectRows("app_users", `select=*&id=eq.${encodeURIComponent(session.user.id)}&limit=1`);
     if (!user) {
-      return noStoreRedirect(authErrorUrl(request, returnTo, "Your Grapply account profile could not be found."), 303);
+      return redirectWithAuth(authErrorUrl(request, returnTo, "Your Grapply account profile could not be found."), 303);
     }
 
     const [existingMembership] = await selectRows("club_memberships", `select=*&club_id=eq.${club.id}&user_id=eq.${session.user.id}&limit=1`);
@@ -82,7 +87,7 @@ export async function GET(request: Request) {
       await markInviteAccepted(invite.id);
       const destinationUrl = getRequestUrl(destination, request);
       destinationUrl.searchParams.set("invite", existingMembership.role === nextRole ? "already-member" : "role-updated");
-      const response = noStoreRedirect(destinationUrl, 303);
+      const response = redirectWithAuth(destinationUrl, 303);
       setActiveClubCookie(response, club.slug);
       return response;
     }
@@ -110,7 +115,7 @@ export async function GET(request: Request) {
     if (!acceptedInvite) {
       const destinationUrl = getRequestUrl(destination, request);
       destinationUrl.searchParams.set("invite", "already-accepted");
-      const response = noStoreRedirect(destinationUrl, 303);
+      const response = redirectWithAuth(destinationUrl, 303);
       setActiveClubCookie(response, club.slug);
       return response;
     }
@@ -138,7 +143,7 @@ export async function GET(request: Request) {
       membershipId: membership.id,
     });
 
-    const response = noStoreRedirect(getRequestUrl(destination, request), 303);
+    const response = redirectWithAuth(getRequestUrl(destination, request), 303);
     setActiveClubCookie(response, club.slug);
     return response;
   } catch (error) {
