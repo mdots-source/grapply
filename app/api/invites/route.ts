@@ -55,19 +55,8 @@ export async function POST(request: Request) {
       clubId = await getBackendClubId(access.session.activeClub.slug);
       if (!clubId) return noStoreJson({ ok: false, error: "Club not found." }, { status: 404 });
 
-      const [existingMembership] = await selectRows(
-        "app_users",
-        `select=*&email=eq.${encodeURIComponent(inviteEmail)}&limit=1`,
-      );
-      if (existingMembership) {
-        const [membership] = await selectRows(
-          "club_memberships",
-          `select=*&club_id=eq.${clubId}&user_id=eq.${existingMembership.id}&limit=1`,
-        );
-        if (membership) {
-          return noStoreJson({ ok: false, error: "This user is already in this club." }, { status: 409 });
-        }
-      }
+      const inviteConflict = await getInviteEmailConflict(clubId, inviteEmail, undefined, access.session.activeRole);
+      if (inviteConflict) return inviteConflict;
 
       const [existingInvite] = await selectRows("club_invites", `select=*&club_id=eq.${clubId}&email=eq.${encodeURIComponent(inviteEmail)}&limit=1`);
       if (existingInvite?.role === "admin" && access.session.activeRole !== "owner") {
@@ -147,7 +136,7 @@ export async function PATCH(request: Request) {
       }
       if (data.status === "pending" || data.email) {
         const nextEmail = data.email ?? existingInvite.email;
-        const inviteConflict = await getInviteEmailConflict(clubId, nextEmail, existingInvite.id);
+        const inviteConflict = await getInviteEmailConflict(clubId, nextEmail, existingInvite.id, access.session.activeRole);
         if (inviteConflict) return inviteConflict;
       }
 
@@ -310,7 +299,7 @@ function createInviteToken() {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function getInviteEmailConflict(clubId: string, email: string, currentInviteId?: string) {
+async function getInviteEmailConflict(clubId: string, email: string, currentInviteId?: string, actorRole?: string) {
   const [existingUser] = await selectRows("app_users", `select=id&email=eq.${encodeURIComponent(email)}&limit=1`);
   if (existingUser) {
     const [membership] = await selectRows(
@@ -327,6 +316,9 @@ async function getInviteEmailConflict(clubId: string, email: string, currentInvi
     `select=*&club_id=eq.${clubId}&email=eq.${encodeURIComponent(email)}&status=eq.pending&limit=1`,
   );
   if (pendingInvite && pendingInvite.id !== currentInviteId) {
+    if (pendingInvite.role === "admin" && actorRole !== "owner") {
+      return noStoreJson({ ok: false, error: "Only owners can manage admin invites." }, { status: 403 });
+    }
     return noStoreJson({ ok: false, error: "An active invite already exists for this email.", invite: pendingInvite }, { status: 409 });
   }
 
