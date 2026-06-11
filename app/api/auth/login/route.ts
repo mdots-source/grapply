@@ -146,7 +146,7 @@ async function getSupabasePostAuthDestination(userId: string, returnTo: string) 
     return scopeWorkspaceReturnTo(safeReturnTo, club.slug);
   }
 
-  if (memberships.length !== 1) {
+  if (memberships.length === 0) {
     return clubsPath(returnTo);
   }
 
@@ -170,7 +170,7 @@ function getMockPostAuthDestination(userId: string, returnTo: string) {
     return scopeWorkspaceReturnTo(safeReturnTo, membership.club.slug);
   }
 
-  if (userMemberships.length !== 1) return clubsPath(returnTo);
+  if (userMemberships.length === 0) return clubsPath(returnTo);
 
   const membership = userMemberships[0];
   const safeReturnTo = getRoleSafeWorkspaceReturnTo(returnTo, membership.role);

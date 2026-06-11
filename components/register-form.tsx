@@ -1,4 +1,4 @@
-import { Building2, Lock, Mail, MapPin, User } from "lucide-react";
+import { Lock, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,27 +14,18 @@ export function RegisterForm({ returnTo = "/schedule", inviteToken }: { returnTo
     >
       <input type="hidden" name="returnTo" value={returnTo} />
       {inviteToken && <input type="hidden" name="inviteToken" value={inviteToken} />}
-      {!isInviteFlow && (
-        <div className="space-y-2">
-          <Label htmlFor="academy">Academy name</Label>
-          <div className="relative">
-            <Building2 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-            <Input id="academy" name="academyName" className="pl-9" defaultValue="Grapply Jiu-Jitsu Academy" required />
-          </div>
-        </div>
-      )}
       <div className="space-y-2">
-        <Label htmlFor="owner-name">{isInviteFlow ? "Your name" : "Owner name"}</Label>
+        <Label htmlFor="user-name">Full name</Label>
         <div className="relative">
           <User className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-          <Input id="owner-name" name="ownerName" className="pl-9" defaultValue="Academy Owner" required />
+          <Input id="user-name" name="ownerName" className="pl-9" placeholder="Sofia Almeida" required />
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="owner">{isInviteFlow ? "Your email" : "Owner email"}</Label>
+        <Label htmlFor="owner">Email</Label>
         <div className="relative">
           <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-          <Input id="owner" name="ownerEmail" className="pl-9" placeholder="owner@academy.com" type="email" required />
+          <Input id="owner" name="ownerEmail" className="pl-9" placeholder="you@academy.com" type="email" required />
         </div>
       </div>
       <div className="space-y-2">
@@ -44,17 +35,8 @@ export function RegisterForm({ returnTo = "/schedule", inviteToken }: { returnTo
           <Input id="register-password" name="password" className="pl-9" type="password" minLength={6} required />
         </div>
       </div>
-      {!isInviteFlow && (
-        <div className="space-y-2">
-          <Label htmlFor="city">City</Label>
-          <div className="relative">
-            <MapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-            <Input id="city" name="location" className="pl-9" defaultValue="San Diego, CA" required />
-          </div>
-        </div>
-      )}
       <Button type="submit" variant="primary" className="w-full">
-        {isInviteFlow ? "Join academy" : "Create workspace"}
+        {isInviteFlow ? "Join academy" : "Create account"}
       </Button>
     </form>
   );
