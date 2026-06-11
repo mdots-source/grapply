@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { setActiveClubCookie } from "@/lib/auth-cookies";
-import { getCurrentSession } from "@/lib/auth-session";
+import { setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
+import { getCurrentSessionWithRefresh } from "@/lib/auth-session";
 import { getRequestUrl } from "@/lib/request-origin";
 import { getRoleSafeWorkspaceReturnTo, normalizeWorkspaceReturnTo, scopeWorkspaceReturnTo } from "@/lib/workspace-intent";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const club = url.searchParams.get("club");
-  const session = await getCurrentSession();
+  const { session, refreshedSession } = await getCurrentSessionWithRefresh();
   const requestedDestination = normalizeWorkspaceReturnTo(url.searchParams.get("returnTo"));
 
   if (!session) {
-    const loginUrl = getRequestUrl("/login", request);
+    const loginUrl = getRequestUrl("/api/auth/refresh", request);
     loginUrl.searchParams.set("returnTo", requestedDestination);
     return noStoreRedirect(loginUrl, 303);
   }
@@ -28,6 +28,7 @@ export async function GET(request: Request) {
   const clubSlug = membership.club.slug;
   const destination = scopeWorkspaceReturnTo(getRoleSafeWorkspaceReturnTo(requestedDestination, role), clubSlug);
   const response = noStoreRedirect(getRequestUrl(destination, request));
+  if (refreshedSession) setAuthCookies(response, refreshedSession);
   setActiveClubCookie(response, clubSlug);
   return response;
 }

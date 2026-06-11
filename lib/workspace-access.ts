@@ -16,7 +16,7 @@ export async function requireWorkspaceRole(allowedRoles: PlatformRole[], returnT
   const requestedReturnTo = requestedOrganizationId ? scopeWorkspaceReturnTo(returnTo, requestedOrganizationId) : returnTo;
 
   if (!session) {
-    redirect(`/login?returnTo=${encodeURIComponent(requestedReturnTo)}`);
+    redirect(`/api/auth/refresh?returnTo=${encodeURIComponent(requestedReturnTo)}`);
   }
 
   const requestedMembership = requestedOrganizationId
