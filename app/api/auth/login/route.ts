@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   const isFormSubmit = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
   const payload = isFormSubmit ? Object.fromEntries(await request.formData()) : await readJsonObject(request);
-  const returnTo = normalizeWorkspaceReturnTo(String(payload.returnTo ?? ""));
+  const returnTo = normalizeLoginReturnTo(String(payload.returnTo ?? ""));
   const email = normalizeAuthEmail(payload?.email);
   const password = String(payload?.password ?? "");
   const inviteToken = String(payload?.inviteToken ?? "").trim();
@@ -135,6 +135,17 @@ function setDestinationActiveClubCookie(response: NextResponse, destination: str
 
 async function getSupabasePostAuthDestination(userId: string, returnTo: string) {
   const memberships = await selectRows("club_memberships", `select=*&user_id=eq.${userId}`);
+  const requestedWorkspace = getRequestedWorkspace(returnTo);
+  if (requestedWorkspace) {
+    const clubRows = await selectRows("clubs", `select=*&slug=eq.${encodeURIComponent(requestedWorkspace.organizationId)}&limit=1`);
+    const club = clubRows[0];
+    const membership = club ? memberships.find((item) => item.club_id === club.id) : null;
+    if (!club || !membership) return clubsPath(requestedWorkspace.workspaceReturnTo);
+
+    const safeReturnTo = getRoleSafeWorkspaceReturnTo(requestedWorkspace.workspaceReturnTo, membership.role);
+    return scopeWorkspaceReturnTo(safeReturnTo, club.slug);
+  }
+
   if (memberships.length !== 1) {
     return clubsPath(returnTo);
   }
@@ -150,6 +161,15 @@ async function getSupabasePostAuthDestination(userId: string, returnTo: string) 
 
 function getMockPostAuthDestination(userId: string, returnTo: string) {
   const userMemberships = requireMockMemberships(userId);
+  const requestedWorkspace = getRequestedWorkspace(returnTo);
+  if (requestedWorkspace) {
+    const membership = userMemberships.find((item) => item.club.slug === requestedWorkspace.organizationId);
+    if (!membership) return clubsPath(requestedWorkspace.workspaceReturnTo);
+
+    const safeReturnTo = getRoleSafeWorkspaceReturnTo(requestedWorkspace.workspaceReturnTo, membership.role);
+    return scopeWorkspaceReturnTo(safeReturnTo, membership.club.slug);
+  }
+
   if (userMemberships.length !== 1) return clubsPath(returnTo);
 
   const membership = userMemberships[0];
@@ -161,9 +181,32 @@ function clubsPath(returnTo: string) {
   return `/clubs?returnTo=${encodeURIComponent(normalizeWorkspaceReturnTo(returnTo))}`;
 }
 
+function normalizeLoginReturnTo(rawReturnTo: string) {
+  const normalizedReturnTo = normalizeWorkspaceReturnTo(rawReturnTo);
+  const requestedWorkspace = getRequestedWorkspace(rawReturnTo);
+  return requestedWorkspace ? scopeWorkspaceReturnTo(normalizedReturnTo, requestedWorkspace.organizationId) : normalizedReturnTo;
+}
+
+function getRequestedWorkspace(returnTo: string) {
+  if (!returnTo.startsWith("/")) return null;
+
+  try {
+    const destination = new URL(returnTo, "https://grapply.local");
+    const route = splitOrganizationWorkspacePath(destination.pathname);
+    if (!route) return null;
+
+    return {
+      organizationId: route.organizationId,
+      workspaceReturnTo: `${route.workspacePath}${destination.search}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function authErrorUrl(request: Request, path: string, returnTo: string, error: string, inviteToken?: string) {
   const url = getRequestUrl(path, request);
-  url.searchParams.set("returnTo", normalizeWorkspaceReturnTo(returnTo));
+  url.searchParams.set("returnTo", normalizeLoginReturnTo(returnTo));
   url.searchParams.set("error", error);
   if (inviteToken) url.searchParams.set("invite", inviteToken);
   return url;
