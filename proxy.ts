@@ -8,6 +8,7 @@ const publicPrefixes = [
   "/login",
   "/register",
   "/invite",
+  "/app",
   "/auth/callback",
   "/clubs/select",
   "/api",
@@ -36,6 +37,7 @@ const unscopedWorkspacePrefixes = [
 ];
 const reservedTopLevelPaths = new Set([
   "auth",
+  "app",
   "clubs",
   "login",
   "register",
@@ -53,6 +55,25 @@ function appendRequestCookie(cookieHeader: string, name: string, value: string) 
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
+
+  if (host.split(":")[0] === "app.grapply.me") {
+    if (
+      pathname.startsWith("/app") ||
+      pathname.startsWith("/api") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/avatars") ||
+      pathname === "/favicon.ico"
+    ) {
+      return NextResponse.next();
+    }
+
+    const appUrl = request.nextUrl.clone();
+    appUrl.pathname = "/app";
+    appUrl.search = search;
+    return NextResponse.rewrite(appUrl);
+  }
+
   if (publicPaths.includes(pathname)) return NextResponse.next();
   if (publicPrefixes.some((prefix) => pathname.startsWith(prefix))) return NextResponse.next();
 

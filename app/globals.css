@@ -268,6 +268,80 @@ html[data-theme="dark"] .sidebar-menu-active {
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
+.oss-mobile-schedule-grid.ag-theme-quartz {
+  --ag-background-color: transparent;
+  --ag-foreground-color: var(--foreground);
+  --ag-border-color: var(--border);
+  --ag-header-background-color: var(--surface);
+  --ag-header-foreground-color: var(--muted);
+  --ag-row-hover-color: var(--ag-row-hover);
+  --ag-odd-row-background-color: transparent;
+  --ag-selected-row-background-color: color-mix(in srgb, var(--accent) 13%, transparent);
+  --ag-font-family: var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  --ag-font-size: 13px;
+  --ag-grid-size: 6px;
+  --ag-row-height: 92px;
+  --ag-header-height: 42px;
+  --ag-wrapper-border-radius: 22px;
+  --ag-cell-horizontal-padding: 10px;
+}
+
+.oss-mobile-schedule-grid .ag-root-wrapper {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px);
+}
+
+.oss-mobile-schedule-grid .ag-header-cell-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.oss-mobile-schedule-grid .ag-cell {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  line-height: normal;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.oss-mobile-schedule-grid .ag-cell-value,
+.oss-mobile-schedule-grid .ag-cell-wrapper {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.oss-mobile-schedule-grid .ag-row {
+  background-color: var(--panel);
+  border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.oss-mobile-schedule-grid .ag-row-odd {
+  background-color: var(--surface);
+}
+
+.oss-mobile-schedule-grid .ag-center-cols-viewport,
+.oss-mobile-schedule-grid .ag-center-cols-container,
+.oss-mobile-schedule-grid .ag-pinned-left-cols-container {
+  background: transparent;
+}
+
+.oss-mobile-schedule-grid .ag-cell {
+  background: transparent;
+}
+
+.oss-mobile-schedule-grid .ag-pinned-left-cols-container,
+.oss-mobile-schedule-grid .ag-pinned-left-header {
+  border-right: 1px solid var(--border);
+}
+
 .oss-rankings-grid.ag-theme-quartz,
 .oss-members-grid.ag-theme-quartz {
   --ag-background-color: var(--ag-bg);

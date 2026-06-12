@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Settings2, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,14 @@ type CookiePreferences = {
 };
 
 export function CookieConsent() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [manage, setManage] = useState(false);
   const [analytics, setAnalytics] = useState(true);
   const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
+    if (pathname?.startsWith("/app")) return;
     const saved = window.localStorage.getItem(storageKey);
     setOpen(!saved);
 
@@ -32,7 +35,9 @@ export function CookieConsent() {
 
     window.addEventListener("grapply:open-cookie-preferences", openPreferences);
     return () => window.removeEventListener("grapply:open-cookie-preferences", openPreferences);
-  }, []);
+  }, [pathname]);
+
+  if (pathname?.startsWith("/app")) return null;
 
   function savePreferences(next: Pick<CookiePreferences, "analytics" | "marketing">) {
     const preferences: CookiePreferences = {
