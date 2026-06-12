@@ -8,7 +8,7 @@ import { AgGridHost } from "@/components/ag-grid-host";
 import { BeltPill } from "@/components/belt-pill";
 import { StudentAvatar } from "@/components/student-avatar";
 import { Badge } from "@/components/ui/badge";
-import { beltStyles, compareMemberHierarchy, students, type Belt, type Student } from "@/data/academy";
+import { compareMemberHierarchy, students, type Belt, type Student } from "@/data/academy";
 import { rankMovement } from "@/data/rankings-meta";
 
 const activeMembers = students.filter((student) => student.status === "active");

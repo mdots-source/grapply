@@ -131,7 +131,7 @@ const faqItems = [
 
 export function LandingPage() {
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <main className="min-h-screen overflow-x-hidden bg-[var(--background)] text-[var(--foreground)]">
       <Header />
       <Hero />
       <ProductOSSection />
@@ -619,7 +619,7 @@ function TvPanel() {
                       </motion.div>
                     ))}
                   </div>
-                  <div className="hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 lg:block">
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
                       <QrCode size={14} />
                       Check-in
