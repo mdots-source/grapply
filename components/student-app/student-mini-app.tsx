@@ -57,6 +57,7 @@ const langKey = "grapply-mobile-language";
 const clubConfirmedKey = "grapply-mobile-club-confirmed";
 const chooseClubAfterLoginKey = "grapply-mobile-choose-club";
 const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+type DayLabel = (typeof dayOrder)[number];
 
 const languages: Array<{ id: Lang; label: string }> = [
   { id: "en", label: "EN" },
@@ -228,6 +229,44 @@ const tabIcons: Record<TabId, React.ComponentType<{ size?: number; className?: s
   profile: UserRound,
 };
 
+const localeByLang: Record<Lang, string> = {
+  en: "en-US",
+  es: "es-ES",
+  pt: "pt-BR",
+  ru: "ru-RU",
+};
+
+function startOfCalendarWeek(date: Date) {
+  const value = new Date(date);
+  const day = value.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  value.setDate(value.getDate() + diff);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function addCalendarDays(date: Date, days: number) {
+  const value = new Date(date);
+  value.setDate(value.getDate() + days);
+  return value;
+}
+
+function dayLabelFromDate(date: Date): DayLabel {
+  return dayOrder[(date.getDay() + 6) % 7];
+}
+
+function formatMobileWeekRange(start: Date, lang: Lang) {
+  const locale = localeByLang[lang];
+  const end = addCalendarDays(start, 6);
+  const startLabel = start.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  const endLabel = end.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  return `${startLabel} - ${endLabel}`;
+}
+
+function isSameCalendarDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
 declare global {
   interface Window {
     Telegram?: {
@@ -264,7 +303,7 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
     window.localStorage.setItem(langKey, next);
   }
 
-  if (!session) return <MobileLogin lang={lang} onLanguageChange={changeLang} />;
+  if (!session) return <MobileLogin lang={lang} />;
 
   const t = copy[lang];
   const classes = initialData?.classes ?? [];
@@ -283,7 +322,6 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
       <OrganizationPicker
         session={session}
         lang={lang}
-        onLanguageChange={changeLang}
         onDone={() => setChoosingClub(false)}
       />
     );
@@ -296,7 +334,6 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
           session={session}
           currentStudent={currentStudent}
           lang={lang}
-          onLanguageChange={changeLang}
           onChooseClub={() => {
             window.localStorage.setItem(chooseClubAfterLoginKey, "1");
             setChoosingClub(true);
@@ -320,7 +357,7 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
             <EventsView t={t} competitions={initialData?.competitions ?? []} trainingCamps={initialData?.trainingCamps ?? []} />
           )}
           {activeTab === "rankings" && <RankingsView t={t} rankings={rankings} currentStudent={currentStudent} />}
-          {activeTab === "profile" && <ProfileView t={t} session={session} student={currentStudent} posts={initialData?.posts ?? []} />}
+          {activeTab === "profile" && <ProfileView t={t} lang={lang} onLanguageChange={changeLang} session={session} student={currentStudent} posts={initialData?.posts ?? []} />}
         </section>
         <MobileNav t={t} activeTab={activeTab} onChange={setActiveTab} />
       </div>
@@ -328,7 +365,7 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
   );
 }
 
-function MobileLogin({ lang, onLanguageChange }: { lang: Lang; onLanguageChange: (lang: Lang) => void }) {
+function MobileLogin({ lang }: { lang: Lang }) {
   const t = copy[lang];
   const [email, setEmail] = useState("eli@grapply.app");
   const [password, setPassword] = useState("demo123");
@@ -360,12 +397,11 @@ function MobileLogin({ lang, onLanguageChange }: { lang: Lang; onLanguageChange:
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--background)] px-4 py-5 text-[var(--foreground)]">
       <div className="w-full max-w-[430px]">
-        <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="mb-5 flex items-center gap-3">
           <div className="flex items-center gap-3">
             <BrandLogo className="size-11 border border-[var(--border)]" priority />
             <p className="text-lg font-black">Grapply</p>
           </div>
-          <LanguageSwitch lang={lang} onChange={onLanguageChange} compact />
         </div>
         <form onSubmit={submit} className="rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
           <div className="mb-5 flex items-center gap-3">
@@ -391,12 +427,10 @@ function MobileLogin({ lang, onLanguageChange }: { lang: Lang; onLanguageChange:
 function OrganizationPicker({
   session,
   lang,
-  onLanguageChange,
   onDone,
 }: {
   session: MiniSession;
   lang: Lang;
-  onLanguageChange: (lang: Lang) => void;
   onDone: () => void;
 }) {
   const t = copy[lang];
@@ -428,7 +462,7 @@ function OrganizationPicker({
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 py-5 text-[var(--foreground)]">
       <div className="mx-auto w-full max-w-[430px]">
-        <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="mb-5 flex items-center gap-3">
           <div className="flex items-center gap-3">
             <BrandLogo className="size-11 border border-[var(--border)]" priority />
             <div className="min-w-0">
@@ -436,7 +470,6 @@ function OrganizationPicker({
               <p className="truncate text-xs text-[var(--muted)]">{session.user.email}</p>
             </div>
           </div>
-          <LanguageSwitch lang={lang} onChange={onLanguageChange} compact />
         </div>
 
         <section className="rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
@@ -489,13 +522,11 @@ function MobileHeader({
   session,
   currentStudent,
   lang,
-  onLanguageChange,
   onChooseClub,
 }: {
   session: MiniSession;
   currentStudent: Student | null;
   lang: Lang;
-  onLanguageChange: (lang: Lang) => void;
   onChooseClub: () => void;
 }) {
   const t = copy[lang];
@@ -506,7 +537,6 @@ function MobileHeader({
           <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">{session.activeClub?.name}</p>
           <p className="mt-0.5 text-xs text-[var(--muted)]">{t.switchClub as string}</p>
         </button>
-        <LanguageSwitch lang={lang} onChange={onLanguageChange} />
         <a href="/api/auth/logout" aria-label="Log out" className="grid size-10 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
           <LogOut size={17} />
         </a>
@@ -630,28 +660,33 @@ function TodayView({
 }
 
 function ScheduleView({ t, lang, classes, nextClass }: { t: (typeof copy)[Lang]; lang: Lang; classes: ClubClass[]; nextClass: ClubClass | null }) {
-  const [selectedDay, setSelectedDay] = useState(nextClass?.day ?? dayOrder[0]);
+  const today = useMemo(() => new Date(), []);
+  const weekStart = useMemo(() => startOfCalendarWeek(today), [today]);
+  const todayDay = useMemo(() => dayLabelFromDate(today), [today]);
+  const [selectedDay, setSelectedDay] = useState<DayLabel>(todayDay);
   const rowData = useMemo(() => classes.filter((item) => item.day === selectedDay).sort((a, b) => a.time.localeCompare(b.time)), [classes, selectedDay]);
+  const selectedIndex = dayOrder.indexOf(selectedDay);
+  const selectedDate = addCalendarDays(weekStart, selectedIndex);
   const columnDefs = useMemo<ColDef<ClubClass>[]>(
     () => [
       {
         headerName: t.time as string,
         field: "time",
-        width: 76,
+        width: 74,
         pinned: "left",
-        cellRenderer: (params: { value: string }) => <span className="text-base font-black text-[var(--foreground)]">{params.value}</span>,
+        cellRenderer: (params: { value: string }) => <span className="text-[15px] font-black text-[var(--foreground)]">{params.value}</span>,
       },
       {
         headerName: t.class as string,
         field: "name",
-        flex: 1.2,
-        minWidth: 170,
+        flex: 1,
+        minWidth: 178,
         cellRenderer: (params: { data: ClubClass }) => <ScheduleClassCell item={params.data} active={params.data.id === nextClass?.id} />,
       },
       {
         headerName: t.mat as string,
         field: "mat",
-        width: 92,
+        width: 84,
         cellRenderer: (params: { data: ClubClass }) => (
           <div className="flex h-full items-center">
             <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-semibold text-[var(--muted)]">{params.data.mat}</span>
@@ -665,43 +700,79 @@ function ScheduleView({ t, lang, classes, nextClass }: { t: (typeof copy)[Lang];
   const days = t.days as string[];
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">{t.schedule as string}</p>
-          <h2 className="text-2xl font-semibold">{t.week as string}</h2>
+    <div className="space-y-4">
+      <div className="rounded-[26px] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">{t.schedule as string}</p>
+            <h2 className="mt-1 truncate text-2xl font-semibold">{formatMobileWeekRange(weekStart, lang)}</h2>
+          </div>
+          <Button type="button" variant="surface" size="sm" className="shrink-0" onClick={() => setSelectedDay(todayDay)}>
+            {t.today as string}
+          </Button>
         </div>
-        {nextClass && <p className="max-w-[46%] truncate text-right text-xs text-[var(--muted)]">{nextClass.time} · {nextClass.name}</p>}
+        {nextClass && (
+          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">{t.upNext as string}</p>
+            <p className="mt-1 truncate text-sm font-semibold">
+              {nextClass.day} · {nextClass.time} · {nextClass.name}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {dayOrder.map((day, index) => {
           const count = classes.filter((item) => item.day === day).length;
           const active = selectedDay === day;
+          const date = addCalendarDays(weekStart, index);
+          const isToday = isSameCalendarDay(date, today);
           return (
             <button
               type="button"
               key={day}
               onClick={() => setSelectedDay(day)}
               className={cn(
-                "min-w-[62px] rounded-2xl border px-3 py-2.5 text-left transition",
-                active ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]" : "border-[var(--border)] bg-[var(--surface)]",
+                "min-w-[68px] rounded-2xl border px-3 py-2.5 text-left transition",
+                active ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[var(--shadow)]" : "border-[var(--border)] bg-[var(--surface)]",
+                isToday && !active ? "border-[var(--accent)]" : "",
               )}
             >
-              <span className="block text-sm font-black">{days[index]}</span>
-              <span className="mt-1 block text-[11px] opacity-75">{count}</span>
+              <span className="flex items-center justify-between gap-2 text-sm font-black">
+                {days[index]}
+                {isToday && <span className={cn("size-1.5 rounded-full", active ? "bg-[var(--accent-foreground)]" : "bg-[var(--accent)]")} />}
+              </span>
+              <span className="mt-1 block text-xl font-black leading-none">{date.getDate()}</span>
+              <span className="mt-1 block text-[10px] font-semibold opacity-75">
+                {count} {t.classes as string}
+              </span>
             </button>
           );
         })}
       </div>
 
-      <AgGridHost className="oss-mobile-schedule-grid ag-theme-quartz h-[500px] w-full">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">
+            {days[selectedIndex]} {selectedDate.toLocaleDateString(localeByLang[lang], { month: "short", day: "numeric" })}
+          </p>
+          <p className="text-xs text-[var(--muted)]">{rowData.length} {t.classes as string}</p>
+        </div>
+        {selectedDay !== todayDay && (
+          <button type="button" className="text-xs font-semibold text-[var(--accent)]" onClick={() => setSelectedDay(todayDay)}>
+            {t.today as string}
+          </button>
+        )}
+      </div>
+
+      <AgGridHost className="oss-mobile-schedule-grid ag-theme-quartz h-[min(540px,62vh)] min-h-[420px] w-full">
         <AgGridReact<ClubClass>
           theme="legacy"
           rowData={rowData}
           columnDefs={columnDefs}
-          rowHeight={86}
-          headerHeight={40}
+          rowHeight={88}
+          headerHeight={42}
+          defaultColDef={{ resizable: false, suppressMovable: true }}
           suppressCellFocus
           suppressMovableColumns
           domLayout="normal"
@@ -756,7 +827,21 @@ function RankingsView({ t, rankings, currentStudent }: { t: (typeof copy)[Lang];
   );
 }
 
-function ProfileView({ t, session, student, posts }: { t: (typeof copy)[Lang]; session: MiniSession; student: Student | null; posts: TrainingPost[] }) {
+function ProfileView({
+  t,
+  lang,
+  onLanguageChange,
+  session,
+  student,
+  posts,
+}: {
+  t: (typeof copy)[Lang];
+  lang: Lang;
+  onLanguageChange: (lang: Lang) => void;
+  session: MiniSession;
+  student: Student | null;
+  posts: TrainingPost[];
+}) {
   return (
     <div className="space-y-4">
       <section className="rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-4 text-center">
@@ -766,6 +851,17 @@ function ProfileView({ t, session, student, posts }: { t: (typeof copy)[Lang]; s
         <h2 className="mt-3 text-2xl font-semibold">{session.user.name}</h2>
         <p className="mt-1 truncate text-sm text-[var(--muted)]">{session.activeClub?.name}</p>
         {student && <BeltPill belt={student.belt} stripes={student.stripes} className="mt-3" />}
+      </section>
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--panel)] text-[var(--accent)]">
+              <Globe2 size={16} />
+            </span>
+            <p className="truncate text-sm font-semibold">{t.language as string}</p>
+          </div>
+          <LanguageSwitch lang={lang} onChange={onLanguageChange} compact />
+        </div>
       </section>
       <div className="grid grid-cols-2 gap-2">
         <Metric label={t.hours as string} value={student ? String(student.totalHours) : "0"} />
@@ -888,10 +984,20 @@ function findStudentProfile(rankings: RankedMember[], user: PlatformUser) {
 
 function pickNextClass(classes: ClubClass[]) {
   if (classes.length === 0) return null;
-  const today = dayOrder[(new Date().getDay() + 6) % 7];
-  const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-  const todayClasses = classes.filter((item) => item.day === today).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-  return todayClasses.find((item) => timeToMinutes(item.time) >= currentMinutes) ?? todayClasses[0] ?? classes[0];
+  const now = new Date();
+  const todayIndex = dayOrder.indexOf(dayLabelFromDate(now));
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  return [...classes].sort((a, b) => nextClassOffset(a, todayIndex, currentMinutes) - nextClassOffset(b, todayIndex, currentMinutes))[0] ?? null;
+}
+
+function nextClassOffset(item: ClubClass, todayIndex: number, currentMinutes: number) {
+  const classDayIndex = dayOrder.indexOf(item.day as DayLabel);
+  const resolvedDayIndex = classDayIndex === -1 ? 0 : classDayIndex;
+  let dayOffset = (resolvedDayIndex - todayIndex + 7) % 7;
+  const minutes = timeToMinutes(item.time);
+  if (dayOffset === 0 && minutes < currentMinutes) dayOffset = 7;
+  return dayOffset * 24 * 60 + minutes;
 }
 
 function timeToMinutes(time: string) {

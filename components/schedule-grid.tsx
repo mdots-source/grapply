@@ -235,6 +235,11 @@ function addDays(date: Date, days: number) {
   return value;
 }
 
+function dayIndexFromDate(date: Date) {
+  const index = date.getDay();
+  return index === 0 ? 6 : index - 1;
+}
+
 function formatRange(start: Date) {
   const end = addDays(start, 6);
   return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
@@ -332,7 +337,9 @@ export function ScheduleGrid({
   const { activeClub, loading: loadingClub } = useActiveClubState();
   const resolvedClubSlug = activeClub?.slug ?? initialClubSlug;
 
-  const selectedDay = useMemo(() => addDays(weekStart, 3), [weekStart]);
+  const today = useMemo(() => new Date(), []);
+  const selectedDay = useMemo(() => (isDateInWeek(today, weekStart) ? today : weekStart), [today, weekStart]);
+  const todayColumnIndex = useMemo(() => (isDateInWeek(today, weekStart) ? dayIndexFromDate(today) : -1), [today, weekStart]);
   const canManageBlock = useCallback((block: SessionBlock) => {
     if (!canManageClasses || classManagementScope === "none") return false;
     if (classManagementScope === "all") return true;
@@ -668,24 +675,29 @@ export function ScheduleGrid({
   }, [hasInitialSchedule, initialClubSlug, loadingClub, resolvedClubSlug, scheduleReloadKey]);
 
   const columnDefs = useMemo<ColDef<ScheduleRow>[]>(() => {
-    const dayColumns = dayKeys.map((key, index): ColDef<ScheduleRow> => ({
-      field: key,
-      headerName: `${dayLabels[index]} ${addDays(weekStart, index).getDate()}`,
-      flex: 1,
-      minWidth: 260,
-      sortable: false,
-      filter: false,
-      cellDataType: false,
-      cellRenderer: ScheduleCell,
-      cellRendererParams: {
-        day: dayLabels[index],
-        canManageClasses,
-        canManageBlock,
-        onOpenSlot: (time: string) => openTrainingDrawer({ day: dayLabels[index], time, title: `Add ${dayLabels[index]} training` }),
-        onEditBlock: (block: SessionBlock) => openTrainingEditor(dayLabels[index], block),
-      },
-      headerClass: "schedule-day-header",
-    }));
+    const dayColumns = dayKeys.map((key, index): ColDef<ScheduleRow> => {
+      const columnDate = addDays(weekStart, index);
+      const isToday = index === todayColumnIndex;
+
+      return {
+        field: key,
+        headerName: `${dayLabels[index]} ${columnDate.getDate()}${isToday ? " - Today" : ""}`,
+        flex: 1,
+        minWidth: 260,
+        sortable: false,
+        filter: false,
+        cellDataType: false,
+        cellRenderer: ScheduleCell,
+        cellRendererParams: {
+          day: dayLabels[index],
+          canManageClasses,
+          canManageBlock,
+          onOpenSlot: (time: string) => openTrainingDrawer({ day: dayLabels[index], time, title: `Add ${dayLabels[index]} training` }),
+          onEditBlock: (block: SessionBlock) => openTrainingEditor(dayLabels[index], block),
+        },
+        headerClass: isToday ? "schedule-day-header schedule-today-header" : "schedule-day-header",
+      };
+    });
 
     return [
       {
@@ -699,7 +711,7 @@ export function ScheduleGrid({
       },
       ...dayColumns,
     ];
-  }, [canManageBlock, canManageClasses, weekStart]);
+  }, [canManageBlock, canManageClasses, todayColumnIndex, weekStart]);
 
   return (
     <div className="space-y-4">

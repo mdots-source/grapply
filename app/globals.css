@@ -264,6 +264,14 @@ html[data-theme="dark"] .sidebar-menu-active {
   font-weight: 700;
 }
 
+.oss-schedule-grid .schedule-today-header {
+  background: color-mix(in srgb, var(--accent) 12%, var(--ag-header-background-color));
+}
+
+.oss-schedule-grid .schedule-today-header .ag-header-cell-label {
+  color: var(--accent);
+}
+
 .oss-schedule-grid .ag-cell-focus:not(.ag-cell-range-selected):focus-within {
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
@@ -340,6 +348,12 @@ html[data-theme="dark"] .sidebar-menu-active {
 .oss-mobile-schedule-grid .ag-pinned-left-cols-container,
 .oss-mobile-schedule-grid .ag-pinned-left-header {
   border-right: 1px solid var(--border);
+}
+
+.oss-mobile-schedule-grid .ag-overlay-no-rows-wrapper {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .oss-rankings-grid.ag-theme-quartz,
