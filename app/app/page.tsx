@@ -13,7 +13,18 @@ export default async function MobileAppPage() {
   const { session } = await getCurrentSessionWithRefresh();
 
   if (!session?.activeClub || !session.activeRole) {
-    return <StudentMiniApp session={null} />;
+    return session ? (
+      <StudentMiniApp
+        session={{
+          user: session.user,
+          activeClub: null,
+          activeRole: null,
+          memberships: session.memberships,
+        }}
+      />
+    ) : (
+      <StudentMiniApp session={null} />
+    );
   }
 
   const viewer = {
@@ -41,6 +52,7 @@ export default async function MobileAppPage() {
         user: session.user,
         activeClub: session.activeClub,
         activeRole: session.activeRole,
+        memberships: session.memberships,
       }}
       initialData={{
         dashboard,
