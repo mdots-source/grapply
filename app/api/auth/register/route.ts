@@ -4,7 +4,6 @@ import { recordAuthFailure } from "@/lib/auth-observability";
 import { isMockAuthFallbackAllowed, isProductionRuntime } from "@/lib/auth-mode";
 import { getAuthEmailError, getPasswordError, normalizeAuthEmail } from "@/lib/auth-validation";
 import { noStorePostAuthRedirect } from "@/lib/auth-post-redirect";
-import { inviteAcceptedEmailBody, queueEmail, welcomeEmailBody } from "@/lib/email/outbox";
 import { createAuthUser, signInWithPassword } from "@/lib/supabase/auth";
 import { noStoreJson, readJsonObject } from "@/lib/api-json";
 import { ensureClubMemberProfile } from "@/lib/member-profiles";
@@ -160,24 +159,6 @@ export async function POST(request: Request) {
         return response;
       }
 
-      await queueWelcomeEmail(request, {
-        clubId: club.id,
-        clubName: club.name,
-        toEmail: userEmail,
-        destination,
-        template: "invite_welcome",
-      });
-      await queueInviteAcceptedNotification({
-        request,
-        clubId: club.id,
-        clubName: club.name,
-        invitedBy: invite.invited_by,
-        invitedName: userName,
-        invitedEmail: userEmail,
-        role: invite.role,
-        destination,
-        membershipId: membership.id,
-      });
       const response = isFormSubmit
         ? noStorePostAuthRedirect(getRequestUrl(destination, request))
         : noStoreJson({ ok: true, source: "supabase", user, club, membership, redirectTo: destination });
@@ -271,43 +252,6 @@ function getRequestedWorkspace(returnTo: string) {
   }
 }
 
-async function queueInviteAcceptedNotification(input: {
-  request: Request;
-  clubId: string;
-  clubName: string;
-  invitedBy: string | null;
-  invitedName: string;
-  invitedEmail: string;
-  role: string;
-  destination: string;
-  membershipId: string;
-}) {
-  if (!input.invitedBy) return;
-
-  const [inviter] = await selectRows("app_users", `select=*&id=eq.${encodeURIComponent(input.invitedBy)}&limit=1`);
-  if (!inviter?.email || inviter.email.toLowerCase() === input.invitedEmail.toLowerCase()) return;
-
-  await queueEmail({
-    clubId: input.clubId,
-    toEmail: inviter.email,
-    template: "invite_accepted_notification",
-    subject: `${input.invitedName} joined ${input.clubName}`,
-    body: inviteAcceptedEmailBody({
-      clubName: input.clubName,
-      invitedName: input.invitedName,
-      invitedEmail: input.invitedEmail,
-      role: input.role,
-      destinationUrl: getRequestUrl(input.destination, input.request).toString(),
-    }),
-    metadata: {
-      destination: input.destination,
-      membershipId: input.membershipId,
-      invitedBy: input.invitedBy,
-      invitedEmail: input.invitedEmail,
-    },
-  });
-}
-
 async function getValidInviteRegistrationContext(inviteToken: string, inviteEmail: string): Promise<InviteRegistrationContext> {
   const [invite] = await selectRows("club_invites", `select=*&token=eq.${encodeURIComponent(inviteToken)}&status=eq.pending&limit=1`);
   if (!invite) throw new Error("Invite not found or already used.");
@@ -378,31 +322,4 @@ function getAuthErrorMessage(error: unknown) {
   if (message.includes("Invited club")) return "The invited academy could not be found.";
   if (message.includes("already") || message.includes("registered")) return "This email is already registered. Try signing in with the same password.";
   return "Registration failed. Check the details and try again.";
-}
-
-async function queueWelcomeEmail(
-  request: Request,
-  input: {
-    clubId: string;
-    clubName: string;
-    toEmail: string;
-    destination: string;
-    template: "invite_welcome" | "owner_welcome";
-  },
-) {
-  const destinationUrl = getRequestUrl(input.destination, request).toString();
-
-  await queueEmail({
-    clubId: input.clubId,
-    toEmail: input.toEmail,
-    template: input.template,
-    subject: `Welcome to ${input.clubName} on Grapply`,
-    body: welcomeEmailBody({
-      clubName: input.clubName,
-      destinationUrl,
-    }),
-    metadata: {
-      destination: input.destination,
-    },
-  });
 }

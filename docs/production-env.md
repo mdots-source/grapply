@@ -9,7 +9,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
-Required for outbound invite and welcome emails. Use either Resend or Gmail SMTP.
+Optional for outbound transactional emails. Registration and club invites do not require email delivery; club admins can create an invite by email and copy/open the invite link manually. Use either Resend or Gmail SMTP when automatic email delivery is enabled again.
 
 ```text
 RESEND_API_KEY=
@@ -26,7 +26,7 @@ GMAIL_FROM_EMAIL=Grapply <reg@grapply.app>
 
 For Gmail, create a Google app password and use it as `GMAIL_APP_PASSWORD`; do not use the normal Gmail login password. Advanced SMTP settings are also supported through `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`, `SMTP_SECURE`, and `SMTP_STARTTLS`.
 
-With Resend, verify `grapply.app` in Resend first, then add the DNS records Resend provides for SPF, DKIM, and DMARC. `RESEND_FROM_EMAIL` must use a verified sender on that domain, for example `Grapply <reg@grapply.app>`. When no email provider env vars are present, invite, welcome, magic link, and password reset emails stay queued in `email_outbox` and the admin email panel disables manual sending.
+With Resend, verify `grapply.app` in Resend first, then add the DNS records Resend provides for SPF, DKIM, and DMARC. `RESEND_FROM_EMAIL` must use a verified sender on that domain, for example `Grapply <reg@grapply.app>`. When no email provider env vars are present, welcome, magic link, and password reset emails stay queued in `email_outbox` and the admin email panel disables manual sending.
 
 Transactional emails are sent as multipart messages: a plain text fallback plus a branded Grapply HTML layout with a clear call-to-action button.
 

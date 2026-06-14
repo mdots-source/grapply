@@ -1,8 +1,6 @@
-import { inviteEmailBody, queueEmail } from "@/lib/email/outbox";
 import { apiSupabaseError, requireApiRole, requireSupabaseBackendData, requireSupabasePersistence } from "@/lib/api-access";
 import { noStoreJson, readJsonObject, validationErrorJson } from "@/lib/api-json";
 import { getBackendClubId } from "@/lib/backend";
-import { getRequestUrl } from "@/lib/request-origin";
 import { insertRow, isSupabaseConfigured, selectRows, updateRows } from "@/lib/supabase/server";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -81,8 +79,7 @@ export async function POST(request: Request) {
           },
           `id=eq.${existingInvite.id}&club_id=eq.${clubId}`,
         );
-        const email = reopened ? await queueInviteEmail(request, reopened, access.session.activeClub) : null;
-        return noStoreJson({ ok: true, source: "supabase", invite: reopened, emailStatus: email?.status ?? null });
+        return noStoreJson({ ok: true, source: "supabase", invite: reopened, emailStatus: "manual" });
       }
 
       const row = await insertRow("club_invites", {
@@ -93,8 +90,7 @@ export async function POST(request: Request) {
         status: "pending",
       });
 
-      const email = await queueInviteEmail(request, row, access.session.activeClub);
-      return noStoreJson({ ok: true, source: "supabase", invite: row, emailStatus: email?.status ?? null });
+      return noStoreJson({ ok: true, source: "supabase", invite: row, emailStatus: "manual" });
     } catch (error) {
       const inviteError = getInviteSupabaseValidationError(error);
       if (inviteError) return inviteError;
@@ -153,8 +149,7 @@ export async function PATCH(request: Request) {
         `id=eq.${encodeURIComponent(data.id)}&club_id=eq.${clubId}`,
       );
 
-      const email = row && data.status === "pending" ? await queueInviteEmail(request, row, access.session.activeClub) : null;
-      return noStoreJson({ ok: true, source: "supabase", invite: row, emailStatus: email?.status ?? null });
+      return noStoreJson({ ok: true, source: "supabase", invite: row, emailStatus: row && data.status === "pending" ? "manual" : null });
     } catch (error) {
       const inviteError = getInviteSupabaseValidationError(error);
       if (inviteError) return inviteError;
@@ -373,35 +368,4 @@ function optionalStatus(value: unknown): FieldResult<InvitePayload["status"] | u
 
 function getSafeUuid(value: unknown) {
   return typeof value === "string" && uuidPattern.test(value) ? value : null;
-}
-
-async function queueInviteEmail(
-  request: Request,
-  invite: {
-    club_id: string;
-    email: string;
-    role: string;
-    token: string;
-  },
-  club: { name: string; slug: string },
-) {
-  const inviteUrl = getRequestUrl("/invite", request);
-  inviteUrl.searchParams.set("invite", invite.token);
-  inviteUrl.searchParams.set("returnTo", `/${club.slug}/schedule`);
-
-  return queueEmail({
-    clubId: invite.club_id,
-    toEmail: invite.email,
-    template: "club_invite",
-    subject: `${club.name} invited you to Grapply`,
-    body: inviteEmailBody({
-      clubName: club.name,
-      role: invite.role,
-      inviteUrl: inviteUrl.toString(),
-    }),
-    metadata: {
-      inviteToken: invite.token,
-      role: invite.role,
-    },
-  });
 }

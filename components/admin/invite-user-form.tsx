@@ -224,5 +224,6 @@ function getInviteUrl(token: string, clubSlug?: string | null) {
 function getInviteSuccessMessage(clubName: string, emailStatus?: string | null) {
   if (emailStatus === "sent") return `Invite emailed for ${clubName}.`;
   if (emailStatus === "failed") return `Invite saved for ${clubName}, but email delivery failed. Check the outbox.`;
+  if (emailStatus === "manual") return `Invite created for ${clubName}. Copy the link or open it manually.`;
   return `Invite saved for ${clubName}. Email is queued in the outbox.`;
 }

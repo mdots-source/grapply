@@ -3,7 +3,6 @@ import { setActiveClubCookie, setAuthCookies } from "@/lib/auth-cookies";
 import { getCurrentSessionWithRefresh } from "@/lib/auth-session";
 import { isMockAuthFallbackAllowed } from "@/lib/auth-mode";
 import { apiSupabaseError } from "@/lib/api-access";
-import { inviteAcceptedEmailBody, queueEmail, welcomeEmailBody } from "@/lib/email/outbox";
 import { ensureClubMemberProfile } from "@/lib/member-profiles";
 import { getRequestUrl } from "@/lib/request-origin";
 import { isSupabaseConfigured, selectRows, updateRows, upsertRow } from "@/lib/supabase/server";
@@ -92,7 +91,7 @@ export async function GET(request: Request) {
       return response;
     }
 
-    const membership = await upsertRow(
+    await upsertRow(
       "club_memberships",
       {
         user_id: session.user.id,
@@ -120,72 +119,12 @@ export async function GET(request: Request) {
       return response;
     }
 
-    await queueEmail({
-      clubId: club.id,
-      toEmail: session.user.email,
-      template: "invite_welcome",
-      subject: `Welcome to ${club.name} on Grapply`,
-      body: welcomeEmailBody({
-        clubName: club.name,
-        destinationUrl: getRequestUrl(destination, request).toString(),
-      }),
-      metadata: { destination, inviteToken, membershipId: membership.id },
-    });
-    await queueInviteAcceptedNotification({
-      request,
-      clubId: club.id,
-      clubName: club.name,
-      invitedBy: invite.invited_by,
-      invitedName: session.user.name,
-      invitedEmail: session.user.email,
-      role: invite.role,
-      destination,
-      membershipId: membership.id,
-    });
-
     const response = redirectWithAuth(getRequestUrl(destination, request), 303);
     setActiveClubCookie(response, club.slug);
     return response;
   } catch (error) {
     return apiSupabaseError(error, { clubId });
   }
-}
-
-async function queueInviteAcceptedNotification(input: {
-  request: Request;
-  clubId: string;
-  clubName: string;
-  invitedBy: string | null;
-  invitedName: string;
-  invitedEmail: string;
-  role: string;
-  destination: string;
-  membershipId: string;
-}) {
-  if (!input.invitedBy) return;
-
-  const [inviter] = await selectRows("app_users", `select=*&id=eq.${encodeURIComponent(input.invitedBy)}&limit=1`);
-  if (!inviter?.email || inviter.email.toLowerCase() === input.invitedEmail.toLowerCase()) return;
-
-  await queueEmail({
-    clubId: input.clubId,
-    toEmail: inviter.email,
-    template: "invite_accepted_notification",
-    subject: `${input.invitedName} joined ${input.clubName}`,
-    body: inviteAcceptedEmailBody({
-      clubName: input.clubName,
-      invitedName: input.invitedName,
-      invitedEmail: input.invitedEmail,
-      role: input.role,
-      destinationUrl: getRequestUrl(input.destination, input.request).toString(),
-    }),
-    metadata: {
-      destination: input.destination,
-      membershipId: input.membershipId,
-      invitedBy: input.invitedBy,
-      invitedEmail: input.invitedEmail,
-    },
-  });
 }
 
 function getInviteDestination(returnTo: string, clubSlug: string, role: string | null) {
