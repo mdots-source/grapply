@@ -81,25 +81,29 @@ export default async function InvitePage({ searchParams }: { searchParams?: Prom
           </div>
         )}
 
-        <div className="mt-5 grid gap-3">
-          <Button asChild variant="primary" className="w-full" disabled={preview.status !== "ready"}>
-            <Link href={`/login?${authQuery}`}>
-              <ShieldCheck size={16} />
-              Sign in and accept
+        {preview.status === "ready" ? (
+          <div className="mt-5 grid gap-3">
+            <Button asChild variant="primary" className="w-full">
+              <Link href={`/login?${authQuery}`}>
+                <ShieldCheck size={16} />
+                Sign in and accept
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link href={`/register?${authQuery}`}>
+                <Mail size={16} />
+                Create account and join
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <Button asChild variant="outline" className="mt-5 w-full">
+            <Link href="/login">
+              Back to login
+              <ArrowRight size={16} />
             </Link>
           </Button>
-          <Button asChild variant="outline" className="w-full" disabled={preview.status !== "ready"}>
-            <Link href={`/register?${authQuery}`}>
-              <Mail size={16} />
-              Create account and join
-            </Link>
-          </Button>
-        </div>
-
-        <Link href="/login" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
-          Back to login
-          <ArrowRight size={15} />
-        </Link>
+        )}
       </Card>
     </AuthShell>
   );

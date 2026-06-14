@@ -81,8 +81,8 @@ export async function POST(request: Request) {
           },
           `id=eq.${existingInvite.id}&club_id=eq.${clubId}`,
         );
-        if (reopened) await queueInviteEmail(request, reopened, access.session.activeClub);
-        return noStoreJson({ ok: true, source: "supabase", invite: reopened });
+        const email = reopened ? await queueInviteEmail(request, reopened, access.session.activeClub) : null;
+        return noStoreJson({ ok: true, source: "supabase", invite: reopened, emailStatus: email?.status ?? null });
       }
 
       const row = await insertRow("club_invites", {
@@ -93,8 +93,8 @@ export async function POST(request: Request) {
         status: "pending",
       });
 
-      await queueInviteEmail(request, row, access.session.activeClub);
-      return noStoreJson({ ok: true, source: "supabase", invite: row });
+      const email = await queueInviteEmail(request, row, access.session.activeClub);
+      return noStoreJson({ ok: true, source: "supabase", invite: row, emailStatus: email?.status ?? null });
     } catch (error) {
       const inviteError = getInviteSupabaseValidationError(error);
       if (inviteError) return inviteError;
@@ -153,8 +153,8 @@ export async function PATCH(request: Request) {
         `id=eq.${encodeURIComponent(data.id)}&club_id=eq.${clubId}`,
       );
 
-      if (row && data.status === "pending") await queueInviteEmail(request, row, access.session.activeClub);
-      return noStoreJson({ ok: true, source: "supabase", invite: row });
+      const email = row && data.status === "pending" ? await queueInviteEmail(request, row, access.session.activeClub) : null;
+      return noStoreJson({ ok: true, source: "supabase", invite: row, emailStatus: email?.status ?? null });
     } catch (error) {
       const inviteError = getInviteSupabaseValidationError(error);
       if (inviteError) return inviteError;
@@ -389,7 +389,7 @@ async function queueInviteEmail(
   inviteUrl.searchParams.set("invite", invite.token);
   inviteUrl.searchParams.set("returnTo", `/${club.slug}/schedule`);
 
-  await queueEmail({
+  return queueEmail({
     clubId: invite.club_id,
     toEmail: invite.email,
     template: "club_invite",

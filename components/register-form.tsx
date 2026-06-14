@@ -3,7 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function RegisterForm({ returnTo = "/schedule", inviteToken }: { returnTo?: string; inviteToken?: string }) {
+export function RegisterForm({
+  returnTo = "/schedule",
+  inviteToken,
+  inviteEmail,
+}: {
+  returnTo?: string;
+  inviteToken?: string;
+  inviteEmail?: string;
+}) {
   const isInviteFlow = Boolean(inviteToken);
 
   return (
@@ -25,8 +33,18 @@ export function RegisterForm({ returnTo = "/schedule", inviteToken }: { returnTo
         <Label htmlFor="user-email">Email</Label>
         <div className="relative">
           <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-          <Input id="user-email" name="email" className="pl-9" placeholder="you@academy.com" type="email" required />
+          <Input
+            id="user-email"
+            name="email"
+            className="pl-9"
+            defaultValue={inviteEmail ?? ""}
+            placeholder="you@academy.com"
+            type="email"
+            readOnly={Boolean(inviteEmail)}
+            required
+          />
         </div>
+        {inviteEmail && <p className="text-[11px] text-[var(--muted)]">This invite is locked to {inviteEmail}.</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor="register-password">Password</Label>

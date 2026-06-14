@@ -54,11 +54,11 @@ export function InviteUserForm({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ email, role, clubSlug: resolvedClubSlug }),
             });
-            const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string; invite?: InviteRow }>(response, "Invite failed.");
+            const payload = await readApiJson<{ ok?: boolean; error?: string; requestId?: string; invite?: InviteRow; emailStatus?: string | null }>(response, "Invite failed.");
             if (!payload.ok || !payload.invite) throw new Error(formatApiError(payload.error ?? "Invite failed.", payload.requestId));
             setInvites((current) => [payload.invite as InviteRow, ...current.filter((item) => item.id !== payload.invite?.id)]);
             setEmail("");
-            setMessage({ tone: "success", text: `Invite saved for ${activeClub?.name ?? "this academy"}.` });
+            setMessage({ tone: "success", text: getInviteSuccessMessage(activeClub?.name ?? "this academy", payload.emailStatus) });
           } catch (error) {
             setMessage({ tone: "error", text: error instanceof Error ? error.message : "Invite failed." });
           } finally {
@@ -219,4 +219,10 @@ function getInviteUrl(token: string, clubSlug?: string | null) {
   url.searchParams.set("invite", token);
   url.searchParams.set("returnTo", returnTo);
   return url.toString();
+}
+
+function getInviteSuccessMessage(clubName: string, emailStatus?: string | null) {
+  if (emailStatus === "sent") return `Invite emailed for ${clubName}.`;
+  if (emailStatus === "failed") return `Invite saved for ${clubName}, but email delivery failed. Check the outbox.`;
+  return `Invite saved for ${clubName}. Email is queued in the outbox.`;
 }

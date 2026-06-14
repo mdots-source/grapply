@@ -38,7 +38,7 @@ export function EmailOutboxActions({ clubSlug, deliveryConfigured }: { clubSlug:
         {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         Send pending
       </Button>
-      {!deliveryConfigured && <p className="max-w-56 text-right text-[11px] text-[var(--muted)]">Waiting for Resend env vars.</p>}
+      {!deliveryConfigured && <p className="max-w-56 text-right text-[11px] text-[var(--muted)]">Waiting for email provider env vars.</p>}
       {message && <p className="max-w-56 text-right text-[11px] text-[var(--muted)]">{message}</p>}
     </div>
   );

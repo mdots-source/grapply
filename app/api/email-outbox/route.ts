@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   if (!isEmailDeliveryConfigured()) {
-    return noStoreJson({ ok: false, error: "Email delivery is not configured. Add RESEND_API_KEY before sending queued emails." }, { status: 503 });
+    return noStoreJson({ ok: false, error: "Email delivery is not configured. Add Resend env vars or SMTP/Gmail env vars before sending queued emails." }, { status: 503 });
   }
 
   let clubId: string | null = null;

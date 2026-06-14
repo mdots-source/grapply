@@ -9,14 +9,26 @@ SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
-Required for outbound invite and welcome emails:
+Required for outbound invite and welcome emails. Use either Resend or Gmail SMTP.
 
 ```text
 RESEND_API_KEY=
-RESEND_FROM_EMAIL=Grapply <notifications@grapply.me>
+RESEND_FROM_EMAIL=Grapply <reg@grapply.app>
 ```
 
-Email delivery uses Resend. Verify `grapply.me` in Resend first, then add the DNS records Resend provides for SPF, DKIM, and DMARC. `RESEND_FROM_EMAIL` must use a verified sender on that domain, for example `Grapply <noreply@grapply.me>`. When either Resend env var is missing, invite, welcome, magic link, and password reset emails stay queued in `email_outbox` and the admin email panel disables manual sending.
+Or:
+
+```text
+GMAIL_USER=your-gmail@gmail.com
+GMAIL_APP_PASSWORD=your-google-app-password
+GMAIL_FROM_EMAIL=Grapply <reg@grapply.app>
+```
+
+For Gmail, create a Google app password and use it as `GMAIL_APP_PASSWORD`; do not use the normal Gmail login password. Advanced SMTP settings are also supported through `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`, `SMTP_SECURE`, and `SMTP_STARTTLS`.
+
+With Resend, verify `grapply.app` in Resend first, then add the DNS records Resend provides for SPF, DKIM, and DMARC. `RESEND_FROM_EMAIL` must use a verified sender on that domain, for example `Grapply <reg@grapply.app>`. When no email provider env vars are present, invite, welcome, magic link, and password reset emails stay queued in `email_outbox` and the admin email panel disables manual sending.
+
+Transactional emails are sent as multipart messages: a plain text fallback plus a branded Grapply HTML layout with a clear call-to-action button.
 
 Supabase Auth should allow the production app URL and callbacks:
 
@@ -49,6 +61,6 @@ Backend health and error traceability:
 GET /api/health/backend
 ```
 
-The health check reports Supabase table access, email delivery, Strava OAuth configuration, the public HTTPS app URL, and the `app_error_events` observability table. Backend/Supabase failures return `X-Request-Id` and are recorded in `app_error_events` when Supabase is reachable. If `RESEND_API_KEY`, Strava credentials, or `NEXT_PUBLIC_APP_URL` are missing, the backend status is degraded until the production env is complete.
+The health check reports Supabase table access, email delivery, Strava OAuth configuration, the public HTTPS app URL, and the `app_error_events` observability table. Backend/Supabase failures return `X-Request-Id` and are recorded in `app_error_events` when Supabase is reachable. If email provider env vars, Strava credentials, or `NEXT_PUBLIC_APP_URL` are missing, the backend status is degraded until the production env is complete.
 
 RLS and role expectations are documented in `docs/security-rls.md`.

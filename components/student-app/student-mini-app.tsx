@@ -15,6 +15,7 @@ import {
   Lock,
   LogOut,
   Medal,
+  X,
   Trophy,
   UserRound,
 } from "lucide-react";
@@ -73,7 +74,7 @@ const copy = {
     password: "Password",
     login: "Log in",
     opening: "Opening",
-    chooseClub: "Choose academy",
+    chooseClub: "Academy",
     continue: "Continue",
     language: "Language",
     today: "Today",
@@ -82,13 +83,12 @@ const copy = {
     rankings: "Rankings",
     profile: "Profile",
     welcome: "Hi",
-    nextClass: "Next class",
-    noClass: "No class",
+    nextClass: "Next",
+    noClass: "No classes",
     checkIn: "Check in",
     checkedIn: "Checked in",
-    updates: "Updates",
-    week: "Week",
-    upNext: "Up next",
+    updates: "Club",
+    week: "This week",
     competitions: "Competitions",
     camps: "Camps",
     points: "Points",
@@ -97,8 +97,10 @@ const copy = {
     month: "30 days",
     wins: "wins",
     select: "Select",
-    switchClub: "Switch",
-    noUpdates: "No updates",
+    open: "Open",
+    registered: "Registered",
+    level: "Level",
+    logout: "Logout",
     time: "Time",
     class: "Class",
     mat: "Mat",
@@ -111,7 +113,7 @@ const copy = {
     password: "Contraseña",
     login: "Entrar",
     opening: "Abriendo",
-    chooseClub: "Elige academia",
+    chooseClub: "Academia",
     continue: "Continuar",
     language: "Idioma",
     today: "Hoy",
@@ -120,13 +122,12 @@ const copy = {
     rankings: "Ranking",
     profile: "Perfil",
     welcome: "Hola",
-    nextClass: "Próxima clase",
-    noClass: "Sin clase",
+    nextClass: "Próxima",
+    noClass: "Sin clases",
     checkIn: "Check-in",
     checkedIn: "Listo",
-    updates: "Novedades",
+    updates: "Club",
     week: "Semana",
-    upNext: "Siguiente",
     competitions: "Competiciones",
     camps: "Camps",
     points: "Puntos",
@@ -135,8 +136,10 @@ const copy = {
     month: "30 días",
     wins: "victorias",
     select: "Elegir",
-    switchClub: "Cambiar",
-    noUpdates: "Sin novedades",
+    open: "Abierto",
+    registered: "Registrado",
+    level: "Nivel",
+    logout: "Salir",
     time: "Hora",
     class: "Clase",
     mat: "Tatami",
@@ -149,7 +152,7 @@ const copy = {
     password: "Senha",
     login: "Entrar",
     opening: "Abrindo",
-    chooseClub: "Escolha academia",
+    chooseClub: "Academia",
     continue: "Continuar",
     language: "Idioma",
     today: "Hoje",
@@ -158,13 +161,12 @@ const copy = {
     rankings: "Ranking",
     profile: "Perfil",
     welcome: "Olá",
-    nextClass: "Próxima aula",
-    noClass: "Sem aula",
+    nextClass: "Próxima",
+    noClass: "Sem aulas",
     checkIn: "Check-in",
     checkedIn: "Feito",
-    updates: "Novidades",
+    updates: "Clube",
     week: "Semana",
-    upNext: "A seguir",
     competitions: "Competições",
     camps: "Camps",
     points: "Pontos",
@@ -173,8 +175,10 @@ const copy = {
     month: "30 dias",
     wins: "vitórias",
     select: "Escolher",
-    switchClub: "Trocar",
-    noUpdates: "Sem novidades",
+    open: "Aberto",
+    registered: "Inscrito",
+    level: "Nível",
+    logout: "Sair",
     time: "Hora",
     class: "Aula",
     mat: "Tatame",
@@ -187,7 +191,7 @@ const copy = {
     password: "Пароль",
     login: "Войти",
     opening: "Открываем",
-    chooseClub: "Выбери клуб",
+    chooseClub: "Клуб",
     continue: "Продолжить",
     language: "Язык",
     today: "Сегодня",
@@ -196,13 +200,12 @@ const copy = {
     rankings: "Рейтинг",
     profile: "Профиль",
     welcome: "Привет",
-    nextClass: "Ближайшая",
-    noClass: "Нет класса",
+    nextClass: "Дальше",
+    noClass: "Нет занятий",
     checkIn: "Чек-ин",
     checkedIn: "Готово",
-    updates: "Новости",
+    updates: "Клуб",
     week: "Неделя",
-    upNext: "Дальше",
     competitions: "Соревнования",
     camps: "Кемпы",
     points: "Очки",
@@ -211,8 +214,10 @@ const copy = {
     month: "30 дней",
     wins: "побед",
     select: "Выбрать",
-    switchClub: "Сменить",
-    noUpdates: "Пока пусто",
+    open: "Открыто",
+    registered: "Записан",
+    level: "Уровень",
+    logout: "Выйти",
     time: "Время",
     class: "Класс",
     mat: "Зал",
@@ -267,6 +272,17 @@ function isSameCalendarDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function classesForDay(classes: ClubClass[], day: DayLabel) {
+  return classes.filter((item) => item.day === day).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+}
+
+function statusTone(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("open") || normalized.includes("early")) return "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]";
+  if (normalized.includes("wait")) return "border-[var(--accent-coral)]/30 bg-[var(--accent-coral)]/10 text-[var(--accent-coral)]";
+  return "border-[var(--border)] bg-[var(--panel)] text-[var(--muted)]";
+}
+
 declare global {
   interface Window {
     Telegram?: {
@@ -288,6 +304,7 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
   const [lang, setLang] = useState<Lang>("en");
   const [hydrated, setHydrated] = useState(false);
   const [choosingClub, setChoosingClub] = useState(false);
+  const [checkedInClassIds, setCheckedInClassIds] = useState<string[]>([]);
 
   useEffect(() => {
     window.Telegram?.WebApp?.ready?.();
@@ -310,6 +327,14 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
   const rankings = initialData?.rankings ?? [];
   const nextClass = pickNextClass(classes);
   const currentStudent = findStudentProfile(rankings, session.user);
+
+  function checkIn(classItem: ClubClass) {
+    setCheckedInClassIds((current) => (current.includes(classItem.id) ? current : [...current, classItem.id]));
+    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.("success");
+  }
+
+  if (!hydrated) return <MobileLoading />;
+
   const needsClub = hydrated && (
     !session.activeClub ||
     choosingClub ||
@@ -333,11 +358,6 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
         <MobileHeader
           session={session}
           currentStudent={currentStudent}
-          lang={lang}
-          onChooseClub={() => {
-            window.localStorage.setItem(chooseClubAfterLoginKey, "1");
-            setChoosingClub(true);
-          }}
         />
         <section className="flex-1 overflow-y-auto px-3 pb-24 pt-3 min-[420px]:px-4">
           {activeTab === "today" && (
@@ -349,15 +369,31 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
               classes={classes}
               posts={initialData?.posts ?? []}
               nextClass={nextClass}
+              checkedInClassIds={checkedInClassIds}
+              onCheckIn={checkIn}
               onOpenSchedule={() => setActiveTab("schedule")}
             />
           )}
-          {activeTab === "schedule" && <ScheduleView t={t} lang={lang} classes={classes} nextClass={nextClass} />}
+          {activeTab === "schedule" && (
+            <ScheduleView t={t} lang={lang} classes={classes} nextClass={nextClass} checkedInClassIds={checkedInClassIds} onCheckIn={checkIn} />
+          )}
           {activeTab === "events" && (
             <EventsView t={t} competitions={initialData?.competitions ?? []} trainingCamps={initialData?.trainingCamps ?? []} />
           )}
           {activeTab === "rankings" && <RankingsView t={t} rankings={rankings} currentStudent={currentStudent} />}
-          {activeTab === "profile" && <ProfileView t={t} lang={lang} onLanguageChange={changeLang} session={session} student={currentStudent} posts={initialData?.posts ?? []} />}
+          {activeTab === "profile" && (
+            <ProfileView
+              t={t}
+              lang={lang}
+              onLanguageChange={changeLang}
+              onChooseClub={() => {
+                window.localStorage.setItem(chooseClubAfterLoginKey, "1");
+                setChoosingClub(true);
+              }}
+              session={session}
+              student={currentStudent}
+            />
+          )}
         </section>
         <MobileNav t={t} activeTab={activeTab} onChange={setActiveTab} />
       </div>
@@ -380,7 +416,7 @@ function MobileLogin({ lang }: { lang: Lang }) {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, returnTo: "/schedule" }),
+        body: JSON.stringify({ email, password, returnTo: "/app" }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Login failed.");
@@ -518,28 +554,32 @@ function OrganizationPicker({
   );
 }
 
+function MobileLoading() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[var(--background)] px-4 text-[var(--foreground)]">
+      <div className="grid gap-3 text-center">
+        <BrandLogo className="mx-auto size-12 border border-[var(--border)]" priority />
+        <div className="mx-auto h-1 w-20 overflow-hidden rounded-full bg-[var(--surface)]">
+          <div className="h-full w-1/2 rounded-full bg-[var(--accent)]" />
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function MobileHeader({
   session,
   currentStudent,
-  lang,
-  onChooseClub,
 }: {
   session: MiniSession;
   currentStudent: Student | null;
-  lang: Lang;
-  onChooseClub: () => void;
 }) {
-  const t = copy[lang];
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--panel-strong)_94%,transparent)] px-3 pb-3 pt-3 backdrop-blur-xl min-[420px]:px-4">
       <div className="flex items-center justify-between gap-2">
-        <button type="button" onClick={onChooseClub} className="min-w-0 flex-1 text-left">
+        <div className="min-w-0 flex-1 text-left">
           <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">{session.activeClub?.name}</p>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">{t.switchClub as string}</p>
-        </button>
-        <a href="/api/auth/logout" aria-label="Log out" className="grid size-10 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
-          <LogOut size={17} />
-        </a>
+        </div>
       </div>
       <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2.5">
         <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--panel)] text-sm font-black">
@@ -584,6 +624,8 @@ function TodayView({
   classes,
   posts,
   nextClass,
+  checkedInClassIds,
+  onCheckIn,
   onOpenSchedule,
 }: {
   t: (typeof copy)[Lang];
@@ -593,77 +635,91 @@ function TodayView({
   classes: ClubClass[];
   posts: TrainingPost[];
   nextClass: ClubClass | null;
+  checkedInClassIds: string[];
+  onCheckIn: (classItem: ClubClass) => void;
   onOpenSchedule: () => void;
 }) {
-  const [checkedInClassId, setCheckedInClassId] = useState<string | null>(null);
-  const checkedIn = Boolean(nextClass && checkedInClassId === nextClass.id);
-
-  function checkIn() {
-    if (!nextClass) return;
-    setCheckedInClassId(nextClass.id);
-    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.("success");
-  }
+  const todayClasses = useMemo(() => classesForDay(classes, dayLabelFromDate(new Date())), [classes]);
+  const checkedIn = Boolean(nextClass && checkedInClassIds.includes(nextClass.id));
 
   return (
-    <div className="space-y-3">
-      <section className="rounded-[22px] border border-[var(--border)] bg-[linear-gradient(155deg,color-mix(in_srgb,var(--accent)_16%,transparent),var(--surface))] p-4 shadow-[var(--glow-accent)]">
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-[var(--muted)]">{t.welcome as string}</p>
-            <h2 className="truncate text-3xl font-semibold leading-tight">{session.user.name.split(" ")[0]}</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <MiniMetric label={t.hours as string} value={student ? String(student.totalHours) : String(dashboard?.stats.weeklyAttendance ?? 0)} />
-            <MiniMetric label={t.streak as string} value={student ? String(student.streak) : "0"} />
-            <MiniMetric label={t.points as string} value={student ? String(student.points) : "0"} />
-          </div>
+    <div className="space-y-4">
+      <section className="rounded-[26px] bg-[linear-gradient(155deg,color-mix(in_srgb,var(--accent)_18%,transparent),var(--panel))] p-4 shadow-[var(--glow-accent)]">
+        <div className="min-w-0">
+          <p className="text-sm text-[var(--muted)]">{t.welcome as string}, {session.user.name.split(" ")[0]}</p>
+          <h2 className="mt-2 truncate text-3xl font-semibold leading-tight">{nextClass?.time ?? "--:--"}</h2>
+          <p className="mt-1 truncate text-lg font-semibold">{nextClass?.name ?? (t.noClass as string)}</p>
+          {nextClass && <p className="mt-1 truncate text-sm text-[var(--muted)]">{nextClass.day} · {nextClass.coach} · {nextClass.mat}</p>}
         </div>
-      </section>
-
-      <section className="rounded-[22px] border border-[var(--border)] bg-[var(--panel)] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">{t.nextClass as string}</p>
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-xl font-semibold">{nextClass?.name ?? (t.noClass as string)}</h3>
-            {nextClass && <p className="mt-1 truncate text-sm text-[var(--muted)]">{nextClass.day} {nextClass.time} · {nextClass.coach}</p>}
-          </div>
-          <CalendarDays className="shrink-0 text-[var(--accent)]" size={22} />
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button type="button" variant="primary" className="h-11" onClick={checkIn} disabled={!nextClass || checkedIn}>
+        <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+          <Button type="button" variant="primary" className="h-11" onClick={() => nextClass && onCheckIn(nextClass)} disabled={!nextClass || checkedIn}>
             <ListChecks size={16} />
             {checkedIn ? t.checkedIn as string : t.checkIn as string}
           </Button>
-          <Button type="button" variant="surface" className="h-11" onClick={onOpenSchedule}>
-            {t.schedule as string}
+          <Button type="button" variant="surface" className="h-11 px-3" onClick={onOpenSchedule} aria-label={t.schedule as string}>
+            <CalendarDays size={17} />
           </Button>
         </div>
       </section>
 
-      <CompactSection title={t.updates as string}>
-        {posts.slice(0, 2).map((post) => <FeedCard key={post.id} post={post} />)}
-        {posts.length === 0 && <EmptyPanel text={t.noUpdates as string} />}
-      </CompactSection>
+      {todayClasses.length > 0 && (
+        <CompactSection title={t.today as string}>
+          <div className="space-y-2">
+            {todayClasses.map((item) => (
+              <ClassAgendaRow key={item.id} item={item} active={item.id === nextClass?.id} checkedIn={checkedInClassIds.includes(item.id)} onClick={() => onCheckIn(item)} actionLabel={t.checkIn as string} checkedLabel={t.checkedIn as string} />
+            ))}
+          </div>
+        </CompactSection>
+      )}
 
-      <CompactSection title={t.week as string}>
-        <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-4">
-          {classes.slice(0, 4).map((item) => (
-            <div key={item.id} className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
-              <p className="truncate text-sm font-semibold">{item.name}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">{item.day} · {item.time}</p>
-            </div>
-          ))}
-        </div>
-      </CompactSection>
+      <div className="grid grid-cols-3 gap-2">
+        <MiniMetric label={t.hours as string} value={student ? String(student.totalHours) : String(dashboard?.stats.weeklyAttendance ?? 0)} />
+        <MiniMetric label={t.streak as string} value={student ? String(student.streak) : "0"} />
+        <MiniMetric label={t.points as string} value={student ? String(student.points) : "0"} />
+      </div>
+
+      {posts.length > 0 && (
+        <CompactSection title={t.updates as string}>
+          {posts.slice(0, 2).map((post) => <FeedCard key={post.id} post={post} />)}
+        </CompactSection>
+      )}
+
+      {classes.length > 0 && (
+        <CompactSection title={t.week as string}>
+          <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-4">
+            {classes.slice(0, 4).map((item) => (
+              <div key={item.id} className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="truncate text-sm font-semibold">{item.name}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">{item.day} · {item.time}</p>
+              </div>
+            ))}
+          </div>
+        </CompactSection>
+      )}
     </div>
   );
 }
 
-function ScheduleView({ t, lang, classes, nextClass }: { t: (typeof copy)[Lang]; lang: Lang; classes: ClubClass[]; nextClass: ClubClass | null }) {
+function ScheduleView({
+  t,
+  lang,
+  classes,
+  nextClass,
+  checkedInClassIds,
+  onCheckIn,
+}: {
+  t: (typeof copy)[Lang];
+  lang: Lang;
+  classes: ClubClass[];
+  nextClass: ClubClass | null;
+  checkedInClassIds: string[];
+  onCheckIn: (classItem: ClubClass) => void;
+}) {
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => startOfCalendarWeek(today), [today]);
   const todayDay = useMemo(() => dayLabelFromDate(today), [today]);
   const [selectedDay, setSelectedDay] = useState<DayLabel>(todayDay);
+  const [selectedClass, setSelectedClass] = useState<ClubClass | null>(null);
   const rowData = useMemo(() => classes.filter((item) => item.day === selectedDay).sort((a, b) => a.time.localeCompare(b.time)), [classes, selectedDay]);
   const selectedIndex = dayOrder.indexOf(selectedDay);
   const selectedDate = addCalendarDays(weekStart, selectedIndex);
@@ -674,27 +730,17 @@ function ScheduleView({ t, lang, classes, nextClass }: { t: (typeof copy)[Lang];
         field: "time",
         width: 74,
         pinned: "left",
-        cellRenderer: (params: { value: string }) => <span className="text-[15px] font-black text-[var(--foreground)]">{params.value}</span>,
+        cellRenderer: (params: { value: string }) => <span className="text-[15px] font-black text-[var(--accent)]">{params.value}</span>,
       },
       {
         headerName: t.class as string,
         field: "name",
         flex: 1,
-        minWidth: 178,
-        cellRenderer: (params: { data: ClubClass }) => <ScheduleClassCell item={params.data} active={params.data.id === nextClass?.id} />,
-      },
-      {
-        headerName: t.mat as string,
-        field: "mat",
-        width: 84,
-        cellRenderer: (params: { data: ClubClass }) => (
-          <div className="flex h-full items-center">
-            <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-semibold text-[var(--muted)]">{params.data.mat}</span>
-          </div>
-        ),
+        minWidth: 238,
+        cellRenderer: (params: { data: ClubClass }) => <ScheduleClassCell item={params.data} active={params.data.id === nextClass?.id} checkedIn={checkedInClassIds.includes(params.data.id)} />,
       },
     ],
-    [nextClass?.id, t],
+    [checkedInClassIds, nextClass?.id, t],
   );
 
   const days = t.days as string[];
@@ -713,8 +759,7 @@ function ScheduleView({ t, lang, classes, nextClass }: { t: (typeof copy)[Lang];
         </div>
         {nextClass && (
           <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">{t.upNext as string}</p>
-            <p className="mt-1 truncate text-sm font-semibold">
+            <p className="truncate text-sm font-semibold">
               {nextClass.day} · {nextClass.time} · {nextClass.name}
             </p>
           </div>
@@ -765,20 +810,36 @@ function ScheduleView({ t, lang, classes, nextClass }: { t: (typeof copy)[Lang];
         )}
       </div>
 
-      <AgGridHost className="oss-mobile-schedule-grid ag-theme-quartz h-[min(540px,62vh)] min-h-[420px] w-full">
-        <AgGridReact<ClubClass>
-          theme="legacy"
-          rowData={rowData}
-          columnDefs={columnDefs}
-          rowHeight={88}
-          headerHeight={42}
-          defaultColDef={{ resizable: false, suppressMovable: true }}
-          suppressCellFocus
-          suppressMovableColumns
-          domLayout="normal"
-          overlayNoRowsTemplate={`<span>${t.noClass as string}</span>`}
+      {rowData.length > 0 ? (
+        <AgGridHost className="oss-mobile-schedule-grid ag-theme-quartz h-[min(540px,62vh)] min-h-[360px] w-full">
+          <AgGridReact<ClubClass>
+            theme="legacy"
+            rowData={rowData}
+            columnDefs={columnDefs}
+            rowHeight={92}
+            headerHeight={38}
+            defaultColDef={{ resizable: false, suppressMovable: true }}
+            suppressCellFocus
+            suppressMovableColumns
+            domLayout="normal"
+            onRowClicked={(event) => {
+              if (event.data) setSelectedClass(event.data);
+            }}
+          />
+        </AgGridHost>
+      ) : (
+        <CompactEmptySchedule t={t} selectedDate={selectedDate} lang={lang} />
+      )}
+
+      {selectedClass && (
+        <ClassDetailSheet
+          t={t}
+          item={selectedClass}
+          checkedIn={checkedInClassIds.includes(selectedClass.id)}
+          onCheckIn={() => onCheckIn(selectedClass)}
+          onClose={() => setSelectedClass(null)}
         />
-      </AgGridHost>
+      )}
     </div>
   );
 }
@@ -788,12 +849,12 @@ function EventsView({ t, competitions, trainingCamps }: { t: (typeof copy)[Lang]
     <div className="space-y-5">
       <CompactSection title={t.competitions as string}>
         {competitions.map((event) => (
-          <EventCard key={event.id} title={event.name} meta={`${event.date} · ${event.location}`} detail={`${event.type} · ${event.status}`} progress={event.prep} />
+          <EventCard key={event.id} title={event.name} meta={`${event.date} · ${event.location}`} detail={event.type} status={event.status} />
         ))}
       </CompactSection>
       <CompactSection title={t.camps as string}>
         {trainingCamps.map((camp) => (
-          <EventCard key={camp.id} title={camp.name} meta={`${camp.date} · ${camp.city}`} detail={`${camp.focus}`} progress={camp.prep} />
+          <EventCard key={camp.id} title={camp.name} meta={`${camp.date} · ${camp.city}`} detail={camp.type} status={camp.status} />
         ))}
       </CompactSection>
     </div>
@@ -831,16 +892,16 @@ function ProfileView({
   t,
   lang,
   onLanguageChange,
+  onChooseClub,
   session,
   student,
-  posts,
 }: {
   t: (typeof copy)[Lang];
   lang: Lang;
   onLanguageChange: (lang: Lang) => void;
+  onChooseClub: () => void;
   session: MiniSession;
   student: Student | null;
-  posts: TrainingPost[];
 }) {
   return (
     <div className="space-y-4">
@@ -863,15 +924,24 @@ function ProfileView({
           <LanguageSwitch lang={lang} onChange={onLanguageChange} compact />
         </div>
       </section>
+      <section className="grid grid-cols-2 gap-2">
+        <Button type="button" variant="surface" className="h-11 justify-center" onClick={onChooseClub}>
+          <Building2 size={16} />
+          {t.chooseClub as string}
+        </Button>
+        <Button asChild variant="surface" className="h-11 justify-center">
+          <a href="/api/auth/logout">
+            <LogOut size={16} />
+            {t.logout as string}
+          </a>
+        </Button>
+      </section>
       <div className="grid grid-cols-2 gap-2">
         <Metric label={t.hours as string} value={student ? String(student.totalHours) : "0"} />
         <Metric label={t.month as string} value={student ? String(student.classes30) : "0"} />
         <Metric label={t.streak as string} value={student ? String(student.streak) : "0"} />
         <Metric label={t.points as string} value={student ? String(student.points) : "0"} />
       </div>
-      <CompactSection title={t.updates as string}>
-        {posts.slice(0, 3).map((post) => <FeedCard key={post.id} post={post} />)}
-      </CompactSection>
     </div>
   );
 }
@@ -907,28 +977,117 @@ function MobileNav({ t, activeTab, onChange }: { t: (typeof copy)[Lang]; activeT
   );
 }
 
-function ScheduleClassCell({ item, active }: { item: ClubClass; active: boolean }) {
+function ClassAgendaRow({
+  item,
+  active,
+  checkedIn,
+  onClick,
+  actionLabel,
+  checkedLabel,
+}: {
+  item: ClubClass;
+  active?: boolean;
+  checkedIn?: boolean;
+  onClick: () => void;
+  actionLabel: string;
+  checkedLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-2xl border bg-[var(--surface)] p-3 text-left transition active:scale-[0.99]",
+        active ? "border-[var(--accent)]" : "border-[var(--border)]",
+      )}
+    >
+      <span className="w-14 shrink-0 text-base font-black text-[var(--accent)]">{item.time}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold">{item.name}</span>
+        <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">{item.coach} · {item.mat}</span>
+      </span>
+      <span className={cn("shrink-0 rounded-full px-2 py-1 text-[10px] font-black", checkedIn ? "bg-[var(--status-live)] text-[var(--background)]" : "bg-[var(--panel)] text-[var(--muted)]")}>
+        {checkedIn ? checkedLabel : actionLabel}
+      </span>
+    </button>
+  );
+}
+
+function ScheduleClassCell({ item, active, checkedIn }: { item: ClubClass; active: boolean; checkedIn: boolean }) {
   return (
     <div className="flex h-full min-w-0 flex-col justify-center">
       <div className="flex items-center gap-2">
         {active && <span className="size-2 shrink-0 rounded-full bg-[var(--status-live)]" />}
         <p className="truncate text-sm font-semibold">{item.name}</p>
       </div>
-      <p className="mt-1 truncate text-xs text-[var(--muted)]">{item.coach}</p>
-      <p className="mt-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">{item.level}</p>
+      <p className="mt-1 truncate text-xs text-[var(--muted)]">{item.coach} · {item.mat}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <span className="truncate text-[11px] font-semibold text-[var(--accent)]">{item.level}</span>
+        {checkedIn && <span className="rounded-full bg-[var(--status-live)] px-2 py-0.5 text-[10px] font-black text-[var(--background)]">IN</span>}
+      </div>
     </div>
   );
 }
 
-function EventCard({ title, meta, detail, progress }: { title: string; meta: string; detail: string; progress: number }) {
+function CompactEmptySchedule({ t, selectedDate, lang }: { t: (typeof copy)[Lang]; selectedDate: Date; lang: Lang }) {
+  return (
+    <div className="rounded-[22px] border border-[var(--border)] bg-[var(--surface)] px-4 py-6 text-center">
+      <p className="text-sm font-semibold">{t.noClass as string}</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">{selectedDate.toLocaleDateString(localeByLang[lang], { month: "short", day: "numeric" })}</p>
+    </div>
+  );
+}
+
+function ClassDetailSheet({
+  t,
+  item,
+  checkedIn,
+  onCheckIn,
+  onClose,
+}: {
+  t: (typeof copy)[Lang];
+  item: ClubClass;
+  checkedIn: boolean;
+  onCheckIn: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--background)_52%,transparent)] px-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm">
+      <section className="w-full max-w-[500px] rounded-[28px] border border-[var(--border)] bg-[var(--panel-strong)] p-4 shadow-[var(--shadow)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-3xl font-black text-[var(--accent)]">{item.time}</p>
+            <h2 className="mt-2 text-xl font-semibold leading-tight">{item.name}</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">{item.day} · {item.coach}</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Metric label={t.mat as string} value={item.mat} />
+          <Metric label={t.level as string} value={item.level} />
+        </div>
+
+        <Button type="button" variant="primary" className="mt-4 h-12 w-full" onClick={onCheckIn} disabled={checkedIn}>
+          <ListChecks size={16} />
+          {checkedIn ? t.checkedIn as string : t.checkIn as string}
+        </Button>
+      </section>
+    </div>
+  );
+}
+
+function EventCard({ title, meta, detail, status }: { title: string; meta: string; detail: string; status: string }) {
   return (
     <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="mt-1 text-xs text-[var(--muted)]">{meta}</p>
-      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--muted)]">{detail}</p>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--panel)]">
-        <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 text-sm font-semibold leading-5">{title}</p>
+        <span className={cn("shrink-0 rounded-full border px-2 py-1 text-[10px] font-black", statusTone(status))}>{status}</span>
       </div>
+      <p className="mt-1 text-xs text-[var(--muted)]">{meta}</p>
+      <p className="mt-2 text-xs font-semibold text-[var(--accent)]">{detail}</p>
     </article>
   );
 }
@@ -947,8 +1106,8 @@ function FeedCard({ post }: { post: TrainingPost }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
-      <p className="text-xl font-black">{value}</p>
+    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+      <p className="truncate text-xl font-black">{value}</p>
       <p className="mt-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">{label}</p>
     </div>
   );
@@ -956,8 +1115,8 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-[52px] rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-center">
-      <p className="text-base font-black">{value}</p>
+    <div className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-center">
+      <p className="truncate text-base font-black">{value}</p>
       <p className="mt-0.5 max-w-14 truncate text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">{label}</p>
     </div>
   );
@@ -970,10 +1129,6 @@ function CompactSection({ title, children }: { title: string; children: React.Re
       <div className="space-y-2">{children}</div>
     </section>
   );
-}
-
-function EmptyPanel({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)]">{text}</div>;
 }
 
 function findStudentProfile(rankings: RankedMember[], user: PlatformUser) {
