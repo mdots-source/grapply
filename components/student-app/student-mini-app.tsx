@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AgGridReact } from "ag-grid-react";
 import type { ColDef } from "ag-grid-community";
@@ -105,6 +105,7 @@ const copy = {
     class: "Class",
     mat: "Mat",
     days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    classOne: "class",
     classes: "classes",
   },
   es: {
@@ -144,6 +145,7 @@ const copy = {
     class: "Clase",
     mat: "Tatami",
     days: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+    classOne: "clase",
     classes: "clases",
   },
   pt: {
@@ -183,6 +185,7 @@ const copy = {
     class: "Aula",
     mat: "Tatame",
     days: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
+    classOne: "aula",
     classes: "aulas",
   },
   ru: {
@@ -222,7 +225,8 @@ const copy = {
     class: "Класс",
     mat: "Зал",
     days: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
-    classes: "классы",
+    classOne: "занятие",
+    classes: "занятий",
   },
 } satisfies Record<Lang, Record<string, string | string[]>>;
 
@@ -281,6 +285,10 @@ function statusTone(status: string) {
   if (normalized.includes("open") || normalized.includes("early")) return "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]";
   if (normalized.includes("wait")) return "border-[var(--accent-coral)]/30 bg-[var(--accent-coral)]/10 text-[var(--accent-coral)]";
   return "border-[var(--border)] bg-[var(--panel)] text-[var(--muted)]";
+}
+
+function formatClassCount(count: number, t: (typeof copy)[Lang]) {
+  return `${count} ${count === 1 ? t.classOne as string : t.classes as string}`;
 }
 
 declare global {
@@ -684,18 +692,6 @@ function TodayView({
         </CompactSection>
       )}
 
-      {classes.length > 0 && (
-        <CompactSection title={t.week as string}>
-          <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-4">
-            {classes.slice(0, 4).map((item) => (
-              <div key={item.id} className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
-                <p className="truncate text-sm font-semibold">{item.name}</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">{item.day} · {item.time}</p>
-              </div>
-            ))}
-          </div>
-        </CompactSection>
-      )}
     </div>
   );
 }
@@ -720,9 +716,15 @@ function ScheduleView({
   const todayDay = useMemo(() => dayLabelFromDate(today), [today]);
   const [selectedDay, setSelectedDay] = useState<DayLabel>(todayDay);
   const [selectedClass, setSelectedClass] = useState<ClubClass | null>(null);
+  const selectedDayRef = useRef<HTMLButtonElement | null>(null);
   const rowData = useMemo(() => classes.filter((item) => item.day === selectedDay).sort((a, b) => a.time.localeCompare(b.time)), [classes, selectedDay]);
   const selectedIndex = dayOrder.indexOf(selectedDay);
   const selectedDate = addCalendarDays(weekStart, selectedIndex);
+  const gridHeightClassName = rowData.length <= 1 ? "h-[132px] w-full" : rowData.length <= 3 ? "h-[316px] w-full" : "h-[min(540px,62vh)] min-h-[360px] w-full";
+
+  useEffect(() => {
+    selectedDayRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [selectedDay]);
   const columnDefs = useMemo<ColDef<ClubClass>[]>(
     () => [
       {
@@ -757,13 +759,6 @@ function ScheduleView({
             {t.today as string}
           </Button>
         </div>
-        {nextClass && (
-          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-            <p className="truncate text-sm font-semibold">
-              {nextClass.day} · {nextClass.time} · {nextClass.name}
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -776,6 +771,7 @@ function ScheduleView({
             <button
               type="button"
               key={day}
+              ref={active ? selectedDayRef : undefined}
               onClick={() => setSelectedDay(day)}
               className={cn(
                 "min-w-[68px] rounded-2xl border px-3 py-2.5 text-left transition",
@@ -788,9 +784,7 @@ function ScheduleView({
                 {isToday && <span className={cn("size-1.5 rounded-full", active ? "bg-[var(--accent-foreground)]" : "bg-[var(--accent)]")} />}
               </span>
               <span className="mt-1 block text-xl font-black leading-none">{date.getDate()}</span>
-              <span className="mt-1 block text-[10px] font-semibold opacity-75">
-                {count} {t.classes as string}
-              </span>
+              <span className="mt-1 block text-[10px] font-semibold opacity-75">{formatClassCount(count, t)}</span>
             </button>
           );
         })}
@@ -801,7 +795,7 @@ function ScheduleView({
           <p className="truncate text-sm font-semibold">
             {days[selectedIndex]} {selectedDate.toLocaleDateString(localeByLang[lang], { month: "short", day: "numeric" })}
           </p>
-          <p className="text-xs text-[var(--muted)]">{rowData.length} {t.classes as string}</p>
+          <p className="text-xs text-[var(--muted)]">{formatClassCount(rowData.length, t)}</p>
         </div>
         {selectedDay !== todayDay && (
           <button type="button" className="text-xs font-semibold text-[var(--accent)]" onClick={() => setSelectedDay(todayDay)}>
@@ -811,7 +805,7 @@ function ScheduleView({
       </div>
 
       {rowData.length > 0 ? (
-        <AgGridHost className="oss-mobile-schedule-grid ag-theme-quartz h-[min(540px,62vh)] min-h-[360px] w-full">
+        <AgGridHost className="oss-mobile-schedule-grid ag-theme-quartz" heightClassName={gridHeightClassName}>
           <AgGridReact<ClubClass>
             theme="legacy"
             rowData={rowData}
@@ -847,16 +841,20 @@ function ScheduleView({
 function EventsView({ t, competitions, trainingCamps }: { t: (typeof copy)[Lang]; competitions: Competition[]; trainingCamps: TrainingCamp[] }) {
   return (
     <div className="space-y-5">
-      <CompactSection title={t.competitions as string}>
-        {competitions.map((event) => (
-          <EventCard key={event.id} title={event.name} meta={`${event.date} · ${event.location}`} detail={event.type} status={event.status} />
-        ))}
-      </CompactSection>
-      <CompactSection title={t.camps as string}>
-        {trainingCamps.map((camp) => (
-          <EventCard key={camp.id} title={camp.name} meta={`${camp.date} · ${camp.city}`} detail={camp.type} status={camp.status} />
-        ))}
-      </CompactSection>
+      {competitions.length > 0 && (
+        <CompactSection title={t.competitions as string}>
+          {competitions.map((event) => (
+            <EventCard key={event.id} title={event.name} meta={`${event.date} · ${event.location}`} detail={event.type} status={event.status} />
+          ))}
+        </CompactSection>
+      )}
+      {trainingCamps.length > 0 && (
+        <CompactSection title={t.camps as string}>
+          {trainingCamps.map((camp) => (
+            <EventCard key={camp.id} title={camp.name} meta={`${camp.date} · ${camp.city}`} detail={camp.type} status={camp.status} />
+          ))}
+        </CompactSection>
+      )}
     </div>
   );
 }
