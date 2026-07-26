@@ -8,6 +8,7 @@ import { Settings2, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const storageKey = "grapply-cookie-preferences";
+const hiddenPathPrefixes = ["/app", "/mario"];
 
 type CookiePreferences = {
   necessary: true;
@@ -24,7 +25,7 @@ export function CookieConsent() {
   const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
-    if (pathname?.startsWith("/app")) return;
+    if (hiddenPathPrefixes.some((prefix) => pathname?.startsWith(prefix))) return;
     const saved = window.localStorage.getItem(storageKey);
     setOpen(!saved);
 
@@ -37,7 +38,7 @@ export function CookieConsent() {
     return () => window.removeEventListener("grapply:open-cookie-preferences", openPreferences);
   }, [pathname]);
 
-  if (pathname?.startsWith("/app")) return null;
+  if (hiddenPathPrefixes.some((prefix) => pathname?.startsWith(prefix))) return null;
 
   function savePreferences(next: Pick<CookiePreferences, "analytics" | "marketing">) {
     const preferences: CookiePreferences = {

@@ -19,6 +19,7 @@ const publicPrefixes = [
 ];
 
 const publicPaths = ["/", "/privacy"];
+const publicRoutePrefixes = ["/mario"];
 const demoAccessToken = "mock:usr-sofia";
 const demoActiveClub = "grapply-bjj";
 const platformAdminPrefix = "/platform-admin";
@@ -75,6 +76,7 @@ export function proxy(request: NextRequest) {
   }
 
   if (publicPaths.includes(pathname)) return NextResponse.next();
+  if (publicRoutePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return NextResponse.next();
   if (publicPrefixes.some((prefix) => pathname.startsWith(prefix))) return NextResponse.next();
 
   const accessToken = request.cookies.get(authCookieNames.accessToken)?.value;
