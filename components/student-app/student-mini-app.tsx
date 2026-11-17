@@ -53,10 +53,13 @@ type StudentMiniAppProps = {
 
 type TabId = "today" | "schedule" | "events" | "rankings" | "profile";
 type Lang = "en" | "es" | "pt" | "ru";
+type StatId = "hours" | "attendance" | "streak" | "points";
+type StudentEvent = (Competition | TrainingCamp) & { category: "competition" | "camp" };
 
 const langKey = "grapply-mobile-language";
 const clubConfirmedKey = "grapply-mobile-club-confirmed";
 const chooseClubAfterLoginKey = "grapply-mobile-choose-club";
+const checkedInClassesKey = "grapply-mobile-checked-in-classes";
 const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 type DayLabel = (typeof dayOrder)[number];
 
@@ -87,6 +90,8 @@ const copy = {
     noClass: "No classes",
     checkIn: "Check in",
     checkedIn: "Checked in",
+    checkOut: "Check out",
+    details: "Details",
     updates: "Club",
     week: "This week",
     competitions: "Competitions",
@@ -127,6 +132,8 @@ const copy = {
     noClass: "Sin clases",
     checkIn: "Check-in",
     checkedIn: "Listo",
+    checkOut: "Salir",
+    details: "Detalles",
     updates: "Club",
     week: "Semana",
     competitions: "Competiciones",
@@ -167,6 +174,8 @@ const copy = {
     noClass: "Sem aulas",
     checkIn: "Check-in",
     checkedIn: "Feito",
+    checkOut: "Sair",
+    details: "Detalhes",
     updates: "Clube",
     week: "Semana",
     competitions: "Competições",
@@ -207,6 +216,8 @@ const copy = {
     noClass: "Нет занятий",
     checkIn: "Чек-ин",
     checkedIn: "Готово",
+    checkOut: "Отменить",
+    details: "Детали",
     updates: "Клуб",
     week: "Неделя",
     competitions: "Соревнования",
@@ -287,6 +298,14 @@ function statusTone(status: string) {
   return "border-[var(--border)] bg-[var(--panel)] text-[var(--muted)]";
 }
 
+function getEventFocus(event: StudentEvent) {
+  return "focus" in event ? event.focus : event.type;
+}
+
+function getEventHost(event: StudentEvent) {
+  return "host" in event ? event.host : event.venue;
+}
+
 function formatClassCount(count: number, t: (typeof copy)[Lang]) {
   return `${count} ${count === 1 ? t.classOne as string : t.classes as string}`;
 }
@@ -320,8 +339,19 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
     const storedLang = window.localStorage.getItem(langKey);
     if (isLang(storedLang)) setLang(storedLang);
     setChoosingClub(window.localStorage.getItem(chooseClubAfterLoginKey) === "1");
+    if (session?.user && session.activeClub) {
+      const storedCheckIns = window.localStorage.getItem(getCheckInStorageKey(session));
+      if (storedCheckIns) {
+        try {
+          const parsed = JSON.parse(storedCheckIns);
+          if (Array.isArray(parsed)) setCheckedInClassIds(parsed.filter((item): item is string => typeof item === "string"));
+        } catch {
+          setCheckedInClassIds([]);
+        }
+      }
+    }
     setHydrated(true);
-  }, []);
+  }, [session?.activeClub?.slug, session?.user.id]);
 
   function changeLang(next: Lang) {
     setLang(next);
@@ -336,9 +366,15 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
   const nextClass = pickNextClass(classes);
   const currentStudent = findStudentProfile(rankings, session.user);
 
-  function checkIn(classItem: ClubClass) {
-    setCheckedInClassIds((current) => (current.includes(classItem.id) ? current : [...current, classItem.id]));
-    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.("success");
+  function toggleCheckIn(classItem: ClubClass) {
+    if (!session) return;
+    const currentSession: MiniSession = session;
+    setCheckedInClassIds((current) => {
+      const next = current.includes(classItem.id) ? current.filter((id) => id !== classItem.id) : [...current, classItem.id];
+      window.localStorage.setItem(getCheckInStorageKey(currentSession), JSON.stringify(next));
+      return next;
+    });
+    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.(checkedInClassIds.includes(classItem.id) ? "warning" : "success");
   }
 
   if (!hydrated) return <MobileLoading />;
@@ -366,6 +402,7 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
         <MobileHeader
           session={session}
           currentStudent={currentStudent}
+          onOpenProfile={() => setActiveTab("profile")}
         />
         <section className="flex-1 overflow-y-auto px-3 pb-24 pt-3 min-[420px]:px-4">
           {activeTab === "today" && (
@@ -378,12 +415,12 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
               posts={initialData?.posts ?? []}
               nextClass={nextClass}
               checkedInClassIds={checkedInClassIds}
-              onCheckIn={checkIn}
+              onToggleCheckIn={toggleCheckIn}
               onOpenSchedule={() => setActiveTab("schedule")}
             />
           )}
           {activeTab === "schedule" && (
-            <ScheduleView t={t} lang={lang} classes={classes} nextClass={nextClass} checkedInClassIds={checkedInClassIds} onCheckIn={checkIn} />
+            <ScheduleView t={t} lang={lang} classes={classes} nextClass={nextClass} checkedInClassIds={checkedInClassIds} onToggleCheckIn={toggleCheckIn} />
           )}
           {activeTab === "events" && (
             <EventsView t={t} competitions={initialData?.competitions ?? []} trainingCamps={initialData?.trainingCamps ?? []} />
@@ -400,6 +437,8 @@ export function StudentMiniApp({ session, initialData }: StudentMiniAppProps) {
               }}
               session={session}
               student={currentStudent}
+              classes={classes}
+              checkedInClassIds={checkedInClassIds}
             />
           )}
         </section>
@@ -578,9 +617,11 @@ function MobileLoading() {
 function MobileHeader({
   session,
   currentStudent,
+  onOpenProfile,
 }: {
   session: MiniSession;
   currentStudent: Student | null;
+  onOpenProfile: () => void;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--panel-strong)_94%,transparent)] px-3 pb-3 pt-3 backdrop-blur-xl min-[420px]:px-4">
@@ -589,7 +630,11 @@ function MobileHeader({
           <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">{session.activeClub?.name}</p>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2.5">
+      <button
+        type="button"
+        onClick={onOpenProfile}
+        className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2.5 text-left transition active:scale-[0.99]"
+      >
         <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--panel)] text-sm font-black">
           {initials(session.user.name)}
         </div>
@@ -598,7 +643,7 @@ function MobileHeader({
           <p className="truncate text-xs text-[var(--muted)]">{session.user.email}</p>
         </div>
         {currentStudent && <BeltPill belt={currentStudent.belt} stripes={currentStudent.stripes} />}
-      </div>
+      </button>
     </header>
   );
 }
@@ -633,7 +678,7 @@ function TodayView({
   posts,
   nextClass,
   checkedInClassIds,
-  onCheckIn,
+  onToggleCheckIn,
   onOpenSchedule,
 }: {
   t: (typeof copy)[Lang];
@@ -644,7 +689,7 @@ function TodayView({
   posts: TrainingPost[];
   nextClass: ClubClass | null;
   checkedInClassIds: string[];
-  onCheckIn: (classItem: ClubClass) => void;
+  onToggleCheckIn: (classItem: ClubClass) => void;
   onOpenSchedule: () => void;
 }) {
   const todayClasses = useMemo(() => classesForDay(classes, dayLabelFromDate(new Date())), [classes]);
@@ -660,9 +705,9 @@ function TodayView({
           {nextClass && <p className="mt-1 truncate text-sm text-[var(--muted)]">{nextClass.day} · {nextClass.coach} · {nextClass.mat}</p>}
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-          <Button type="button" variant="primary" className="h-11" onClick={() => nextClass && onCheckIn(nextClass)} disabled={!nextClass || checkedIn}>
+          <Button type="button" variant={checkedIn ? "surface" : "primary"} className="h-11" onClick={() => nextClass && onToggleCheckIn(nextClass)} disabled={!nextClass}>
             <ListChecks size={16} />
-            {checkedIn ? t.checkedIn as string : t.checkIn as string}
+            {checkedIn ? t.checkOut as string : t.checkIn as string}
           </Button>
           <Button type="button" variant="surface" className="h-11 px-3" onClick={onOpenSchedule} aria-label={t.schedule as string}>
             <CalendarDays size={17} />
@@ -674,7 +719,7 @@ function TodayView({
         <CompactSection title={t.today as string}>
           <div className="space-y-2">
             {todayClasses.map((item) => (
-              <ClassAgendaRow key={item.id} item={item} active={item.id === nextClass?.id} checkedIn={checkedInClassIds.includes(item.id)} onClick={() => onCheckIn(item)} actionLabel={t.checkIn as string} checkedLabel={t.checkedIn as string} />
+              <ClassAgendaRow key={item.id} item={item} active={item.id === nextClass?.id} checkedIn={checkedInClassIds.includes(item.id)} onClick={() => onToggleCheckIn(item)} actionLabel={t.checkIn as string} checkedLabel={t.checkOut as string} />
             ))}
           </div>
         </CompactSection>
@@ -702,14 +747,14 @@ function ScheduleView({
   classes,
   nextClass,
   checkedInClassIds,
-  onCheckIn,
+  onToggleCheckIn,
 }: {
   t: (typeof copy)[Lang];
   lang: Lang;
   classes: ClubClass[];
   nextClass: ClubClass | null;
   checkedInClassIds: string[];
-  onCheckIn: (classItem: ClubClass) => void;
+  onToggleCheckIn: (classItem: ClubClass) => void;
 }) {
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => startOfCalendarWeek(today), [today]);
@@ -761,9 +806,10 @@ function ScheduleView({
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="grid grid-cols-7 gap-1.5 rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-2">
         {dayOrder.map((day, index) => {
-          const count = classes.filter((item) => item.day === day).length;
+          const dayClasses = classesForDay(classes, day);
+          const count = dayClasses.length;
           const active = selectedDay === day;
           const date = addCalendarDays(weekStart, index);
           const isToday = isSameCalendarDay(date, today);
@@ -774,17 +820,22 @@ function ScheduleView({
               ref={active ? selectedDayRef : undefined}
               onClick={() => setSelectedDay(day)}
               className={cn(
-                "min-w-[68px] rounded-2xl border px-3 py-2.5 text-left transition",
+                "min-h-[88px] rounded-2xl border px-1.5 py-2 text-center transition active:scale-[0.98]",
                 active ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[var(--shadow)]" : "border-[var(--border)] bg-[var(--surface)]",
                 isToday && !active ? "border-[var(--accent)]" : "",
               )}
             >
-              <span className="flex items-center justify-between gap-2 text-sm font-black">
+              <span className="flex items-center justify-center gap-1 text-[11px] font-black">
                 {days[index]}
                 {isToday && <span className={cn("size-1.5 rounded-full", active ? "bg-[var(--accent-foreground)]" : "bg-[var(--accent)]")} />}
               </span>
-              <span className="mt-1 block text-xl font-black leading-none">{date.getDate()}</span>
-              <span className="mt-1 block text-[10px] font-semibold opacity-75">{formatClassCount(count, t)}</span>
+              <span className="mt-1 block text-lg font-black leading-none">{date.getDate()}</span>
+              <span className="mt-1 flex justify-center gap-0.5">
+                {dayClasses.slice(0, 3).map((item) => (
+                  <span key={item.id} className={cn("size-1.5 rounded-full", checkedInClassIds.includes(item.id) ? "bg-[var(--status-live)]" : active ? "bg-[var(--accent-foreground)]/80" : "bg-[var(--accent)]")} />
+                ))}
+              </span>
+              <span className="mt-1 block truncate text-[9px] font-semibold opacity-75">{count > 0 ? dayClasses[0].time : "-"}</span>
             </button>
           );
         })}
@@ -830,7 +881,7 @@ function ScheduleView({
           t={t}
           item={selectedClass}
           checkedIn={checkedInClassIds.includes(selectedClass.id)}
-          onCheckIn={() => onCheckIn(selectedClass)}
+          onToggleCheckIn={() => onToggleCheckIn(selectedClass)}
           onClose={() => setSelectedClass(null)}
         />
       )}
@@ -839,22 +890,25 @@ function ScheduleView({
 }
 
 function EventsView({ t, competitions, trainingCamps }: { t: (typeof copy)[Lang]; competitions: Competition[]; trainingCamps: TrainingCamp[] }) {
+  const [selectedEvent, setSelectedEvent] = useState<StudentEvent | null>(null);
+
   return (
     <div className="space-y-5">
       {competitions.length > 0 && (
         <CompactSection title={t.competitions as string}>
           {competitions.map((event) => (
-            <EventCard key={event.id} title={event.name} meta={`${event.date} · ${event.location}`} detail={event.type} status={event.status} />
+            <EventCard key={event.id} title={event.name} meta={`${event.date} · ${event.location}`} detail={event.type} status={event.status} onClick={() => setSelectedEvent({ ...event, category: "competition" })} />
           ))}
         </CompactSection>
       )}
       {trainingCamps.length > 0 && (
         <CompactSection title={t.camps as string}>
           {trainingCamps.map((camp) => (
-            <EventCard key={camp.id} title={camp.name} meta={`${camp.date} · ${camp.city}`} detail={camp.type} status={camp.status} />
+            <EventCard key={camp.id} title={camp.name} meta={`${camp.date} · ${camp.city}`} detail={camp.type} status={camp.status} onClick={() => setSelectedEvent({ ...camp, category: "camp" })} />
           ))}
         </CompactSection>
       )}
+      {selectedEvent && <EventDetailSheet t={t} event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
     </div>
   );
 }
@@ -893,6 +947,8 @@ function ProfileView({
   onChooseClub,
   session,
   student,
+  classes,
+  checkedInClassIds,
 }: {
   t: (typeof copy)[Lang];
   lang: Lang;
@@ -900,7 +956,11 @@ function ProfileView({
   onChooseClub: () => void;
   session: MiniSession;
   student: Student | null;
+  classes: ClubClass[];
+  checkedInClassIds: string[];
 }) {
+  const [activeStat, setActiveStat] = useState<StatId | null>(null);
+
   return (
     <div className="space-y-4">
       <section className="rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-4 text-center">
@@ -935,11 +995,21 @@ function ProfileView({
         </Button>
       </section>
       <div className="grid grid-cols-2 gap-2">
-        <Metric label={t.hours as string} value={student ? String(student.totalHours) : "0"} />
-        <Metric label={t.month as string} value={student ? String(student.classes30) : "0"} />
-        <Metric label={t.streak as string} value={student ? String(student.streak) : "0"} />
-        <Metric label={t.points as string} value={student ? String(student.points) : "0"} />
+        <Metric label={t.hours as string} value={student ? String(student.totalHours) : "0"} onClick={() => setActiveStat("hours")} />
+        <Metric label={t.month as string} value={student ? String(student.classes30) : "0"} onClick={() => setActiveStat("attendance")} />
+        <Metric label={t.streak as string} value={student ? String(student.streak) : "0"} onClick={() => setActiveStat("streak")} />
+        <Metric label={t.points as string} value={student ? String(student.points) : "0"} onClick={() => setActiveStat("points")} />
       </div>
+      {activeStat && (
+        <StatDetailSheet
+          t={t}
+          stat={activeStat}
+          student={student}
+          classes={classes}
+          checkedInClassIds={checkedInClassIds}
+          onClose={() => setActiveStat(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1040,13 +1110,13 @@ function ClassDetailSheet({
   t,
   item,
   checkedIn,
-  onCheckIn,
+  onToggleCheckIn,
   onClose,
 }: {
   t: (typeof copy)[Lang];
   item: ClubClass;
   checkedIn: boolean;
-  onCheckIn: () => void;
+  onToggleCheckIn: () => void;
   onClose: () => void;
 }) {
   return (
@@ -1068,25 +1138,70 @@ function ClassDetailSheet({
           <Metric label={t.level as string} value={item.level} />
         </div>
 
-        <Button type="button" variant="primary" className="mt-4 h-12 w-full" onClick={onCheckIn} disabled={checkedIn}>
+        <Button type="button" variant={checkedIn ? "surface" : "primary"} className="mt-4 h-12 w-full" onClick={onToggleCheckIn}>
           <ListChecks size={16} />
-          {checkedIn ? t.checkedIn as string : t.checkIn as string}
+          {checkedIn ? t.checkOut as string : t.checkIn as string}
         </Button>
       </section>
     </div>
   );
 }
 
-function EventCard({ title, meta, detail, status }: { title: string; meta: string; detail: string; status: string }) {
+function EventCard({ title, meta, detail, status, onClick }: { title: string; meta: string; detail: string; status: string; onClick: () => void }) {
   return (
-    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+    <button type="button" onClick={onClick} className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 text-left transition active:scale-[0.99]">
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 flex-1 text-sm font-semibold leading-5">{title}</p>
         <span className={cn("shrink-0 rounded-full border px-2 py-1 text-[10px] font-black", statusTone(status))}>{status}</span>
       </div>
       <p className="mt-1 text-xs text-[var(--muted)]">{meta}</p>
-      <p className="mt-2 text-xs font-semibold text-[var(--accent)]">{detail}</p>
-    </article>
+      <p className="mt-2 flex items-center justify-between gap-2 text-xs font-semibold text-[var(--accent)]">
+        <span>{detail}</span>
+        <ChevronRight size={15} />
+      </p>
+    </button>
+  );
+}
+
+function EventDetailSheet({ t, event, onClose }: { t: (typeof copy)[Lang]; event: StudentEvent; onClose: () => void }) {
+  const cost = "estimatedCost" in event ? event.estimatedCost : null;
+  const spots = "spotsTotal" in event ? `${event.registered_students.length}/${event.spotsTotal}` : String(event.registered_students.length);
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--background)_52%,transparent)] px-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm">
+      <section className="w-full max-w-[500px] rounded-[28px] border border-[var(--border)] bg-[var(--panel-strong)] p-4 shadow-[var(--shadow)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className={cn("inline-flex rounded-full border px-2 py-1 text-[10px] font-black", statusTone(event.status))}>{event.status}</span>
+            <h2 className="mt-3 text-xl font-semibold leading-tight">{event.name}</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">{event.date}{event.category === "camp" && "endDate" in event ? ` - ${event.endDate}` : ""}</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Metric label="Location" value={event.city} />
+          <Metric label="Type" value={event.type} />
+          <Metric label="Venue" value={event.venue} />
+          <Metric label={cost ? "Cost" : "Roster"} value={cost ?? spots} />
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+          <p className="text-sm font-semibold">{getEventFocus(event)}</p>
+          <p className="mt-2 text-sm leading-5 text-[var(--muted)]">{event.notes}</p>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{getEventHost(event)}</p>
+            <p className="truncate text-xs text-[var(--muted)]">Deadline: {event.registration_deadline}</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-black text-[var(--accent-foreground)]">{t.details as string}</span>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1102,11 +1217,68 @@ function FeedCard({ post }: { post: TrainingPost }) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function StatDetailSheet({
+  t,
+  stat,
+  student,
+  classes,
+  checkedInClassIds,
+  onClose,
+}: {
+  t: (typeof copy)[Lang];
+  stat: StatId;
+  student: Student | null;
+  classes: ClubClass[];
+  checkedInClassIds: string[];
+  onClose: () => void;
+}) {
+  const detail = buildStatDetail(stat, t, student, classes, checkedInClassIds);
+
   return (
-    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--background)_52%,transparent)] px-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm">
+      <section className="w-full max-w-[500px] rounded-[28px] border border-[var(--border)] bg-[var(--panel-strong)] p-4 shadow-[var(--shadow)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">{t.details as string}</p>
+            <h2 className="mt-1 text-2xl font-semibold">{detail.title}</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">{detail.summary}</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="mt-4 space-y-2">
+          {detail.rows.map((row) => (
+            <div key={`${row.label}-${row.value}`} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+              <span className="min-w-0 truncate text-sm font-semibold">{row.label}</span>
+              <span className="shrink-0 text-sm font-black text-[var(--accent)]">{row.value}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Metric({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
+  const content = (
+    <>
       <p className="truncate text-xl font-black">{value}</p>
       <p className="mt-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">{label}</p>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 text-left transition active:scale-[0.99]">
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+      {content}
     </div>
   );
 }
@@ -1135,6 +1307,60 @@ function findStudentProfile(rankings: RankedMember[], user: PlatformUser) {
   return rankings.find((member) => member.belt === user.belt && member.stripes === user.stripes) ?? null;
 }
 
+function buildStatDetail(stat: StatId, t: (typeof copy)[Lang], student: Student | null, classes: ClubClass[], checkedInClassIds: string[]) {
+  const recentClasses = [...classes].sort((a, b) => nextClassOffset(a, 0, 0) - nextClassOffset(b, 0, 0)).slice(0, 4);
+  const checkedClasses = classes.filter((item) => checkedInClassIds.includes(item.id));
+  const fallbackClasses = checkedClasses.length > 0 ? checkedClasses : recentClasses;
+
+  if (stat === "hours") {
+    return {
+      title: t.hours as string,
+      summary: `${student?.totalHours ?? 0} mat hours from class attendance.`,
+      rows: fallbackClasses.slice(0, 4).map((item) => ({
+        label: `${item.day} ${item.time} · ${item.name}`,
+        value: `${Math.round(item.durationMinutes / 60)}h`,
+      })),
+    };
+  }
+
+  if (stat === "attendance") {
+    return {
+      title: t.month as string,
+      summary: `${student?.classes30 ?? 0} classes counted in the last 30 days.`,
+      rows: fallbackClasses.slice(0, 4).map((item) => ({
+        label: `${item.day} · ${item.name}`,
+        value: checkedInClassIds.includes(item.id) ? "checked" : "recent",
+      })),
+    };
+  }
+
+  if (stat === "streak") {
+    return {
+      title: t.streak as string,
+      summary: `${student?.streak ?? 0} class streak based on consecutive training days.`,
+      rows: fallbackClasses.slice(0, Math.max(1, Math.min(student?.streak ?? 3, 4))).map((item, index) => ({
+        label: `${item.day} · ${item.name}`,
+        value: `#${index + 1}`,
+      })),
+    };
+  }
+
+  const points = student?.points ?? 0;
+  const attendancePoints = Math.min(points, (student?.classes30 ?? 0) * 25);
+  const streakPoints = Math.min(Math.max(points - attendancePoints, 0), (student?.streak ?? 0) * 30);
+  const progressPoints = Math.max(points - attendancePoints - streakPoints, 0);
+
+  return {
+    title: t.points as string,
+    summary: `${points} profile points from training consistency and progress.`,
+    rows: [
+      { label: "Attendance", value: String(attendancePoints) },
+      { label: "Streak", value: String(streakPoints) },
+      { label: "Progress", value: String(progressPoints) },
+    ],
+  };
+}
+
 function pickNextClass(classes: ClubClass[]) {
   if (classes.length === 0) return null;
   const now = new Date();
@@ -1160,4 +1386,8 @@ function timeToMinutes(time: string) {
 
 function isLang(value: string | null): value is Lang {
   return value === "en" || value === "es" || value === "pt" || value === "ru";
+}
+
+function getCheckInStorageKey(session: MiniSession) {
+  return `${checkedInClassesKey}:${session.activeClub?.slug ?? "no-club"}:${session.user.id}`;
 }

@@ -134,20 +134,8 @@ export function LandingPage() {
     <main className="min-h-screen overflow-x-hidden bg-[var(--background)] text-[var(--foreground)]">
       <Header />
       <Hero />
-      <ProductOSSection />
-      <LiveAcademySection />
-      <MembersSection />
-      <ScheduleSection />
-      <TvShowcaseSection />
-      <ProgressionSection />
-      <RankingsSection />
-      <TrainingFeedSection />
-      <CompetitionsSection />
-      <PartnersSection />
-      <FeatureSection />
-      <WhySection />
+      <SimpleProductSection />
       <PricingSection />
-      <FaqSection />
       <FinalCta />
       <Footer />
     </main>
@@ -157,10 +145,7 @@ export function LandingPage() {
 function Header() {
   const nav = [
     ["Product", "#product"],
-    ["TV", "#tv"],
-    ["Partners", "#partners"],
     ["Pricing", "#pricing"],
-    ["FAQ", "#faq"],
   ];
 
   return (
@@ -199,37 +184,40 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-[var(--border)]">
-      <div className="absolute inset-0 bg-[linear-gradient(120deg,color-mix(in_srgb,var(--accent)_14%,transparent),transparent_34%,color-mix(in_srgb,var(--accent-blue)_9%,transparent))]" />
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:px-8 lg:py-18">
-        <Reveal className="relative z-10">
-          <Kicker icon={Radio}>Live academy OS</Kicker>
-          <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[1.02] tracking-normal sm:text-7xl">
-            Your academy, alive.
-          </h1>
-          <p className="mt-6 max-w-2xl text-base leading-8 text-[var(--muted)] sm:text-lg">
-            Grapply turns attendance, progression, rankings, classes, competitions, and academy culture into one live operating system for modern Jiu-Jitsu academies.
+    <section className="border-b border-[var(--border)]">
+      <div className="mx-auto max-w-7xl px-4 pb-8 pt-12 sm:px-6 sm:pt-16 lg:px-8">
+        <div className="max-w-3xl">
+          <h1 className="text-5xl font-semibold leading-tight sm:text-6xl">Grapply</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--muted)] sm:text-lg">
+            Run your Jiu-Jitsu academy in one place. Members, classes, rankings, and your team are always in view.
           </p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Button asChild variant="primary" size="lg">
-              <a href="#demo">
-                See your academy live <ArrowRight />
-              </a>
-            </Button>
-            <Button asChild variant="surface" size="lg">
-              <Link href="/clubs">
-                Open MVP preview <MonitorPlay />
-              </Link>
-            </Button>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button asChild variant="primary" size="lg"><Link href="/clubs">Open the app <ArrowRight /></Link></Button>
+            <Button asChild variant="surface" size="lg"><a href="#demo">Book demo</a></Button>
           </div>
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {heroMetrics.map((metric, index) => (
-              <MetricCard key={metric.label} value={metric.value} label={metric.label} detail={metric.detail} accent={index === 1} />
-            ))}
-          </div>
-        </Reveal>
+        </div>
+        <div className="mt-10">
+          <LandingMembersAgGridPreview />
+        </div>
+      </div>
+    </section>
+  );
+}
 
-        <HeroProductScene />
+function SimpleProductSection() {
+  return (
+    <section id="product" className="scroll-mt-24 border-b border-[var(--border)]">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <h2 className="text-2xl font-semibold">Everything your academy needs</h2>
+        <div className="mt-6 grid gap-5 md:grid-cols-3">
+          {productModules.slice(0, 6).map((module) => (
+            <div key={module.title} className="border-t border-[var(--border)] pt-4">
+              <module.icon size={20} className="text-[var(--accent)]" aria-hidden />
+              <h3 className="mt-3 text-base font-semibold">{module.title}</h3>
+              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{module.copy}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
